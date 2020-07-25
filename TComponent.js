@@ -1,3 +1,5 @@
+const VERSION = '0.1.0';
+
 class Parser {
   // phase 0
   constructor() {
@@ -179,4 +181,5 @@ export default class TComponent {
     this.element = TComponent.build(this.constructor.parsedTemplate, this);
   }
 }
+TComponent.version = VERSION;
 TComponent.definedComponents = Object.create(null);
