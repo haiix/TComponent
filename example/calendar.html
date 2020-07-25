@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<script type="module">
+import TComponent from '../TComponent.js';
+
+class Calendar extends TComponent {
+  template() {
+    return `
+      <div>
+        <select id="_month" onchange="this.setYearAndMonth()">
+          ${'January,February,March,April,May,June,July,August,September,October,November,December'.split(',').map((v, i) => '<option value="' + i + '">' + v + '</option>').join('')}
+        </select>
+        <span>, </span>
+        <input type="number" id="_year" min="1900" max="2100" onchange="this.setYearAndMonth()"/>
+        <table border="1">
+          <thead><th>${'Su,Mo,Tu,We,Th,Fr,Sa'.split(',').join('</th><th>')}</th></thead>
+          <tbody id="_tbody">
+            ${('<tr>' + '<td></td>'.repeat(7) + '</tr>').repeat(6)}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+  constructor({year = new Date().getFullYear(), month = new Date().getMonth()} = {}) {
+    super();
+    this.setYearAndMonth(year, month);
+  }
+  get year() {
+    return this._year.value - 0;
+  }
+  get month() {
+    return this._month.value - 0;
+  }
+  setYearAndMonth(year = this.year, month = this.month) {
+    year = year - 0;
+    if ( Math.floor(year) !== year) throw new Error('Invalid year: ' + year);
+    year = Math.min(Math.max(this._year.min, year), this._year.max);
+    month = month - 0;
+    if (month < 0 || 12 <= month || Math.floor(month) !== month) throw new Error('Invalid month: ' + month);
+    this._year.value = '' + year;
+    this._month.value = '' + month;
+    const lastDate = new Date(new Date(year, month + 1).getTime() - 1).getDate();
+    let date = 1 - new Date(year, month).getDay();
+    for (const tr of this._tbody.childNodes) {
+      tr.style.display = date <= lastDate ? null : 'none';
+      for (const td of tr.childNodes) {
+        td.textContent = 0 < date && date <= lastDate ? '' + date : '';
+        date++;
+      }
+    }
+  }
+}
+
+const calendar = new Calendar();
+document.body.appendChild(calendar.element);
+
+</script>
+<script nomodule src="../assets/nomodule.js"></script>
