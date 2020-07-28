@@ -1,4 +1,4 @@
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 
 class Parser {
   // phase 0
@@ -129,8 +129,8 @@ class Parser {
 }
 
 export default class TComponent {
-  static define(tagName, TComponent) {
-    TComponent.definedComponents[tagName] = TComponent;
+  static define(tagName, SubComponent) {
+    TComponent.definedComponents[tagName] = SubComponent;
   }
   static parse(template) {
     const parser = new Parser();
@@ -140,7 +140,17 @@ export default class TComponent {
     const SubComponent = TComponent.definedComponents[node.tagName];
     if (SubComponent) {
       const inner = node.childNodes ? node.childNodes.map(node => TComponent.build(node, thisObj)) : node.textContent;
-      const subComponent = new SubComponent(node.attributes, inner);
+      const attrs = {};
+      if (node.attributes) {
+        for (const [key, value] of Object.entries(node.attributes)) {
+          if (thisObj && key.slice(0, 2) === 'on') {
+            attrs[key] = new Function('event', value).bind(thisObj);
+          } else {
+            attrs[key] = value;
+          }
+        }
+      }
+      const subComponent = new SubComponent(attrs, inner);
       if (thisObj && node.attributes && node.attributes.id) {
         thisObj[node.attributes.id] = subComponent;
       }
@@ -168,6 +178,11 @@ export default class TComponent {
       }
       return elem;
     }
+  }
+  static createElement(template, thisObj) {
+    const nodes = TComponent.parse(template);
+    if (nodes.length !== 1) throw new Error('Create only one root element in your template');
+    return TComponent.build(nodes[0], thisObj);
   }
   template() {
     throw new Error('Please override "template()" method in the class extends TComponent');
