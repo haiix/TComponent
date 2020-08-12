@@ -1,4 +1,4 @@
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 
 class Parser {
   // phase 0
@@ -178,6 +178,10 @@ export default class TComponent {
       }
       return elem;
     }
+  }
+  static create(template, thisObj = {}) {
+    thisObj.element = TComponent.createElement(template, thisObj);
+    return thisObj;
   }
   static createElement(template, thisObj) {
     const nodes = TComponent.parse(template);
