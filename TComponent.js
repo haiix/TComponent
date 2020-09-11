@@ -1,4 +1,4 @@
-const VERSION = '0.1.2';
+const VERSION = '0.1.3';
 
 class Parser {
   // phase 0
@@ -180,25 +180,39 @@ export default class TComponent {
     }
   }
   static create(template, thisObj = {}) {
-    thisObj.element = TComponent.createElement(template, thisObj);
+    TComponent.createElement(template, thisObj);
     return thisObj;
   }
   static createElement(template, thisObj) {
     const nodes = TComponent.parse(template);
     if (nodes.length !== 1) throw new Error('Create only one root element in your template');
-    return TComponent.build(nodes[0], thisObj);
+    const element = TComponent.build(nodes[0], thisObj);
+    if (thisObj != null) {
+      thisObj.element = element;
+      TComponent.instanceMap.set(element, thisObj);
+    }
+    return element;
+  }
+  static from(element) {
+    return TComponent.instanceMap.get(element) || new TComponent(element);
   }
   template() {
     throw new Error('Please override "template()" method in the class extends TComponent');
   }
-  constructor() {
-    if (!this.constructor.parsedTemplate) {
-      const nodes = TComponent.parse(this.template());
-      if (nodes.length !== 1) throw new Error('Create only one root element in your template');
-      this.constructor.parsedTemplate = nodes[0];
+  constructor(element) {
+    if (element != null && element instanceof HTMLElement) {
+      this.element = element;
+    } else {
+      if (!this.constructor.parsedTemplate) {
+        const nodes = TComponent.parse(this.template());
+        if (nodes.length !== 1) throw new Error('Create only one root element in your template');
+        this.constructor.parsedTemplate = nodes[0];
+      }
+      this.element = TComponent.build(this.constructor.parsedTemplate, this);
     }
-    this.element = TComponent.build(this.constructor.parsedTemplate, this);
+    TComponent.instanceMap.set(this.element, this);
   }
 }
 TComponent.version = VERSION;
 TComponent.definedComponents = Object.create(null);
+TComponent.instanceMap = new WeakMap();
