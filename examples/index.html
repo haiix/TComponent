@@ -3,7 +3,7 @@
 <script type="module">
 import TComponent from '../TComponent.js';
 
-const PAGE_NAMES = ['list', 'calendar'];
+const PAGE_NAMES = ['list', 'list2', 'calendar'];
 
 document.title = decodeURIComponent(location.pathname).split('/').slice(-3, -1).join('/');
 const li = PAGE_NAMES.map(page => `<li><a href="${page}.html">${page}</a></li>`).join('');
