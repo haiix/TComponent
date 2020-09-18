@@ -11,7 +11,7 @@ class Calendar extends TComponent {
           ${'January,February,March,April,May,June,July,August,September,October,November,December'.split(',').map((v, i) => '<option value="' + i + '">' + v + '</option>').join('')}
         </select>
         <span>, </span>
-        <input type="number" id="_year" min="1900" max="2100" onchange="this.setYearAndMonth()"/>
+        <input type="number" id="_year" min="1900" max="2100" onchange="this.setYearAndMonth()" />
         <table border="1">
           <thead><th>${'Su,Mo,Tu,We,Th,Fr,Sa'.split(',').join('</th><th>')}</th></thead>
           <tbody id="_tbody">
