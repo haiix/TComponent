@@ -18,10 +18,10 @@ class MyListItem extends TComponent {
     return this._li.textContent;
   }
 }
-TComponent.define('my-list-item', MyListItem);
 
 class App extends TComponent {
   template() {
+    this.uses(MyListItem);
     return `
       <section>
         <ul id="_ul">

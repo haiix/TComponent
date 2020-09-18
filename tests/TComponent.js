@@ -143,9 +143,9 @@ describe('Extends TComponent', () => {
       }
     }
 
-    expect(SubComponent.parsedTemplate).to.equal(undefined);
+    expect(SubComponent._parsedTemplate).to.equal(undefined);
     const subComponent = new SubComponent();
-    expect(SubComponent.parsedTemplate).to.be.an('object');
+    expect(SubComponent._parsedTemplate).to.be.an('object');
     expect(subComponent.element).to.be.a('HTMLLabelElement');
 
   });

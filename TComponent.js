@@ -1,4 +1,4 @@
-const VERSION = '0.1.3';
+const VERSION = '0.1.4';
 
 class Parser {
   // phase 0
@@ -129,17 +129,14 @@ class Parser {
 }
 
 export default class TComponent {
-  static define(tagName, SubComponent) {
-    TComponent.definedComponents[tagName] = SubComponent;
-  }
   static parse(template) {
     const parser = new Parser();
     return parser.parse(template);
   }
-  static build(node, thisObj = null) {
-    const SubComponent = TComponent.definedComponents[node.tagName];
+  static build(node, thisObj = null, SubComponents = Object.create(null)) {
+    const SubComponent = SubComponents[node.tagName];
     if (SubComponent) {
-      const inner = node.childNodes ? node.childNodes.map(node => TComponent.build(node, thisObj)) : node.textContent;
+      const inner = node.childNodes ? node.childNodes.map(node => TComponent.build(node, thisObj, SubComponents)) : node.textContent;
       const attrs = {};
       if (node.attributes) {
         for (const [key, value] of Object.entries(node.attributes)) {
@@ -173,7 +170,7 @@ export default class TComponent {
       }
       if (node.childNodes) {
         for (const childNode of node.childNodes) {
-          elem.appendChild(TComponent.build(childNode, thisObj));
+          elem.appendChild(TComponent.build(childNode, thisObj, SubComponents));
         }
       }
       return elem;
@@ -183,36 +180,45 @@ export default class TComponent {
     TComponent.createElement(template, thisObj);
     return thisObj;
   }
-  static createElement(template, thisObj) {
+  static createElement(template, thisObj, SubComponents) {
     const nodes = TComponent.parse(template);
     if (nodes.length !== 1) throw new Error('Create only one root element in your template');
-    const element = TComponent.build(nodes[0], thisObj);
+    const element = TComponent.build(nodes[0], thisObj, SubComponents);
     if (thisObj != null) {
       thisObj.element = element;
-      TComponent.instanceMap.set(element, thisObj);
+      TComponent._instanceMap.set(element, thisObj);
     }
     return element;
   }
   static from(element) {
-    return TComponent.instanceMap.get(element) || new TComponent(element);
+    return TComponent._instanceMap.get(element);
+  }
+  static camelToKebab(str) {
+    return str.replace(/(\w)([A-Z])/g, '$1-$2').toLowerCase();
+  }
+  constructor() {
+    if (!this.constructor.hasOwnProperty('_parsedTemplate')) {
+      const nodes = TComponent.parse(this.template());
+      if (nodes.length !== 1) throw new Error('Create only one root element in your template');
+      this.constructor._parsedTemplate = nodes[0];
+    }
+    this.element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents);
+    TComponent._instanceMap.set(this.element, this);
   }
   template() {
     throw new Error('Please override "template()" method in the class extends TComponent');
   }
-  constructor(element) {
-    if (element != null && element instanceof HTMLElement) {
-      this.element = element;
-    } else {
-      if (!this.constructor.parsedTemplate) {
-        const nodes = TComponent.parse(this.template());
-        if (nodes.length !== 1) throw new Error('Create only one root element in your template');
-        this.constructor.parsedTemplate = nodes[0];
-      }
-      this.element = TComponent.build(this.constructor.parsedTemplate, this);
+  uses(...SubComponents) {
+    if (!this.constructor.hasOwnProperty('_SubComponents')) {
+      this.constructor._SubComponents = Object.create(null);
     }
-    TComponent.instanceMap.set(this.element, this);
+    const _SubComponents = this.constructor._SubComponents;
+    for (const SubComponent of SubComponents) {
+      _SubComponents[SubComponent.name] = SubComponent;
+      _SubComponents[TComponent.camelToKebab(SubComponent.name)] = SubComponent;
+    }
   }
 }
 TComponent.version = VERSION;
-TComponent.definedComponents = Object.create(null);
-TComponent.instanceMap = new WeakMap();
+TComponent._SubComponents = Object.create(null);
+TComponent._instanceMap = new WeakMap();
