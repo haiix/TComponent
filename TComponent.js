@@ -1,4 +1,4 @@
-const VERSION = '0.1.4';
+const VERSION = '0.1.5';
 
 class Parser {
   // phase 0
@@ -142,7 +142,7 @@ export default class TComponent {
         for (const [key, value] of Object.entries(node.attributes)) {
           if (thisObj && key.slice(0, 2) === 'on') {
             attrs[key] = new Function('event', value).bind(thisObj);
-          } else {
+          } else if (thisObj && key !== 'id') {
             attrs[key] = value;
           }
         }

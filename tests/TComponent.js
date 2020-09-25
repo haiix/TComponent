@@ -115,39 +115,70 @@ describe('TComponent.build()', () => {
     expect(element.children[1].getAttribute('onchange')).to.equal(null);
     expect(element.children[1].onchange).to.be.a('function');
 
-    const handleChange = element.children[1].onchange;
     expect(thisObj.modified).to.equal(false);
-    handleChange();
+    element.children[1].onchange();
     expect(thisObj.modified).to.equal(true);
   });
 });
 
 
 describe('Extends TComponent', () => {
-  it('Extends', () => {
-    class SubComponent extends TComponent {
-      template() {
-        return `
-          <label id="nameOfPet">
-            <span>Please enter the name of your pet.</span>
-            <input onchange="this.handleChange(event)" />
-          </label>
-        `;
-      }
-      constructor(attr, nodes) {
-        super();
-        this.modified = false;
-      }
-      handleChange(event) {
-        this.modified = true;
-      }
-    }
 
+  class SubComponent extends TComponent {
+    template() {
+      return `
+        <label id="nameOfPet">
+          <span>Please enter the name of your pet.</span>
+          <input onchange="this.handleChange(event)" />
+        </label>
+      `;
+    }
+    constructor(attrs, nodes) {
+      super();
+      this.modified = false;
+
+      this.attrsPassedWhenUsed = attrs;
+      this.nodesPassedWhenUsed = nodes;
+    }
+    handleChange(event) {
+      this.modified = true;
+    }
+  }
+
+  it('Extends', () => {
     expect(SubComponent._parsedTemplate).to.equal(undefined);
     const subComponent = new SubComponent();
     expect(SubComponent._parsedTemplate).to.be.an('object');
     expect(subComponent.element).to.be.a('HTMLLabelElement');
+    expect(subComponent.nameOfPet).to.equal(subComponent.element);
 
+  });
+
+  it('Use', () => {
+    class App extends TComponent {
+      template() {
+        this.uses(SubComponent);
+        return `
+          <section>
+            <h1>Use sub component</h1>
+            <SubComponent id="myForm1" foo="bar">some text</SubComponent>
+            <sub-component id="myForm2"><p id="myForm2Child">some element</p></sub-component>
+          </section>
+        `;
+      }
+    }
+    const app = new App();
+    expect(app).to.have.property('element').that.is.a('HTMLElement');
+    expect(app).to.have.property('myForm1').that.is.an.instanceof(TComponent);
+    expect(app).to.have.property('myForm2').that.is.an.instanceof(TComponent);
+    expect(app).to.have.property('myForm2Child').that.is.a('HTMLParagraphElement');
+    expect(app.element.childElementCount).to.equal(3);
+    expect(app.element.children[0]).to.be.a('HTMLHeadingElement');
+    expect(app.element.children[1]).to.equal(app.myForm1.element);
+    expect(app.myForm1.attrsPassedWhenUsed).to.deep.equal({foo: 'bar'});
+    expect(app.myForm1.nodesPassedWhenUsed).to.equal('some text');
+    expect(app.myForm2.nodesPassedWhenUsed).to.be.an('array').with.lengthOf(1);
+    expect(app.myForm2.nodesPassedWhenUsed[0]).to.equal(app.myForm2Child);
   });
 });
 
