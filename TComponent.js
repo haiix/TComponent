@@ -102,15 +102,15 @@ class Parser {
       this.getSpace();
       const attrKey = this.getWord();
       if (attrKey === '') break;
+      curr.attributes = curr.attributes || {};
       if (this.match('=')) {
         this.next();
         if (!this.match('"')) throw new Error('Syntax error: Attribute value does not start with "');
         this.next();
-        curr.attributes = curr.attributes || {};
         curr.attributes[attrKey] = this.getUntil('"');
         this.next();
       } else {
-        throw new Error('Not impremented: Attribute has no value');
+        curr.attributes[attrKey] = attrKey;
       }
     }
   }
