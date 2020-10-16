@@ -1,27 +1,24 @@
-const VERSION = '0.1.5';
+const VERSION = '0.2.0';
 
 class Parser {
-  // phase 0
   constructor() {
-    this.init();
+    this.init('');
   }
-  init(src = '') {
+  init(src) {
     this.src = src;
-    this.cursor = 0;
+    this.p = 0;
   }
-  // phase 1
-  next(n = 1) {
-    this.cursor += n;
-  }
-  c() {
-    return this.src[this.cursor];
+  adv(n) {
+    this.p += n;
   }
   isDone() {
-    return this.src.length <= this.cursor;
+    return this.p >= this.src.length;
   }
-  // phase 2
-  match(q) {
-    return this.src.slice(this.cursor, this.cursor + q.length) === q;
+  c() {
+    return this.src[this.p];
+  }
+  isMatch(s) {
+    return this.src.startsWith(s, this.p);
   }
   getSpace() {
     let s = '';
@@ -29,7 +26,7 @@ class Parser {
       const c = this.c();
       if (c !== ' ' && c !== '\n' && c !== '\t') break;
       s += c;
-      this.next();
+      this.adv(1);
     }
     return s;
   }
@@ -39,91 +36,94 @@ class Parser {
       const c = this.c();
       const i = c.charCodeAt();
       if (
-        i != 45 &&                      // -
-        (i < 48 || 57 < i) &&           // 0-9
-        (i < 65 || 90 < i) &&           // A-Z
-        i != 95 &&                      // _
-        (i < 97 || 122 < i)             // a-z
+        (i < 97 || 122 < i) &&   // a-z
+        (i !== 45) &&            // -
+        (i !== 95) &&            // _
+        (i < 65 || 90 < i) &&    // A-Z
+        (i < 48 || 57 < i)       // 0-9
       ) break;
       s += c;
-      this.next();
+      this.adv(1);
     }
     return s;
   }
-  getUntil(q) {
-    let s = '';
-    while (!this.match(q)) {
-      if (this.isDone()) throw new Error('Syntax error: Unexpected end of input');
-      s += this.c();
-      this.next();
-    }
-    return s;
+  getTill(s) {
+    let i = this.src.indexOf(s, this.p);
+    i = i < 0 ? this.src.length : i;
+    const d = this.src.slice(this.p, i);
+    this.p = i;
+    return d;
   }
-  // phase 3
-  parseTag() {
-    const curr = {};
-    while (this.match('<!--')) {                            // comment
-      this.getUntil('-->');
-      this.next(3);
-      this.getSpace();
-    }
-    if (!this.match('<')) throw new Error('Syntax error: Tag is not started');
-    this.next();
-    curr.tagName = this.getWord();
-    if (!curr.tagName) throw new Error('Syntax error: No tag name');
-    this.parseAttrs(curr);
-    if (this.match('/>')) {                                 // <tagName/>
-      this.next(2);
-    } else if (this.match('>')) {                           // inner tag
-      this.next();
-      let value = this.getSpace();
-      if (!this.match('<')) {                               // plain text
-        curr.attributes = curr.attributes || {};
-        curr.textContent = value + this.getUntil('</');
-      } else if (!this.match('</')) {                       // child elements
-        curr.childNodes = [];
-        while (!this.match('</')) {
-          if (this.isDone()) throw new Error('Syntax error: Unexpected end of input');
-          curr.childNodes.push(this.parseTag());
-          this.getSpace();
+  ignoreTill(s) {
+    const i = this.src.indexOf(s, this.p);
+    if (i < 0) throw new SyntaxError('Unexpected end of input');
+    this.p = i + s.length;
+  }
+  parseTags() {
+    const nodes = [];
+    while (!this.isMatch('</')) {
+      if (this.isMatch('<!--')) {
+        this.ignoreTill('-->');
+      } else if (this.c() === '<') {
+        nodes.push(this.parseTag());
+      } else {
+        const s = this.getSpace();
+        if (this.c() !== '<') {
+          nodes.push({
+            t: '',
+            v: s + this.getTill('<'),
+          });
         }
       }
-      this.next(2);
-      if (this.getWord() !== curr.tagName) throw new Error('Syntax error: Start and end tag name do not match');
-      if (!this.match('>')) throw new Error('Syntax error: Tag is not closed');
-      this.next();
-    } else {
-      throw new Error('Syntax error: The start tag is not closed with ">"');
     }
-    return curr;
+    return nodes;
   }
-  parseAttrs(curr) {
+  parseTag() {
+    this.adv(1);
+    const node = {};
+    node.t = this.getWord();
+    if (node.t === '') throw new SyntaxError('No tag name');
+    node.a = this.parseAttrs();
+    if (this.c() === '>') {
+      this.adv(1);
+      node.c = this.parseTags();
+      this.adv(2);
+      if (this.getWord() !== node.t) throw new SyntaxError('Start and end tag name do not match');
+      if (this.c() !== '>') throw new SyntaxError('Tag is not closed');
+      this.adv(1);
+    } else if (this.isMatch('/>')) {
+      node.c = [];
+      this.adv(2);
+    } else {
+      throw new SyntaxError('Tag is not closed');
+    }
+    return node;
+  }
+  parseAttrs() {
+    const attrs = {};
     while (true) {
       this.getSpace();
-      const attrKey = this.getWord();
-      if (attrKey === '') break;
-      curr.attributes = curr.attributes || {};
-      if (this.match('=')) {
-        this.next();
-        if (!this.match('"')) throw new Error('Syntax error: Attribute value does not start with "');
-        this.next();
-        curr.attributes[attrKey] = this.getUntil('"');
-        this.next();
+      const attrName = this.getWord();
+      if (attrName === '') break;
+      let attrValue;
+      if (this.c() === '=') {
+        this.adv(1);
+        if (this.c() !== '"') throw new SyntaxError('Attribute value does not start with "');
+        this.adv(1);
+        attrValue = this.getTill('"');
+        this.adv(1);
       } else {
-        curr.attributes[attrKey] = attrKey;
+        attrValue = attrName;
       }
+      attrs[attrName] = attrValue;
     }
+    return attrs;
   }
-  // phase 4
   parse(src) {
-    this.init(src);
-    const nodes = [];
-    this.getSpace();
-    while (!this.isDone()) {
-      nodes.push(this.parseTag());
-      this.getSpace();
-    }
-    this.init();
+    this.init(src + '</');
+    const nodes = this.parseTags();
+    if (this.p !== this.src.length - 2) throw new SyntaxError('Unexpected end tag');
+    this.init('');
     return nodes;
   }
 }
@@ -134,44 +134,37 @@ export default class TComponent {
     return parser.parse(template);
   }
   static build(node, thisObj = null, SubComponents = Object.create(null)) {
-    const SubComponent = SubComponents[node.tagName];
+    const SubComponent = SubComponents[node.t];
     if (SubComponent) {
-      const inner = node.childNodes ? node.childNodes.map(node => TComponent.build(node, thisObj, SubComponents)) : node.textContent;
+      const inner = node.c.map(node => TComponent.build(node, thisObj, SubComponents));
       const attrs = {};
-      if (node.attributes) {
-        for (const [key, value] of Object.entries(node.attributes)) {
-          if (thisObj && key.slice(0, 2) === 'on') {
-            attrs[key] = new Function('event', value).bind(thisObj);
-          } else if (thisObj && key !== 'id') {
-            attrs[key] = value;
-          }
+      for (const [key, value] of Object.entries(node.a)) {
+        if (thisObj && key.slice(0, 2) === 'on') {
+          attrs[key] = new Function('event', value).bind(thisObj);
+        } else if (thisObj && key !== 'id') {
+          attrs[key] = value;
         }
       }
       const subComponent = new SubComponent(attrs, inner);
-      if (thisObj && node.attributes && node.attributes.id) {
-        thisObj[node.attributes.id] = subComponent;
+      if (thisObj && node.a && node.a.id) {
+        thisObj[node.a.id] = subComponent;
       }
       return subComponent.element;
+    } else if (node.t === '') {
+      return document.createTextNode(node.v);
     } else {
-      const elem = document.createElement(node.tagName);
-      if (node.attributes) {
-        for (const [key, value] of Object.entries(node.attributes)) {
-          if (thisObj && key === 'id') {
-            thisObj[value] = elem;
-          } else if (thisObj && key.slice(0, 2) === 'on') {
-            elem[key] = new Function('event', value).bind(thisObj);
-          } else {
-            elem.setAttribute(key, value);
-          }
+      const elem = document.createElement(node.t);
+      for (const [key, value] of Object.entries(node.a)) {
+        if (thisObj && key === 'id') {
+          thisObj[value] = elem;
+        } else if (thisObj && key.slice(0, 2) === 'on') {
+          elem[key] = new Function('event', value).bind(thisObj);
+        } else {
+          elem.setAttribute(key, value);
         }
       }
-      if (node.textContent) {
-        elem.textContent = node.textContent;
-      }
-      if (node.childNodes) {
-        for (const childNode of node.childNodes) {
-          elem.appendChild(TComponent.build(childNode, thisObj, SubComponents));
-        }
+      for (const childNode of node.c) {
+        elem.appendChild(TComponent.build(childNode, thisObj, SubComponents));
       }
       return elem;
     }

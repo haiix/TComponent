@@ -7,9 +7,11 @@ class MyListItem extends TComponent {
   template() {
     return `<li id="_li"></li>`;
   }
-  constructor(attrs, text = '') {
+  constructor(attrs, elems = []) {
     super();
-    this.value = text;
+    for (const node of elems) {
+      this.value += node.textContent;
+    }
   }
   set value(v) {
     this._li.textContent = v;

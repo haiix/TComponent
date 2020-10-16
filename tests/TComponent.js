@@ -9,28 +9,29 @@ describe('TComponent.parse()', () => {
     const nodes = TComponent.parse('<p></p>');
     expect(nodes).to.be.an('array').with.lengthOf(1);
     expect(nodes[0]).to.be.an('object');
-    expect(nodes[0]).to.have.property('tagName').that.equal('p');
+    expect(nodes[0]).to.have.property('t').that.equal('p');
   });
   it('Omitted tag name', () => {
     const nodes = TComponent.parse('<input />');
     expect(nodes).to.be.an('array').with.lengthOf(1);
     expect(nodes[0]).to.be.an('object');
-    expect(nodes[0]).to.have.property('tagName').that.equal('input');
+    expect(nodes[0]).to.have.property('t').that.equal('input');
   });
   it('Multiple tags', () => {
     const nodes = TComponent.parse('<span></span><input />');
     expect(nodes).to.be.an('array').with.lengthOf(2);
-    expect(nodes[0]).to.have.property('tagName').that.equal('span');
-    expect(nodes[1]).to.have.property('tagName').that.equal('input');
+    expect(nodes[0]).to.have.property('t').that.equal('span');
+    expect(nodes[1]).to.have.property('t').that.equal('input');
   });
   it('Attributes', () => {
     const nodes = TComponent.parse('<p foo="bar"></p>');
-    expect(nodes[0]).to.have.property('attributes').that.is.an('object');
-    expect(nodes[0].attributes).to.have.property('foo').that.equal('bar');
+    expect(nodes[0]).to.have.property('a').that.is.an('object');
+    expect(nodes[0].a).to.have.property('foo').that.equal('bar');
   });
-  it('Text content', () => {
-    const nodes = TComponent.parse('<p>hello</p>');
-    expect(nodes[0]).to.have.property('textContent').that.equal('hello');
+  it('Omitted attributes', () => {
+    const nodes = TComponent.parse('<p foo></p>');
+    expect(nodes[0]).to.have.property('a').that.is.an('object');
+    expect(nodes[0].a).to.have.property('foo').that.equal('foo');
   });
   it('Child nodes', () => {
     const nodes = TComponent.parse(`
@@ -40,11 +41,15 @@ describe('TComponent.parse()', () => {
       </ul>
     `);
     expect(nodes).to.be.an('array').with.lengthOf(1);
-    expect(nodes[0]).to.have.property('childNodes').that.is.an('array').with.lengthOf(2);
-    expect(nodes[0].childNodes[0]).to.have.property('tagName').that.equal('li');
-    expect(nodes[0].childNodes[0]).to.have.property('textContent').that.equal('item1');
-    expect(nodes[0].childNodes[1]).to.have.property('tagName').that.equal('li');
-    expect(nodes[0].childNodes[1]).to.have.property('childNodes').that.is.an('array').with.lengthOf(1);
+    expect(nodes[0]).to.have.property('c').that.is.an('array').with.lengthOf(2);
+    expect(nodes[0].c[0]).to.have.property('t').that.equal('li');
+    expect(nodes[0].c[1]).to.have.property('t').that.equal('li');
+    expect(nodes[0].c[1]).to.have.property('c').that.is.an('array').with.lengthOf(1);
+  });
+  it('Text content', () => {
+    const nodes = TComponent.parse('<p>hello</p>');
+    expect(nodes[0].c[0]).to.have.property('t').that.equal('');
+    expect(nodes[0].c[0]).to.have.property('v').that.equal('hello');
   });
   it('Comments', () => {
     const nodes = TComponent.parse(`
@@ -58,11 +63,10 @@ describe('TComponent.parse()', () => {
       </section>
     `);
     expect(nodes).to.be.an('array').with.lengthOf(2);
-    expect(nodes[0]).to.have.property('childNodes').that.is.an('array').with.lengthOf(1);
+    expect(nodes[0]).to.have.property('c').that.is.an('array').with.lengthOf(1);
   });
   it('Errors', () => {
     expect(() => { TComponent.parse('<!-- Unexpected end of input'); }).throw(Error);
-    expect(() => { TComponent.parse('Tag is not started'); }).throw(Error);
     expect(() => { TComponent.parse('<>No tag name< />'); }).throw(Error);
     expect(() => { TComponent.parse('<a><b>Unexpected end of input</b>'); }).throw(Error);
     expect(() => { TComponent.parse('<p>Start and end tag name do not match</q>'); }).throw(Error);
@@ -176,7 +180,7 @@ describe('Extends TComponent', () => {
     expect(app.element.children[0]).to.be.a('HTMLHeadingElement');
     expect(app.element.children[1]).to.equal(app.myForm1.element);
     expect(app.myForm1.attrsPassedWhenUsed).to.deep.equal({foo: 'bar'});
-    expect(app.myForm1.nodesPassedWhenUsed).to.equal('some text');
+    expect(app.myForm1.nodesPassedWhenUsed[0].textContent).to.equal('some text');
     expect(app.myForm2.nodesPassedWhenUsed).to.be.an('array').with.lengthOf(1);
     expect(app.myForm2.nodesPassedWhenUsed[0]).to.equal(app.myForm2Child);
   });
