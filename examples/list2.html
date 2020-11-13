@@ -35,7 +35,7 @@ class TLi extends TComponent {
     if (ref) this.element.parentNode.insertBefore(this.element, ref.nextSibling);
   }
   handleDeleteButton(event) {
-    if (confirm('Do you really want to delete this?')) {
+    if (confirm('Do you really want to delete this item?')) {
       this.element.parentNode.removeChild(this.element);
     }
   }
@@ -81,4 +81,4 @@ document.body.appendChild(app.element);
 window.app = app;
 
 </script>
-<script nomodule src="../assets/nomodule.js"></script>
+<script nomodule src="./assets/nomodule.js"></script>
