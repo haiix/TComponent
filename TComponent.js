@@ -1,4 +1,13 @@
-const VERSION = '0.2.0';
+/*
+ * TComponent.js
+ *
+ * Copyright (c) 2020 haiix
+ *
+ * This module is released under the MIT license.
+ * see https://opensource.org/licenses/MIT
+ */
+
+const VERSION = '0.2.1-pre';
 
 class Parser {
   constructor() {
@@ -128,11 +137,27 @@ class Parser {
   }
 }
 
-export default class TComponent {
+/**
+ * TComponent class.
+ */
+class TComponent {
+  /**
+   * Parse a template string.
+   * @param {string} template - A template string.
+   * @return {Array} Parsed objects.
+   */
   static parse(template) {
     const parser = new Parser();
     return parser.parse(template);
   }
+
+  /**
+   * Build a html element from a parsed object.
+   * @param {Object} node - A Parsed object.
+   * @param {Object} [thisObj] - 
+   * @param {Object} [SubComponents] - Components used in this process.
+   * @return {HTMLElement} A built element.
+   */
   static build(node, thisObj = null, SubComponents = Object.create(null)) {
     const SubComponent = SubComponents[node.t];
     if (SubComponent) {
@@ -169,10 +194,26 @@ export default class TComponent {
       return elem;
     }
   }
-  static create(template, thisObj = {}) {
-    TComponent.createElement(template, thisObj);
+
+  /**
+   * Build a TComponent instance from a template string.
+   * @param {string} template - A template string.
+   * @param {Object} [thisObj] - 
+   * @param {Object} [SubComponents] - Components used in this process.
+   * @return {TComponent} A built TComponent instance.
+   */
+  static create(template, thisObj = {}, SubComponents) {
+    TComponent.createElement(template, thisObj, SubComponents);
     return thisObj;
   }
+
+  /**
+   * Build a html element from a template string.
+   * @param {string} template - A template string.
+   * @param {Object} [thisObj] - 
+   * @param {Object} [SubComponents] - Components used in this process.
+   * @return {HTMLElement} A built html element.
+   */
   static createElement(template, thisObj, SubComponents) {
     const nodes = TComponent.parse(template);
     if (nodes.length !== 1) throw new Error('Create only one root element in your template');
@@ -183,12 +224,28 @@ export default class TComponent {
     }
     return element;
   }
+
+  /**
+   * Get a built TComponent instance from a element.
+   * @param {HTMLElement} element - A html element of target instance.
+   * @return {TComponent} a TComponent instance.
+   */
   static from(element) {
     return TComponent._instanceMap.get(element);
   }
+
+  /**
+   * Combert a camel case string to a kebab case.
+   * @param {string} str - camel case string.
+   * @return {string} kebab case string.
+   */
   static camelToKebab(str) {
     return str.replace(/(\w)([A-Z])/g, '$1-$2').toLowerCase();
   }
+
+  /**
+   * Create a TComponent instance.
+   */
   constructor() {
     if (!this.constructor.hasOwnProperty('_parsedTemplate')) {
       const nodes = TComponent.parse(this.template());
@@ -198,9 +255,20 @@ export default class TComponent {
     this.element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents);
     TComponent._instanceMap.set(this.element, this);
   }
+
+  /**
+   * Return a template string for this component.
+   * This method must be overridden by a subclass.
+   * @throw {Error}
+   */
   template() {
     throw new Error('Please override "template()" method in the class extends TComponent');
   }
+
+  /**
+   * Add components used in this component.
+   * @param {TComponent} SubComponent
+   */
   uses(...SubComponents) {
     if (!this.constructor.hasOwnProperty('_SubComponents')) {
       this.constructor._SubComponents = Object.create(null);
@@ -215,3 +283,4 @@ export default class TComponent {
 TComponent.version = VERSION;
 TComponent._SubComponents = Object.create(null);
 TComponent._instanceMap = new WeakMap();
+export default TComponent;
