@@ -4,7 +4,7 @@
   var cdnBabelStandalone = 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js';
   var cdnBabelPolyfill = 'https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js';
 
-  var transformOptions = {presets: ['es2015', 'es2016', 'es2017']};
+  var transformOptions = {presets: ['es2015', 'es2016', 'es2017'], plugins: ['external-helpers']};
 
   function path_normalize(path) {
     var src = path.split('/'), dst = [], i = 0, val;
@@ -20,6 +20,8 @@
     return path.slice(0, path.lastIndexOf('/'));
   }
 
+  var babelHelpers;
+
   var cache = {};
   var currdir = path_dirname(location.pathname);
   function require(path) {
@@ -31,7 +33,8 @@
       if (req.status !== 200) throw new Error('Load faled: ' + path);
       var prevdir = currdir;
       currdir = path_dirname(path);
-      cache[path] = new Function('\'use strict\';var exports={};' + Babel.transform(req.responseText, transformOptions).code + ';return exports')();
+      cache[path] = {};
+      new Function('require', 'babelHelpers', 'exports', Babel.transform(req.responseText, transformOptions).code)(require, babelHelpers, cache[path]);
       currdir = prevdir;
     }
     return cache[path];
@@ -52,13 +55,15 @@
 
   loadScript(cdnBabelPolyfill, function () {
     loadScript(cdnBabelStandalone, function () {
+      var global = {};
+      new Function('global', Babel.buildExternalHelpers())(global);
+      babelHelpers = global.babelHelpers;
+
       var scripts = document.querySelectorAll('script[type="module"]'), i = 0, script;
-      window.require = require;
       while (script = scripts[i++]) {
         if (script.src) require(script.getAttribute('src'));
-        else new Function(Babel.transform(script.text, transformOptions).code)();
+        else new Function('require', 'babelHelpers', Babel.transform(script.text, transformOptions).code)(require, babelHelpers);
       }
-      delete window.require;
     });
   });
 }();
