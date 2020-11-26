@@ -49,7 +49,8 @@ class Parser {
         (i !== 45) &&            // -
         (i !== 95) &&            // _
         (i < 65 || 90 < i) &&    // A-Z
-        (i < 48 || 57 < i)       // 0-9
+        (i < 48 || 57 < i) &&    // 0-9
+        (i < 128)
       ) break;
       s += c;
       this.adv(1);
@@ -161,7 +162,7 @@ class TComponent {
   static build(node, thisObj = null, SubComponents = Object.create(null)) {
     const SubComponent = SubComponents[node.t];
     if (SubComponent) {
-      const inner = node.c.map(node => TComponent.build(node, thisObj, SubComponents));
+      const elems = node.c.map(node => TComponent.build(node, thisObj, SubComponents));
       const attrs = {};
       for (const [key, value] of Object.entries(node.a)) {
         if (thisObj && key.slice(0, 2) === 'on') {
@@ -170,7 +171,7 @@ class TComponent {
           attrs[key] = value;
         }
       }
-      const subComponent = new SubComponent(attrs, inner);
+      const subComponent = new SubComponent(attrs, elems);
       if (thisObj && node.a && node.a.id) {
         thisObj[node.a.id] = subComponent;
       }
@@ -218,11 +219,19 @@ class TComponent {
     const nodes = TComponent.parse(template);
     if (nodes.length !== 1) throw new Error('Create only one root element in your template');
     const element = TComponent.build(nodes[0], thisObj, SubComponents);
-    if (thisObj != null) {
-      thisObj.element = element;
-      TComponent._instanceMap.set(element, thisObj);
-    }
+    TComponent.bindElement(thisObj, element);
     return element;
+  }
+
+  /**
+   * Bind a TComponent instance and a html element.
+   * @param {TComponent} thisObj - A TComponent instance.
+   * @param {HTMLElement} element - A html element.
+   */
+  static bindElement(thisObj, element) {
+    if (thisObj == null || thisObj.element != null) return;
+    thisObj.element = element;
+    TComponent._instanceMap.set(element, thisObj);
   }
 
   /**
@@ -252,8 +261,8 @@ class TComponent {
       if (nodes.length !== 1) throw new Error('Create only one root element in your template');
       this.constructor._parsedTemplate = nodes[0];
     }
-    this.element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents);
-    TComponent._instanceMap.set(this.element, this);
+    const element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents);
+    TComponent.bindElement(this, element);
   }
 
   /**
