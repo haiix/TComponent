@@ -4,7 +4,11 @@
   var cdnBabelStandalone = 'https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js';
   var cdnBabelPolyfill = 'https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js';
 
-  var transformOptions = {presets: ['es2015', 'es2016', 'es2017'], plugins: ['external-helpers']};
+  var transformOptions = {
+    presets: ['es2015', 'es2016', 'es2017'],
+    plugins: ['external-helpers'],
+    generatorOpts: {minified: true, comments: false}
+  };
 
   function path_normalize(path) {
     var src = path.split('/'), dst = [], i = 0, val;
