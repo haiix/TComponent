@@ -7,7 +7,7 @@
  * see https://opensource.org/licenses/MIT
  */
 
-const VERSION = '0.2.1';
+const VERSION = '0.2.2-pre';
 
 class Parser {
   constructor() {
@@ -99,6 +99,7 @@ class Parser {
       node.c = this.parseTags();
       this.adv(2);
       if (this.getWord() !== node.t) throw new SyntaxError('Start and end tag name do not match');
+      this.getSpace();
       if (this.c() !== '>') throw new SyntaxError('Tag is not closed');
       this.adv(1);
     } else if (this.isMatch('/>')) {
@@ -118,9 +119,10 @@ class Parser {
       let attrValue;
       if (this.c() === '=') {
         this.adv(1);
-        if (this.c() !== '"') throw new SyntaxError('Attribute value does not start with "');
+        const p = this.c();
+        if (p !== '"' && p !== "'") throw new SyntaxError('Attribute value does not start with " or \'');
         this.adv(1);
-        attrValue = this.getTill('"');
+        attrValue = this.getTill(p);
         this.adv(1);
       } else {
         attrValue = attrName;
@@ -133,8 +135,9 @@ class Parser {
     this.init(src + '</');
     const nodes = this.parseTags();
     if (this.p !== this.src.length - 2) throw new SyntaxError('Unexpected end tag');
+    if (nodes.length !== 1) throw new Error('Create only one root element in your template');
     this.init('');
-    return nodes;
+    return nodes[0];
   }
 }
 
@@ -145,7 +148,7 @@ class TComponent {
   /**
    * Parse a template string.
    * @param {string} template - A template string.
-   * @return {Array} Parsed objects.
+   * @return {Object} Parsed object.
    */
   static parse(template) {
     const parser = new Parser();
@@ -216,9 +219,7 @@ class TComponent {
    * @return {HTMLElement} A built html element.
    */
   static createElement(template, thisObj, SubComponents) {
-    const nodes = TComponent.parse(template);
-    if (nodes.length !== 1) throw new Error('Create only one root element in your template');
-    const element = TComponent.build(nodes[0], thisObj, SubComponents);
+    const element = TComponent.build(TComponent.parse(template), thisObj, SubComponents);
     TComponent.bindElement(thisObj, element);
     return element;
   }
@@ -257,9 +258,7 @@ class TComponent {
    */
   constructor() {
     if (!this.constructor.hasOwnProperty('_parsedTemplate')) {
-      const nodes = TComponent.parse(this.template());
-      if (nodes.length !== 1) throw new Error('Create only one root element in your template');
-      this.constructor._parsedTemplate = nodes[0];
+      this.constructor._parsedTemplate = TComponent.parse(this.template());
     }
     const element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents);
     TComponent.bindElement(this, element);
