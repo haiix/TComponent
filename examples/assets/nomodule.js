@@ -57,17 +57,23 @@
     document.head.appendChild(script);
   }
 
-  loadScript(cdnBabelPolyfill, function () {
-    loadScript(cdnBabelStandalone, function () {
-      var global = {};
-      new Function('global', Babel.buildExternalHelpers())(global);
-      babelHelpers = global.babelHelpers;
+  !function loop() {
+    if (!document.head || !document.body) {
+      return setTimeout(loop, 100);
+    }
+    loadScript(cdnBabelPolyfill, function () {
+      loadScript(cdnBabelStandalone, function () {
+        var global = {};
+        new Function('global', Babel.buildExternalHelpers())(global);
+        babelHelpers = global.babelHelpers;
 
-      var scripts = document.querySelectorAll('script[type="module"]'), i = 0, script;
-      while (script = scripts[i++]) {
-        if (script.src) require(script.getAttribute('src'));
-        else new Function('require', 'babelHelpers', Babel.transform(script.text, transformOptions).code)(require, babelHelpers);
-      }
+        var scripts = document.querySelectorAll('script[type="module"]'), i = 0, script;
+        while (script = scripts[i++]) {
+          if (script.src) require(script.getAttribute('src'));
+          else new Function('require', 'babelHelpers', Babel.transform(script.text, transformOptions).code)(require, babelHelpers);
+        }
+      });
     });
-  });
+  }();
+
 }();
