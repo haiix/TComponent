@@ -49,8 +49,7 @@ describe('TComponent.parse()', () => {
   });
   it('Text content', () => {
     const node = TComponent.parse('<p>hello</p>');
-    expect(node.c[0]).to.have.property('t').that.equal('');
-    expect(node.c[0]).to.have.property('v').that.equal('hello');
+    expect(node.c[0]).to.be.a('string').that.equal('hello');
   });
   it('Comments', () => {
     const node = TComponent.parse(`

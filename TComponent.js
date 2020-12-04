@@ -79,10 +79,7 @@ class Parser {
       } else {
         const s = this.getSpace();
         if (this.c() !== '<') {
-          nodes.push({
-            t: '',
-            v: s + this.getTill('<'),
-          });
+          nodes.push(s + this.getTill('<'));
         }
       }
     }
@@ -163,8 +160,9 @@ class TComponent {
    * @return {HTMLElement} A built element.
    */
   static build(node, thisObj = null, SubComponents = Object.create(null)) {
-    const SubComponent = SubComponents[node.t];
-    if (SubComponent) {
+    if (typeof node === 'string') {
+      return document.createTextNode(node);
+    } else if (SubComponents[node.t]) {
       const elems = node.c.map(node => TComponent.build(node, thisObj, SubComponents));
       const attrs = {};
       for (const [key, value] of Object.entries(node.a)) {
@@ -174,13 +172,11 @@ class TComponent {
           attrs[key] = value;
         }
       }
-      const subComponent = new SubComponent(attrs, elems);
+      const subComponent = new SubComponents[node.t](attrs, elems);
       if (thisObj && node.a && node.a.id) {
         thisObj[node.a.id] = subComponent;
       }
       return subComponent.element;
-    } else if (node.t === '') {
-      return document.createTextNode(node.v);
     } else {
       const elem = document.createElement(node.t);
       for (const [key, value] of Object.entries(node.a)) {
