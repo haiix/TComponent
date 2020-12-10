@@ -10,12 +10,12 @@
   <script src="https://unpkg.com/mocha/mocha.js"></script>
   <script src="https://unpkg.com/chai/chai.js"></script>
   <script class="mocha-init">
-    mocha.setup('bdd');
-    mocha.checkLeaks();
+    mocha.setup('bdd')
+    mocha.checkLeaks()
   </script>
-  <script type="module" src="TComponent.js"></script>
+  <script type="module" src="./TComponent.test.js"></script>
   <script type="module" class="mocha-exec">
-    mocha.run();
+    mocha.run()
   </script>
   <script nomodule src="../examples/assets/nomodule.js"></script>
 </body>

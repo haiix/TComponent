@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <script type="module">
-import TComponent from '../TComponent.js';
+import TComponent from '../TComponent.js'
 
 class TLi extends TComponent {
-  template() {
+  template () {
     return `
       <li>
         <div style="position: static; float: right;">
@@ -14,46 +14,47 @@ class TLi extends TComponent {
           <button onclick="this.handleDeleteButton(event)">Delete</button>
         </div>
       </li>
-    `;
+    `
   }
-  constructor(attrs, elems) {
-    super();
+
+  constructor (attrs, elems) {
+    super()
     for (const [key, value] of Object.entries(attrs)) {
-      this.element.setAttribute(key, value);
+      this.element.setAttribute(key, value)
     }
     for (const elem of elems) {
-      this.element.appendChild(elem);
+      this.element.appendChild(elem)
     }
-    this.element.style.clear = 'right';
+    this.element.style.clear = 'right'
   }
-  handleUpButton(event) {
-    const ref = this.element.previousSibling;
-    if (ref) this.element.parentNode.insertBefore(this.element, ref);
+
+  handleUpButton (event) {
+    const ref = this.element.previousSibling
+    if (ref) this.element.parentNode.insertBefore(this.element, ref)
   }
-  handleDownButton(event) {
-    const ref = this.element.nextSibling;
-    if (ref) this.element.parentNode.insertBefore(this.element, ref.nextSibling);
+
+  handleDownButton (event) {
+    const ref = this.element.nextSibling
+    if (ref) this.element.parentNode.insertBefore(this.element, ref.nextSibling)
   }
-  handleDeleteButton(event) {
+
+  handleDeleteButton (event) {
     if (confirm('Do you really want to delete this item?')) {
-      this.element.parentNode.removeChild(this.element);
+      this.element.parentNode.removeChild(this.element)
     }
   }
 }
 
-
-
-
 class ListItem extends TComponent {
-  template() {
-    this.uses(TLi);
-    return `<t-li style="border: 4px solid #33C;"><input value="It's another item" /></t-li>`;
+  template () {
+    this.uses(TLi)
+    return `<t-li style="border: 4px solid #33C;"><input value="It's another item" /></t-li>`
   }
 }
 
 class App extends TComponent {
-  template() {
-    this.uses(TLi);
+  template () {
+    this.uses(TLi)
     return `
       <div>
         <ul id="list">
@@ -65,20 +66,22 @@ class App extends TComponent {
         </ul>
         <button onclick="this.handleAddButton(event)">Add</button>
       </div>
-    `;
+    `
   }
-  handleAddButton(event) {
-    const listItem = new ListItem();
-    this.list.appendChild(listItem.element);
+
+  handleAddButton (event) {
+    const listItem = new ListItem()
+    this.list.appendChild(listItem.element)
   }
-  handleBowButton(event) {
-    this.item1.textContent = 'Meow';
+
+  handleBowButton (event) {
+    this.item1.textContent = 'Meow'
   }
 }
 
-const app = new App();
-document.body.appendChild(app.element);
-window.app = app;
+const app = new App()
+document.body.appendChild(app.element)
+window.app = app
 
 </script>
 <script nomodule src="./assets/nomodule.js"></script>

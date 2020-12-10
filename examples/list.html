@@ -1,29 +1,32 @@
 <!DOCTYPE html>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <script type="module">
-import TComponent from '../TComponent.js';
+import TComponent from '../TComponent.js'
 
 class MyListItem extends TComponent {
   template() {
-    return `<li id="_li"></li>`;
+    return `<li id="_li"></li>`
   }
+
   constructor(attrs, elems = []) {
-    super();
+    super()
     for (const node of elems) {
-      this.value += node.textContent;
+      this.value += node.textContent
     }
   }
+
   set value(v) {
-    this._li.textContent = v;
+    this._li.textContent = v
   }
+
   get value() {
-    return this._li.textContent;
+    return this._li.textContent
   }
 }
 
 class App extends TComponent {
-  template() {
-    this.uses(MyListItem);
+  template () {
+    this.uses(MyListItem)
     return `
       <section>
         <ul id="_ul">
@@ -34,26 +37,28 @@ class App extends TComponent {
           <button onclick="this.handleAddButton(event)">Add</button>
         </form>
       </section>
-    `;
+    `
   }
-  init() {
-    this._input.value = '';
-    this._input.focus();
+
+  init () {
+    this._input.value = ''
+    this._input.focus()
   }
-  handleAddButton(event) {
-    event.preventDefault();
-    if (!this._input.value) return;
-    const item = new MyListItem();
-    item.value = this._input.value;
-    this._ul.appendChild(item.element);
-    this._input.value = '';
-    this.init();
+
+  handleAddButton (event) {
+    event.preventDefault()
+    if (!this._input.value) return
+    const item = new MyListItem()
+    item.value = this._input.value
+    this._ul.appendChild(item.element)
+    this._input.value = ''
+    this.init()
   }
 }
 
-const app = new App();
-document.body.appendChild(app.element);
-app.init();
+const app = new App()
+document.body.appendChild(app.element)
+app.init()
 
 </script>
 <script nomodule src="./assets/nomodule.js"></script>
