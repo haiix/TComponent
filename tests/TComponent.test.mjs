@@ -3,7 +3,7 @@
 // https://mochajs.org/
 // https://www.chaijs.com/
 
-import TComponent from '../TComponent.js'
+import TComponent from '../TComponent.mjs'
 const expect = chai.expect
 
 describe('TComponent.parse()', () => {

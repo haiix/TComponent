@@ -1,5 +1,5 @@
 /*
- * TComponent.js
+ * TComponent.mjs
  *
  * Copyright (c) 2020 haiix
  *
