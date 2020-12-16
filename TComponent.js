@@ -157,6 +157,8 @@ class Parser {
   }
 }
 
+const instanceMap = new WeakMap()
+
 /**
  * TComponent class.
  */
@@ -182,7 +184,6 @@ class TComponent {
     if (typeof node === 'string') {
       return document.createTextNode(node)
     } else if (SubComponents[node.t]) {
-      const elems = node.c.map(node => TComponent.build(node, thisObj, SubComponents))
       const attrs = {}
       for (const [key, value] of Object.entries(node.a)) {
         if (thisObj && key.slice(0, 2) === 'on') {
@@ -191,6 +192,7 @@ class TComponent {
           attrs[key] = value
         }
       }
+      const elems = node.c.map(node => TComponent.build(node, thisObj, SubComponents))
       const subComponent = new SubComponents[node.t](attrs, elems)
       if (thisObj && node.a && node.a.id) {
         thisObj[node.a.id] = subComponent
@@ -247,7 +249,7 @@ class TComponent {
   static bindElement (thisObj, element) {
     if (thisObj == null || thisObj.element != null) return
     thisObj.element = element
-    TComponent._instanceMap.set(element, thisObj)
+    instanceMap.set(element, thisObj)
   }
 
   /**
@@ -256,7 +258,7 @@ class TComponent {
    * @return {TComponent} a TComponent instance.
    */
   static from (element) {
-    return TComponent._instanceMap.get(element)
+    return instanceMap.get(element)
   }
 
   /**
@@ -304,5 +306,4 @@ class TComponent {
   }
 }
 TComponent.version = VERSION
-TComponent._instanceMap = new WeakMap()
 export default TComponent
