@@ -3,11 +3,11 @@
  *
  * Copyright (c) 2020 haiix
  *
- * This module is released under the MIT license.
- * see https://opensource.org/licenses/MIT
+ * This module is released under the MIT license:
+ * https://opensource.org/licenses/MIT
  */
 
-const VERSION = '0.2.2-pre'
+const VERSION = '0.2.2'
 
 class Parser {
   constructor () {
