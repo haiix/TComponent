@@ -1,5 +1,5 @@
 {
-  "name": "@haiix/TComponent",
+  "name": "@haiix/tcomponent",
   "version": "0.2.2",
   "description": "A tiny base component written in ES6.",
   "main": "TComponent.mjs",
