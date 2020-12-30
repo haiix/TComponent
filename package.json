@@ -1,0 +1,9 @@
+{
+  "name": "@haiix/TComponent",
+  "version": "0.2.2",
+  "description": "A tiny base component written in ES6.",
+  "main": "TComponent.mjs",
+  "repository": "https://github.com/haiix/TComponent.git",
+  "author": "haiix",
+  "license": "MIT"
+}
