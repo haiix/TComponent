@@ -7,7 +7,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-const VERSION = '0.2.2'
+const VERSION = '0.2.3beta'
 
 class Parser {
   constructor () {
@@ -90,6 +90,9 @@ class Parser {
     while (!this.isMatch('</')) {
       if (this.isMatch('<!--')) {
         this.ignoreTill('-->')
+      } else if (this.isMatch('<![CDATA[')) {
+        this.adv(9)
+        nodes.push(this.getTill(']]>'))
       } else if (this.c() === '<') {
         nodes.push(this.parseTag())
       } else {
