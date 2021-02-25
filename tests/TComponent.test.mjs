@@ -191,3 +191,10 @@ describe('Extends TComponent', () => {
     expect(app.myForm2.nodesPassedWhenUsed[0]).to.equal(app.myForm2Child)
   })
 })
+
+describe('Utils', () => {
+  it('camelToKebab', () => {
+    const result = TComponent.camelToKebab('ParseHTML')
+    expect(result).to.be.equal('parse-h-t-m-l')
+  })
+})

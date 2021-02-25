@@ -270,7 +270,7 @@ class TComponent {
    * @return {string} kebab case string.
    */
   static camelToKebab (str) {
-    return str.replace(/(\w)([A-Z])/g, '$1-$2').toLowerCase()
+    return (str.slice(0, 1) + str.slice(1).replace(/([A-Z])/g, '-$1')).toLowerCase()
   }
 
   /**
