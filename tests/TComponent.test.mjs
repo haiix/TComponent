@@ -51,11 +51,13 @@ describe('TComponent.parse()', () => {
   })
   it('Text content', () => {
     const node = TComponent.parse('<p>hello</p>')
+    expect(node).to.have.property('c').that.is.an('array').with.lengthOf(1)
     expect(node.c[0]).to.be.a('string').that.equal('hello')
   })
   it('CDATA', () => {
-    const node = TComponent.parse('<p><![CDATA[<i>hello</i>]]></p>')
-    expect(node.c[0]).to.be.a('string').that.equal('<i>hello</i>')
+    const node = TComponent.parse('<p> <![CDATA[ <i> hello </i> ]]> </p>')
+    expect(node).to.have.property('c').that.is.an('array').with.lengthOf(1)
+    expect(node.c[0]).to.be.a('string').that.equal(' <i> hello </i> ')
   })
   it('Comments', () => {
     const node = TComponent.parse(`
