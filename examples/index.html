@@ -7,12 +7,10 @@ const PAGE_NAMES = ['hello', 'list', 'list2', 'calendar']
 
 document.title = decodeURIComponent(location.pathname).split('/').slice(-3, -1).join(' ')
 
-const li = PAGE_NAMES.map(page => `<li><a href="${page}.html">${page}</a></li>`).join('')
-
 document.body.appendChild(TComponent.createElement(`
   <section>
     <h1>${document.title}</h1>
-    <ul>${li}</ul>
+    <ul>${PAGE_NAMES.map(page => `<li><a href="${page}.html">${page}</a></li>`).join('')}</ul>
   </section>
 `))
 
