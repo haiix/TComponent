@@ -4,22 +4,22 @@
 import TComponent from '../TComponent.mjs'
 
 class MyListItem extends TComponent {
-  template() {
+  template () {
     return `<li id="_li"></li>`
   }
 
-  constructor(attrs, elems = []) {
+  constructor (attrs, elems = []) {
     super()
     for (const node of elems) {
       this.value += node.textContent
     }
   }
 
-  set value(v) {
+  set value (v) {
     this._li.textContent = v
   }
 
-  get value() {
+  get value () {
     return this._li.textContent
   }
 }
@@ -30,7 +30,9 @@ class App extends TComponent {
     return `
       <section>
         <ul id="_ul">
-          <my-list-item id="_defaultItem">default item</my-list-item>
+          <my-list-item>Buy snacks.</my-list-item>
+          <my-list-item>Eat snacks.</my-list-item>
+          <my-list-item>Sleep.</my-list-item>
         </ul>
         <form>
           <input id="_input" />

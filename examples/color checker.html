@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<meta charset="UTF-8" />
+<script type="module">
+import TComponent from '../TComponent.mjs'
+
+function style (text) {
+  const elem = document.createElement('style')
+  elem.textContent = text
+  document.head.appendChild(elem)
+}
+
+class ColorController extends TComponent {
+  template () {
+    style(`
+      .color-controller * {
+        vertical-align: middle;
+      }
+      .color-controller-label {
+        display: inline-block;
+        width: 1em;
+      }
+    `)
+    return `
+      <div class="color-controller">
+        <label>
+          <div id="label" class="color-controller-label"></div><span>: </span>
+          <input id="numberInput" type="number" oninput="this.handleChange(event)" onchange="this.handleChange(event)" min="0" max="255" value="128" />
+        </label>
+        <input id="rangeInput" type="range" oninput="this.handleChange(event)" onchange="this.handleChange(event)" min="0" max="255" value="128" />
+      </div>
+    `
+  }
+  constructor (attr, nodes) {
+    super()
+    for (const node of nodes) this.label.appendChild(node)
+    this.onchange = attr.onchange || null
+  }
+  get value () {
+    return this.rangeInput.value >>> 0
+  }
+  handleChange (event) {
+    this.rangeInput.value = event.target.value
+    this.numberInput.value = event.target.value
+    if (this.onchange) this.onchange(event)
+  }
+}
+
+class ColorChecker extends TComponent {
+  template () {
+    this.uses(ColorController)
+    style(`
+      .color-checker > * {
+        vertical-align: middle;
+      }
+      .color-view {
+        display: inline-block;
+        width: 48px;
+        height: 48px;
+        border: 1px solid #999;
+        margin-right: 1em;
+      }
+      .color-controllers {
+        display: inline-block;
+      }
+    `)
+    return `
+      <div class="color-checker">
+        <div id="colorView" class="color-view"></div>
+        <div class="color-controllers">
+          <color-controller id="r" onchange="this.handleChange(event)">R</color-controller>
+          <color-controller id="g" onchange="this.handleChange(event)">G</color-controller>
+          <color-controller id="b" onchange="this.handleChange(event)">B</color-controller>
+        </div>
+      </div>
+    `
+  }
+  constructor (attr, nodes) {
+    super()
+    this.handleChange()
+  }
+  handleChange (event) {
+    this.colorView.style.background = `rgb(${this.r.value},${this.g.value},${this.b.value})`
+  }
+}
+
+class App extends TComponent {
+  template () {
+    this.uses(ColorChecker)
+    return `
+      <div>
+        <color-checker />
+      </div>
+    `
+  }
+  constructor (attr, nodes) {
+    super()
+  }
+}
+
+const app = new App()
+document.body.appendChild(app.element)
+if (app.init) app.init()
+if (app.loop) {
+  ;(function loop (t) {
+    window.requestAnimationFrame(loop)
+    app.loop(t)
+  }(0))
+}
+window.app = app
+</script>
+<script nomodule src="./assets/nomodule.js"></script>
