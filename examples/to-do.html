@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<meta charset="UTF-8" />
+<script type="module">
+import TComponent from '../TComponent.mjs'
+
+class ToDoItem extends TComponent {
+  template () {
+    return `
+      <li id="_item">
+        <input type="checkbox" id="_isCompleted" />
+        <span id="_task"></span>
+      </li>
+    `
+  }
+  constructor (attr, nodes) {
+    super()
+  }
+  set task (v) {
+    this._task.textContent = v
+  }
+  get task () {
+    return this._task.textContent
+  }
+  get isCompleted () {
+    return this._isCompleted.checked
+  }
+  show () {
+    this._item.style.display = 'list-item'
+  }
+  hide () {
+    this._item.style.display = 'none'
+  }
+}
+
+class ToDo extends TComponent {
+  template () {
+    return `
+      <div>
+        Filter: <select id="_filter" onchange="this.handleChange(event)">
+          <option value="all">All</option>
+          <option value="incomplete">Only incomplete</option>
+        </select>
+        <hr />
+        <ul id="_list" onchange="this.handleChange(event)"></ul>
+        New task: <input id="_newTask" /><button onclick="this.handleAddButton(event)">Add</button>
+      </div>
+    `
+  }
+  constructor (attr, nodes) {
+    super()
+  }
+  handleChange (event) {
+    for (const childNode of this._list.childNodes) {
+      const item = TComponent.from(childNode)
+      if (this._filter.value === 'incomplete' && item.isCompleted) {
+        item.hide()
+      } else {
+        item.show()
+      }
+    }
+  }
+  handleAddButton (event) {
+    if (!this._newTask.value) return
+    const item = new ToDoItem()
+    item.task = this._newTask.value
+    this._list.appendChild(item.element)
+    this._newTask.value = ''
+  }
+}
+
+class App extends TComponent {
+  template () {
+    this.uses(ToDo)
+    return `
+      <div>
+        <to-do />
+      </div>
+    `
+  }
+  constructor (attr, nodes) {
+    super()
+  }
+}
+
+const app = new App()
+document.body.appendChild(app.element)
+if (app.init) app.init()
+if (app.loop) {
+  ;(function loop (t) {
+    window.requestAnimationFrame(loop)
+    app.loop(t)
+  }(0))
+}
+window.app = app
+</script>
+<script nomodule src="./assets/nomodule.js"></script>
