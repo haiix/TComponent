@@ -135,38 +135,85 @@ describe('TComponent.build()', () => {
 })
 
 describe('Extends TComponent', () => {
-  class SubComponent extends TComponent {
-    template () {
-      return `
-        <label id="nameOfPet">
-          <span>Please enter the name of your pet.</span>
-          <input onchange="this.handleChange(event)" />
-        </label>
-      `
-    }
-
-    constructor (attrs, nodes) {
-      super()
-      this.modified = false
-
-      this.attrsPassedWhenUsed = attrs
-      this.nodesPassedWhenUsed = nodes
-    }
-
-    handleChange (event) {
-      this.modified = true
-    }
-  }
-
   it('Extends', () => {
-    expect(SubComponent._parsedTemplate).to.equal(undefined)
-    const subComponent = new SubComponent()
-    expect(SubComponent._parsedTemplate).to.be.an('object')
-    expect(subComponent.element).to.be.a('HTMLLabelElement')
-    expect(subComponent.nameOfPet).to.equal(subComponent.element)
+    class App extends TComponent {
+      template () {
+        return '<p>Hello</p>'
+      }
+    }
+    expect(App._parsedTemplate).to.equal(undefined)
+    const app = new App()
+    expect(App._parsedTemplate).to.be.an('object')
+    expect(app.element).to.be.an('HTMLParagraphElement')
+    expect(app.element.textContent).to.equal('Hello')
   })
 
-  it('Use', () => {
+  it('Bind id', () => {
+    class App extends TComponent {
+      template () {
+        return `
+          <section>
+            <h2 id="title">here</h2>
+            <p>
+              It has <b id="bold">some</b> text.
+            </p>
+          </section>
+        `
+      }
+    }
+    const app = new App()
+    expect(app.title).to.be.an('HTMLHeadingElement')
+    expect(app.title.textContent).to.equal('here')
+    expect(app.bold).to.be.an('HTMLElement')
+    expect(app.bold.textContent).to.equal('some')
+  })
+
+  it('Bind event function', () => {
+    class App extends TComponent {
+      template () {
+        return `
+          <p>
+            <button onclick="this.handleButton(event)"></button>
+          </p>
+        `
+      }
+      constructor () {
+        super()
+        this.text = ''
+      }
+      handleButton (event) {
+        this.text = 'Clicked.'
+      }
+    }
+    const app = new App()
+    expect(app.text).to.equal('')
+    app.element.querySelector('button').click()
+    expect(app.text).to.equal('Clicked.')
+  })
+
+  it('Use sub-component', () => {
+    class SubComponent extends TComponent {
+      template () {
+        return `
+          <label id="nameOfPet">
+            <span>Please enter the name of your pet.</span>
+            <input onchange="this.handleChange(event)" />
+          </label>
+        `
+      }
+
+      constructor (attrs, nodes) {
+        super()
+        this.modified = false
+
+        this.attrsPassedWhenUsed = attrs
+        this.nodesPassedWhenUsed = nodes
+      }
+
+      handleChange (event) {
+        this.modified = true
+      }
+    }
     class App extends TComponent {
       template () {
         this.uses(SubComponent)
@@ -191,6 +238,22 @@ describe('Extends TComponent', () => {
     expect(app.myForm1.nodesPassedWhenUsed[0].textContent).to.equal('some text')
     expect(app.myForm2.nodesPassedWhenUsed).to.be.an('array').with.lengthOf(1)
     expect(app.myForm2.nodesPassedWhenUsed[0]).to.equal(app.myForm2Child)
+  })
+
+  it ('No template error', () => {
+    class NoTemplate extends TComponent {
+    }
+    expect(() => { const noTemplate = new NoTemplate() }).throw(Error)
+  })
+
+  it ('Explicit no template', () => {
+    class NoTemplate extends TComponent {
+      template () {
+        return null
+      }
+    }
+    const noTemplate = new NoTemplate()
+    expect(noTemplate).to.not.have.property('element')
   })
 })
 

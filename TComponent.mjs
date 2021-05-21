@@ -279,10 +279,13 @@ class TComponent {
    */
   constructor () {
     if (!Object.prototype.hasOwnProperty.call(this.constructor, '_parsedTemplate')) {
-      this.constructor._parsedTemplate = TComponent.parse(this.template())
+      const template = this.template()
+      this.constructor._parsedTemplate = template != null ? TComponent.parse(template) : null
     }
-    const element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents)
-    TComponent.bindElement(this, element)
+    if (this.constructor._parsedTemplate != null) {
+      const element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents)
+      TComponent.bindElement(this, element)
+    }
   }
 
   /**
