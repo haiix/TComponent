@@ -7,7 +7,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-const VERSION = '0.2.4'
+const VERSION = '0.2.5beta'
 
 class Parser {
   constructor () {
@@ -168,9 +168,9 @@ const instanceMap = new WeakMap()
  */
 class TComponent {
   /**
-   * Parse a template string.
-   * @param {string} template - A template string.
-   * @return {Object} Parsed object.
+   * Parse a template string. The parsed object can be converted to JSON.
+   * @param {string} template - The template string to parse.
+   * @return {Object} The parsed object.
    */
   static parse (template) {
     const parser = new Parser()
@@ -179,10 +179,10 @@ class TComponent {
 
   /**
    * Build a html element from a parsed object.
-   * @param {Object} node - A Parsed object.
-   * @param {Object} [thisObj] - The object for which IDs and events are bound.
-   * @param {Object} [SubComponents] - Components used in this process.
-   * @return {HTMLElement} A built element.
+   * @param {Object} node - The object parsed by the TComponent.parse() method.
+   * @param {Object} [thisObj] - The object that binds IDs and events.
+   * @param {Object} [SubComponents] - Components to use in this process.
+   * @return {HTMLElement} The built element.
    */
   static build (node, thisObj = null, SubComponents = Object.create(null)) {
     if (typeof node === 'string') {
@@ -222,10 +222,10 @@ class TComponent {
 
   /**
    * Build a TComponent instance from a template string.
-   * @param {string} template - A template string.
-   * @param {Object} [thisObj] - The object for which IDs and events are bound.
-   * @param {Object} [SubComponents] - Components used in this process.
-   * @return {TComponent} A built TComponent instance.
+   * @param {string} template - The template string.
+   * @param {Object} [thisObj] - The object that binds IDs and events.
+   * @param {Object} [SubComponents] - Components to use in this process.
+   * @return {TComponent} The built TComponent instance.
    */
   static create (template, thisObj = {}, SubComponents) {
     TComponent.createElement(template, thisObj, SubComponents)
@@ -234,10 +234,10 @@ class TComponent {
 
   /**
    * Build a html element from a template string.
-   * @param {string} template - A template string.
-   * @param {Object} [thisObj] - The object for which IDs and events are bound.
-   * @param {Object} [SubComponents] - Components used in this process.
-   * @return {HTMLElement} A built html element.
+   * @param {string} template - The template string.
+   * @param {Object} [thisObj] - The object that binds IDs and events.
+   * @param {Object} [SubComponents] - Components to use in this process.
+   * @return {HTMLElement} The built html element.
    */
   static createElement (template, thisObj, SubComponents) {
     const element = TComponent.build(TComponent.parse(template), thisObj, SubComponents)
@@ -246,9 +246,9 @@ class TComponent {
   }
 
   /**
-   * Bind a TComponent instance and a html element.
-   * @param {TComponent} thisObj - A TComponent instance.
-   * @param {HTMLElement} element - A html element.
+   * Bind a TComponent instance and a html element. The bound element can be retrieved using the TComponent.from() method.
+   * @param {TComponent} thisObj - The TComponent instance.
+   * @param {HTMLElement} element - The html element.
    */
   static bindElement (thisObj, element) {
     if (thisObj == null || thisObj.element != null) return
@@ -257,9 +257,9 @@ class TComponent {
   }
 
   /**
-   * Get a built TComponent instance from a element.
-   * @param {HTMLElement} element - A html element of target instance.
-   * @return {TComponent} a TComponent instance.
+   * Get a TComponent instance from a bound element.
+   * @param {HTMLElement} element - The html element of the target TComponent instance.
+   * @return {TComponent} The TComponent instance.
    */
   static from (element) {
     return instanceMap.get(element)
@@ -267,8 +267,8 @@ class TComponent {
 
   /**
    * Combert a camel case string to a kebab case.
-   * @param {string} str - camel case string.
-   * @return {string} kebab case string.
+   * @param {string} str - The camel case string.
+   * @return {string} The kebab case string.
    */
   static camelToKebab (str) {
     return (str.slice(0, 1) + str.slice(1).replace(/([A-Z])/g, '-$1')).toLowerCase()
@@ -276,6 +276,9 @@ class TComponent {
 
   /**
    * Create a TComponent instance.
+   * The constructor can be overridden by subclasses.
+   * @param {object} attributes - The attributes that built in the parent component.
+   * @param {array} elements - The array of html elements that built in the parent component.
    */
   constructor () {
     if (!Object.prototype.hasOwnProperty.call(this.constructor, '_parsedTemplate')) {
@@ -290,7 +293,7 @@ class TComponent {
 
   /**
    * Return a template string for this component.
-   * This method must be overridden by a subclass.
+   * This method must be overridden by subclasses.
    * @throw {Error}
    */
   template () {
@@ -298,8 +301,8 @@ class TComponent {
   }
 
   /**
-   * Add components used in this component.
-   * @param {TComponent} SubComponent
+   * Add components to use in this component.
+   * @param {...TComponent} SubComponents
    */
   uses (...SubComponents) {
     if (!Object.prototype.hasOwnProperty.call(this.constructor, '_SubComponents')) {
