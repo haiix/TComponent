@@ -7,7 +7,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-const VERSION = '0.2.5beta'
+const VERSION = '0.2.5beta2'
 
 class Parser {
   constructor () {
@@ -161,6 +161,29 @@ class Parser {
   }
 }
 
+function dispatchError (error, thisObj) {
+  if (thisObj != null && typeof thisObj.onerror === 'function') {
+    thisObj.onerror(error)
+  } else {
+    throw error
+  }
+}
+
+function createEventFunc (code, thisObj) {
+  const func = new Function('event', code).bind(thisObj)
+  return event => {
+    try {
+      const ret = func(event)
+      if (ret != null && typeof ret.catch === 'function') {
+        return ret.catch(error => dispatchError(error, thisObj))
+      }
+      return ret
+    } catch (error) {
+      dispatchError(error, thisObj)
+    }
+  }
+}
+
 const instanceMap = new WeakMap()
 
 /**
@@ -191,7 +214,7 @@ class TComponent {
       const attrs = {}
       for (const [key, value] of Object.entries(node.a)) {
         if (thisObj && key.slice(0, 2) === 'on') {
-          attrs[key] = new Function('event', value).bind(thisObj)
+          attrs[key] = createEventFunc(value, thisObj)
         } else if (thisObj && key !== 'id') {
           attrs[key] = value
         }
@@ -208,7 +231,7 @@ class TComponent {
         if (thisObj && key === 'id') {
           thisObj[value] = elem
         } else if (thisObj && key.slice(0, 2) === 'on') {
-          elem[key] = new Function('event', value).bind(thisObj)
+          elem[key] = createEventFunc(value, thisObj)
         } else {
           elem.setAttribute(key, value)
         }

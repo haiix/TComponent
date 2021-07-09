@@ -148,7 +148,7 @@ describe('Extends TComponent', () => {
     expect(app.element.textContent).to.equal('Hello')
   })
 
-  it('Bind id', () => {
+  it('Bind ids', () => {
     class App extends TComponent {
       template () {
         return `
@@ -164,11 +164,11 @@ describe('Extends TComponent', () => {
     const app = new App()
     expect(app.title).to.be.an('HTMLHeadingElement')
     expect(app.title.textContent).to.equal('here')
-    expect(app.bold).to.be.an('HTMLElement')
+    expect(app.bold).to.be.an.instanceof(HTMLElement)
     expect(app.bold.textContent).to.equal('some')
   })
 
-  it('Bind event function', () => {
+  it('Bind events', () => {
     class App extends TComponent {
       template () {
         return `
@@ -177,10 +177,12 @@ describe('Extends TComponent', () => {
           </p>
         `
       }
+
       constructor () {
         super()
         this.text = ''
       }
+
       handleButton (event) {
         this.text = 'Clicked.'
       }
@@ -189,6 +191,64 @@ describe('Extends TComponent', () => {
     expect(app.text).to.equal('')
     app.element.querySelector('button').click()
     expect(app.text).to.equal('Clicked.')
+  })
+
+  it('Error handling', () => {
+    class App extends TComponent {
+      template () {
+        return `
+          <p>
+            <button onclick="this.handleButton(event)"></button>
+          </p>
+        `
+      }
+
+      constructor () {
+        super()
+        this.text = ''
+      }
+
+      handleButton (event) {
+        throw new Error('Test error handling.')
+      }
+
+      onerror (error) {
+        this.text = error.message
+      }
+    }
+    const app = new App()
+    expect(app.text).to.equal('')
+    app.element.querySelector('button').click()
+    expect(app.text).to.equal('Test error handling.')
+  })
+
+  it('Async error handling', async function () {
+    class App extends TComponent {
+      template () {
+        return `
+          <p>
+            <button onclick="return this.handleButton(event)"></button>
+          </p>
+        `
+      }
+
+      constructor () {
+        super()
+        this.text = ''
+      }
+
+      async handleButton (event) {
+        throw new Error('Test async error handling.')
+      }
+
+      onerror (error) {
+        this.text = error.message
+      }
+    }
+    const app = new App()
+    expect(app.text).to.equal('')
+    await app.element.querySelector('button').onclick()
+    expect(app.text).to.equal('Test async error handling.')
   })
 
   it('Use sub-component', () => {
@@ -240,13 +300,13 @@ describe('Extends TComponent', () => {
     expect(app.myForm2.nodesPassedWhenUsed[0]).to.equal(app.myForm2Child)
   })
 
-  it ('No template error', () => {
+  it('No template error', () => {
     class NoTemplate extends TComponent {
     }
-    expect(() => { const noTemplate = new NoTemplate() }).throw(Error)
+    expect(() => new NoTemplate()).throw(Error)
   })
 
-  it ('Explicit no template', () => {
+  it('Explicit no template', () => {
     class NoTemplate extends TComponent {
       template () {
         return null
