@@ -7,7 +7,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-const VERSION = '0.2.5'
+const VERSION = '0.2.6beta'
 
 class Parser {
   constructor () {

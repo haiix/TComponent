@@ -12,23 +12,27 @@ npm install @haiix/tcomponent
 ```javascript
 import TComponent from '@haiix/tcomponent'
 
+// Extend the TComponent class to implement the template method.
 class App extends TComponent {
   template () {
     return `
       <section>
-        <h1 id="output">Hello, </h1>
-        <button onclick="this.handleButton(event)">Click here</button>
+        <!-- The "id" attributes are registered as a property of the instance and are removed from the entity of the elements. -->
+        <h1 id="myOutput">Hello, </h1>
+
+        <!-- Attributes beginning with "on" are recognized as event functions, and "this" is bound to the instance. -->
+        <button onclick="this.handleMyButton(event)">Click here</button>
       </section>
     `
   }
 
-  handleButton (event) {
-    this.output.textContent += 'World!'
+  handleMyButton (event) {
+    this.myOutput.textContent += 'World!'
   }
 }
 
 const app = new App()
-document.body.appendChild(app.element)
+document.body.appendChild(app.element) // The root element of the template is registered as the "element" property of the instance.
 ```
 
 ## Examples
