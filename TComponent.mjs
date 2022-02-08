@@ -161,6 +161,10 @@ class Parser {
   }
 }
 
+function hasOwnProperty (obj, name) {
+  return Object.prototype.hasOwnProperty.call(obj, name)
+}
+
 function dispatchError (error, thisObj) {
   if (thisObj != null && typeof thisObj.onerror === 'function') {
     thisObj.onerror(error)
@@ -182,6 +186,13 @@ function createEventFunc (code, thisObj) {
       dispatchError(error, thisObj)
     }
   }
+}
+
+function parseTemplate (ExtendedTComponent) {
+  if (hasOwnProperty(ExtendedTComponent, '_parsedTemplate')) return
+  const template = ExtendedTComponent.prototype.template()
+  if (template == null) return
+  ExtendedTComponent._parsedTemplate = TComponent.parse(template)
 }
 
 const instanceMap = new WeakMap()
@@ -304,10 +315,7 @@ class TComponent {
    * @param {array} elements - The array of html elements that built in the parent component.
    */
   constructor () {
-    if (!Object.prototype.hasOwnProperty.call(this.constructor, '_parsedTemplate')) {
-      const template = this.template()
-      this.constructor._parsedTemplate = template != null ? TComponent.parse(template) : null
-    }
+    parseTemplate(this.constructor)
     if (this.constructor._parsedTemplate != null) {
       const element = TComponent.build(this.constructor._parsedTemplate, this, this.constructor._SubComponents)
       TComponent.bindElement(this, element)
@@ -328,13 +336,17 @@ class TComponent {
    * @param {...TComponent} SubComponents
    */
   uses (...SubComponents) {
-    if (!Object.prototype.hasOwnProperty.call(this.constructor, '_SubComponents')) {
+    if (!hasOwnProperty(this.constructor, '_SubComponents')) {
       this.constructor._SubComponents = Object.create(null)
     }
     const _SubComponents = this.constructor._SubComponents
     for (const SubComponent of SubComponents) {
-      _SubComponents[SubComponent.name] = SubComponent
-      _SubComponents[TComponent.camelToKebab(SubComponent.name)] = SubComponent
+      parseTemplate(SubComponent)
+      if (!hasOwnProperty(SubComponent.prototype, 'tagName')) {
+        SubComponent.prototype.tagName = SubComponent.name
+      }
+      _SubComponents[SubComponent.prototype.tagName] = SubComponent
+      _SubComponents[TComponent.camelToKebab(SubComponent.prototype.tagName)] = SubComponent
     }
   }
 }

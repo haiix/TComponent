@@ -300,6 +300,36 @@ describe('Extends TComponent', () => {
     expect(app.myForm2.nodesPassedWhenUsed[0]).to.equal(app.myForm2Child)
   })
 
+  it('Explicit tag name', () => {
+    class SubComponent extends TComponent {
+      template () {
+        this.tagName = 'custom-tag'
+        return `
+          <span>hello</span>
+        `
+      }
+
+      constructor (attrs, nodes) {
+        super()
+      }
+    }
+    class App extends TComponent {
+      template () {
+        this.uses(SubComponent)
+        return `
+          <section>
+            <h1>Explicit tag name</h1>
+            <custom-tag id="example"></custom-tag>
+          </section>
+        `
+      }
+    }
+    const app = new App()
+    expect(app).to.have.property('element').that.is.a('HTMLElement')
+    expect(app).to.have.property('example').that.is.an.instanceof(TComponent)
+    expect(app.example.element.textContent).to.equal('hello')
+  })
+
   it('No template error', () => {
     class NoTemplate extends TComponent {
     }
