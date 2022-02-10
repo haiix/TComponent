@@ -5,6 +5,7 @@ import TComponent from '../TComponent.mjs'
 
 class ToDoItem extends TComponent {
   template () {
+    this.tagName = 'to-do-item'
     return `
       <li id="_item">
         <input type="checkbox" id="_isCompleted" />
@@ -34,6 +35,7 @@ class ToDoItem extends TComponent {
 
 class ToDo extends TComponent {
   template () {
+    this.tagName = 'to-do'
     return `
       <div>
         Filter: <select id="_filter" onchange="this.handleChange(event)">

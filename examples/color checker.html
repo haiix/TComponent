@@ -11,6 +11,7 @@ function style (text) {
 
 class ColorController extends TComponent {
   template () {
+    this.tagName = 'color-controller'
     style(`
       .color-controller * {
         vertical-align: middle;
@@ -47,6 +48,7 @@ class ColorController extends TComponent {
 
 class ColorChecker extends TComponent {
   template () {
+    this.tagName = 'color-checker'
     this.uses(ColorController)
     style(`
       .color-checker > * {

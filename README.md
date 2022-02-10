@@ -38,3 +38,12 @@ document.body.appendChild(app.element) // The root element of the template is re
 ## Examples
 
 https://haiix.github.io/TComponent/examples/
+
+## Tests
+
+https://haiix.github.io/TComponent/tests/
+
+## License
+
+MIT
+
