@@ -7,7 +7,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-const VERSION = '0.2.6'
+const VERSION = '0.2.7beta'
 
 class Parser {
   constructor () {
@@ -173,8 +173,13 @@ function dispatchError (error, thisObj) {
   }
 }
 
-function createEventFunc (code, thisObj) {
-  const func = new Function('event', code).bind(thisObj)
+function createEventFunc (node, key, code, thisObj) {
+  node._f = node._f || {}
+  const funcCache = node._f
+  if (!hasOwnProperty(funcCache, key)) {
+    funcCache[key] = new Function('event', code)
+  }
+  const func = funcCache[key].bind(thisObj)
   return event => {
     try {
       const ret = func(event)
@@ -225,7 +230,7 @@ class TComponent {
       const attrs = {}
       for (const [key, value] of Object.entries(node.a)) {
         if (thisObj && key.slice(0, 2) === 'on') {
-          attrs[key] = createEventFunc(value, thisObj)
+          attrs[key] = createEventFunc(node, key, value, thisObj)
         } else if (thisObj && key !== 'id') {
           attrs[key] = value
         }
@@ -242,7 +247,7 @@ class TComponent {
         if (thisObj && key === 'id') {
           thisObj[value] = elem
         } else if (thisObj && key.slice(0, 2) === 'on') {
-          elem[key] = createEventFunc(value, thisObj)
+          elem[key] = createEventFunc(node, key, value, thisObj)
         } else {
           elem.setAttribute(key, value)
         }

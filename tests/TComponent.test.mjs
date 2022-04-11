@@ -173,24 +173,31 @@ describe('Extends TComponent', () => {
       template () {
         return `
           <p>
-            <button onclick="this.handleButton(event)"></button>
+            <button onclick="this.handleButton(this.name)"></button>
           </p>
         `
       }
 
-      constructor () {
+      constructor (name) {
         super()
+        this.name = name
         this.text = ''
       }
 
-      handleButton (event) {
-        this.text = 'Clicked.'
+      handleButton (name) {
+        this.text = name + ' Clicked.'
       }
     }
-    const app = new App()
-    expect(app.text).to.equal('')
-    app.element.querySelector('button').click()
-    expect(app.text).to.equal('Clicked.')
+    const app1 = new App('App1')
+    const app2 = new App('App2')
+    expect(app1.text).to.equal('')
+    expect(app2.text).to.equal('')
+    app2.element.querySelector('button').click()
+    expect(app1.text).to.equal('')
+    expect(app2.text).to.equal('App2 Clicked.')
+    app1.element.querySelector('button').click()
+    expect(app1.text).to.equal('App1 Clicked.')
+    expect(app2.text).to.equal('App2 Clicked.')
   })
 
   it('Error handling', () => {
