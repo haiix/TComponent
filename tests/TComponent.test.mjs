@@ -83,6 +83,7 @@ describe('TComponent.parse()', () => {
     expect(() => { TComponent.parse('<Tag></Tag is not closed>') }).throw(Error)
     expect(() => { TComponent.parse('<a <The start tag is not closed') }).throw(Error)
     expect(() => { TComponent.parse('<p a=1>Attribute value does not start with "</p>') }).throw(Error)
+    expect(() => { TComponent.parse('<![CDATA[ Unexpected end of input') }).throw(Error)
   })
 })
 

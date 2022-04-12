@@ -72,8 +72,8 @@ class Parser {
   }
 
   getTill (s) {
-    let i = this.src.indexOf(s, this.p)
-    i = i < 0 ? this.src.length : i
+    const i = this.src.indexOf(s, this.p)
+    if (i < 0) throw new SyntaxError('Unexpected end of input')
     const d = this.src.slice(this.p, i)
     this.p = i
     return d
@@ -266,7 +266,7 @@ class TComponent {
    * @param {Object} [SubComponents] - Components to use in this process.
    * @return {TComponent} The built TComponent instance.
    */
-  static create (template, thisObj = {}, SubComponents = null) {
+  static create (template, thisObj = {}, SubComponents = undefined) {
     TComponent.createElement(template, thisObj, SubComponents)
     return thisObj
   }
@@ -278,7 +278,7 @@ class TComponent {
    * @param {Object} [SubComponents] - Components to use in this process.
    * @return {HTMLElement} The built html element.
    */
-  static createElement (template, thisObj = null, SubComponents = null) {
+  static createElement (template, thisObj = undefined, SubComponents = undefined) {
     const element = TComponent.build(TComponent.parse(template), thisObj, SubComponents)
     TComponent.bindElement(thisObj, element)
     return element
