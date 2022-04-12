@@ -266,7 +266,7 @@ class TComponent {
    * @param {Object} [SubComponents] - Components to use in this process.
    * @return {TComponent} The built TComponent instance.
    */
-  static create (template, thisObj = {}, SubComponents) {
+  static create (template, thisObj = {}, SubComponents = null) {
     TComponent.createElement(template, thisObj, SubComponents)
     return thisObj
   }
@@ -278,7 +278,7 @@ class TComponent {
    * @param {Object} [SubComponents] - Components to use in this process.
    * @return {HTMLElement} The built html element.
    */
-  static createElement (template, thisObj, SubComponents) {
+  static createElement (template, thisObj = null, SubComponents = null) {
     const element = TComponent.build(TComponent.parse(template), thisObj, SubComponents)
     TComponent.bindElement(thisObj, element)
     return element
