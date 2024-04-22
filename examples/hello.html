@@ -1,25 +1,31 @@
 <!DOCTYPE html>
-<meta charset="UTF-8" />
-<script type="module">
-import TComponent from '../TComponent.mjs'
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Hello</title>
+  </head>
+  <body>
+    <script type="module">
+    import TComponent from '../dist/TComponent.mjs';
 
-class App extends TComponent {
-  template () {
-    return `
-      <section>
-        <h1 id="output">Hello, </h1>
-        <button onclick="this.handleButton(event)">Click here</button>
-      </section>
-    `
-  }
+    class App extends TComponent {
+      static template = `
+        <section>
+          <h1 id="output">Hello, </h1>
+          <button onclick="this.handleButton()">Click here</button>
+        </section>
+      `;
 
-  handleButton (event) {
-    this.output.textContent += 'World!'
-  }
-}
+      output = this.id('output');
 
-const app = new App()
-document.body.appendChild(app.element)
+      handleButton() {
+        this.output.textContent += 'World!';
+      }
+    }
 
-</script>
-<script nomodule src="./assets/nomodule.js"></script>
+    const app = new App();
+    document.body.appendChild(app.element);
+    </script>
+  </body>
+</html>

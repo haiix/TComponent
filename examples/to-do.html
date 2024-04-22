@@ -1,98 +1,93 @@
 <!DOCTYPE html>
-<meta charset="UTF-8" />
-<script type="module">
-import TComponent from '../TComponent.mjs'
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>To Do</title>
+  </head>
+  <body>
+    <script type="module">
+    import TComponent from '../dist/TComponent.mjs'
 
-class ToDoItem extends TComponent {
-  template () {
-    this.tagName = 'to-do-item'
-    return `
-      <li id="_item">
-        <input type="checkbox" id="_isCompleted" />
-        <span id="_task"></span>
-      </li>
-    `
-  }
-  constructor (attr, nodes) {
-    super()
-  }
-  set task (v) {
-    this._task.textContent = v
-  }
-  get task () {
-    return this._task.textContent
-  }
-  get isCompleted () {
-    return this._isCompleted.checked
-  }
-  show () {
-    this._item.style.display = 'list-item'
-  }
-  hide () {
-    this._item.style.display = 'none'
-  }
-}
+    class ToDoItem extends TComponent {
+      static template = `
+        <li id="_item">
+          <input type="checkbox" id="_isCompleted" />
+          <label id="_task" for="_isCompleted"></label>
+        </li>
+      `;
 
-class ToDo extends TComponent {
-  template () {
-    this.tagName = 'to-do'
-    return `
-      <div>
-        Filter: <select id="_filter" onchange="this.handleChange(event)">
-          <option value="all">All</option>
-          <option value="incomplete">Only incomplete</option>
-        </select>
-        <hr />
-        <ul id="_list" onchange="this.handleChange(event)"></ul>
-        New task: <input id="_newTask" /><button onclick="this.handleAddButton(event)">Add</button>
-      </div>
-    `
-  }
-  constructor (attr, nodes) {
-    super()
-  }
-  handleChange (event) {
-    for (const childNode of this._list.childNodes) {
-      const item = TComponent.from(childNode)
-      if (this._filter.value === 'incomplete' && item.isCompleted) {
-        item.hide()
-      } else {
-        item.show()
+      _item = this.id('_item');
+      _isCompleted = this.id('_isCompleted');
+      _task = this.id('_task');
+
+      set task(v) {
+        this._task.textContent = v;
+      }
+
+      get task() {
+        return this._task.textContent;
+      }
+
+      get isCompleted() {
+        return this._isCompleted.checked;
+      }
+
+      show() {
+        this._item.style.display = 'list-item';
+      }
+
+      hide() {
+        this._item.style.display = 'none';
       }
     }
-  }
-  handleAddButton (event) {
-    if (!this._newTask.value) return
-    const item = new ToDoItem()
-    item.task = this._newTask.value
-    this._list.appendChild(item.element)
-    this._newTask.value = ''
-  }
-}
 
-class App extends TComponent {
-  template () {
-    this.uses(ToDo)
-    return `
-      <div>
-        <to-do />
-      </div>
-    `
-  }
-  constructor (attr, nodes) {
-    super()
-  }
-}
+    class App extends TComponent {
+      static template = `
+        <div>
+          Filter: <select id="_filter" onchange="this.handleChange(event)">
+            <option value="all">All</option>
+            <option value="incomplete">Only incomplete</option>
+          </select>
+          <hr />
+          <ul id="_list" onchange="this.handleChange(event)"></ul>
+          New task: <input id="_newTask" /><button onclick="this.handleAddButton(event)">Add</button>
+        </div>
+      `;
 
-const app = new App()
-document.body.appendChild(app.element)
-if (app.init) app.init()
-if (app.loop) {
-  ;(function loop (t) {
-    window.requestAnimationFrame(loop)
-    app.loop(t)
-  }(0))
-}
-window.app = app
-</script>
-<script nomodule src="./assets/nomodule.js"></script>
+      _filter = this.id('_filter');
+      _list = this.id('_list');
+      _newTask = this.id('_newTask');
+      _items = [];
+
+      handleChange(event) {
+        for (const item of this._items) {
+          if (this._filter.value === 'incomplete' && item.isCompleted) {
+            item.hide();
+          } else {
+            item.show();
+          }
+        }
+      }
+
+      handleAddButton(event) {
+        if (!this._newTask.value) return;
+        const item = new ToDoItem();
+        item.task = this._newTask.value;
+        this._list.appendChild(item.element);
+        this._items.push(item);
+        this._newTask.value = '';
+        this._newTask.focus();
+      }
+
+      init() {
+        this._newTask.focus();
+      }
+    }
+
+    const app = new App();
+    document.body.appendChild(app.element);
+    app.init();
+    </script>
+  </body>
+</html>
