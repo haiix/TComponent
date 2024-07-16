@@ -1,8 +1,9 @@
 {
   "name": "@haiix/tcomponent",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A tiny component system written in TypeScript.",
   "main": "dist/TComponent.mjs",
+  "types": "types/src/TComponent.d.ts",
   "scripts": {
     "build": "npm run clean && npm run fix && npm run test && npm run webpack",
     "webpack": "cross-env NODE_ENV=production webpack",

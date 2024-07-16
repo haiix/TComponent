@@ -1,28 +1,10 @@
-export declare const version = "1.0.0";
+export declare const version = "1.1.0";
 export type TAttributes = Record<string, string>;
 export type TNode = string | {
     t: string;
     a: TAttributes;
     c: TNode[];
 };
-export declare class Parser {
-    private src;
-    private p;
-    constructor();
-    private init;
-    private adv;
-    private isDone;
-    private c;
-    private isMatch;
-    private getSpace;
-    private getWord;
-    private getTill;
-    private ignoreTill;
-    private parseTags;
-    private parseTag;
-    private parseAttrs;
-    parse(src: string): TNode;
-}
 export declare function parseTemplate(src: string): TNode;
 export type Constructable = new (...args: any[]) => object;
 export declare function removeUndefined<T>(arr: (T | undefined | null)[]): T[];

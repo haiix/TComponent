@@ -8,6 +8,10 @@ describe('parseTemplate()', () => {
     const node = parseTemplate('<p></p>');
     expect(node).toHaveProperty('t', 'p');
   });
+  test('Closing tags allow spaces', () => {
+    const node = parseTemplate('<p></p \n>');
+    expect(node).toHaveProperty('t', 'p');
+  });
   test('Omitted tag name', () => {
     const node = parseTemplate('<input />');
     expect(node).toHaveProperty('t', 'input');
@@ -19,6 +23,11 @@ describe('parseTemplate()', () => {
   test('Single quote attributes', () => {
     const node = parseTemplate("<p foo='bar'></p>");
     expect(node).toHaveProperty('a.foo', 'bar');
+  });
+  test('Empty attribute values', () => {
+    const node = parseTemplate(`<p foo="" bar=''></p>`);
+    expect(node).toHaveProperty('a.foo', '');
+    expect(node).toHaveProperty('a.bar', '');
   });
   test('Omitted attributes', () => {
     const node = parseTemplate('<p foo></p>');

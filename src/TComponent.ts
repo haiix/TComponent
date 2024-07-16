@@ -7,7 +7,7 @@
  * https://opensource.org/licenses/MIT
  */
 
-export const version = "1.0.0";
+export const version = "1.1.0";
 
 export type TAttributes = Record<string, string>;
 
@@ -19,169 +19,68 @@ export type TNode =
       c: TNode[];
     };
 
-export class Parser {
-  private src: string = "";
-  private p: number = 0;
-
-  constructor() {
-    this.init("");
-  }
-
-  private init(src: string): void {
-    this.src = src;
-    this.p = 0;
-  }
-
-  private adv(n: number): void {
-    this.p += n;
-  }
-
-  private isDone(): boolean {
-    return this.p >= this.src.length;
-  }
-
-  private c(): string {
-    return this.src[this.p] ?? "\0";
-  }
-
-  private isMatch(s: string) {
-    return this.src.startsWith(s, this.p);
-  }
-
-  private getSpace(): string {
-    let s = "";
-    while (!this.isDone()) {
-      const c = this.c();
-      if (c !== " " && c !== "\n" && c !== "\t") break;
-      s += c;
-      this.adv(1);
+export function parseTemplate(src: string): TNode {
+  const re =
+    /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/y;
+  const root: TNode = { t: "root", a: {}, c: [] };
+  let current = root;
+  const stack: TNode[] = [];
+  while (re.lastIndex < src.length) {
+    const result = re.exec(src);
+    if (result == null) {
+      throw new Error(`Unexpected end of source at position ${re.lastIndex}`);
     }
-    return s;
-  }
-
-  private getWord(): string {
-    let s = "";
-    while (!this.isDone()) {
-      const c = this.c();
-      const i = c.charCodeAt(0);
-      if (
-        // a-z
-        (i < 97 || i > 122) &&
-        // -
-        i !== 45 &&
-        // _
-        i !== 95 &&
-        // A-Z
-        (i < 65 || i > 90) &&
-        // 0-9
-        (i < 48 || i > 57) &&
-        // Non-ASCII
-        i < 128
-      )
-        break;
-      s += c;
-      this.adv(1);
-    }
-    return s;
-  }
-
-  private getTill(s: string): string {
-    const i = this.src.indexOf(s, this.p);
-    if (i < 0) throw new SyntaxError("Unexpected end of input");
-    const d = this.src.slice(this.p, i);
-    this.p = i;
-    return d;
-  }
-
-  private ignoreTill(s: string): void {
-    const i = this.src.indexOf(s, this.p);
-    if (i < 0) throw new SyntaxError("Unexpected end of input");
-    this.p = i + s.length;
-  }
-
-  private parseTags(): TNode[] {
-    const nodes = [];
-    while (!this.isMatch("</")) {
-      if (this.isMatch("<!--")) {
-        this.ignoreTill("-->");
-      } else if (this.isMatch("<![CDATA[")) {
-        this.adv(9);
-        nodes.push(this.getTill("]]>"));
-        this.adv(3);
-      } else if (this.c() === "<") {
-        nodes.push(this.parseTag());
-      } else {
-        const s = this.getSpace();
-        if (this.c() !== "<") {
-          nodes.push(s + this.getTill("<"));
+    const [, cdata, end, start, attrs, oclose, text] = result;
+    if (cdata != null) {
+      current.c.push(cdata);
+    } else if (end != null) {
+      const temp = stack.pop();
+      if (!temp || typeof temp === "string") {
+        throw new Error(
+          `No opening tag for closing tag </${end}> at position ${re.lastIndex}`,
+        );
+      }
+      if (current.t !== end) {
+        throw new Error(
+          `Tag mismatch: opened <${current.t}> but closed </${end}> at position ${re.lastIndex}`,
+        );
+      }
+      current = temp;
+    } else if (start != null && attrs != null) {
+      const newNode: TNode = { t: start, a: {}, c: [] };
+      const trimmedAttrs = attrs.trimEnd();
+      const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/y;
+      while (attrRe.lastIndex < trimmedAttrs.length) {
+        const attr = attrRe.exec(trimmedAttrs);
+        if (attr == null) {
+          throw new Error(
+            `Invalid attribute format at position ${attrRe.lastIndex}`,
+          );
+        }
+        const [, key, value] = attr;
+        if (key != null) {
+          newNode.a[key] = value == null ? key : value.slice(2, -1);
         }
       }
-    }
-    return nodes;
-  }
-
-  private parseTag(): TNode {
-    this.adv(1);
-    const tagName = this.getWord();
-    if (tagName === "") throw new SyntaxError("No tag name");
-    const attrs = this.parseAttrs();
-    let children: TNode[];
-    if (this.c() === ">") {
-      this.adv(1);
-      children = this.parseTags();
-      this.adv(2);
-      if (this.getWord() !== tagName)
-        throw new SyntaxError("Start and end tag name do not match");
-      this.getSpace();
-      if (this.c() !== ">") throw new SyntaxError("Tag is not closed");
-      this.adv(1);
-    } else if (this.isMatch("/>")) {
-      children = [];
-      this.adv(2);
-    } else {
-      throw new SyntaxError("Tag is not closed");
-    }
-    return { t: tagName, a: attrs, c: children };
-  }
-
-  private parseAttrs(): TAttributes {
-    const attrs: TAttributes = {};
-    this.getSpace();
-    let attrName = "";
-    while ((attrName = this.getWord())) {
-      let attrValue;
-      if (this.c() === "=") {
-        this.adv(1);
-        const p = this.c();
-        if (p !== '"' && p !== "'")
-          throw new SyntaxError("Attribute value does not start with \" or '");
-        this.adv(1);
-        attrValue = this.getTill(p);
-        this.adv(1);
-      } else {
-        attrValue = attrName;
+      current.c.push(newNode);
+      if (oclose === "") {
+        stack.push(current);
+        current = newNode;
       }
-      attrs[attrName] = attrValue;
-      this.getSpace();
+    } else if (text != null) {
+      const trimmedText = text.trim();
+      if (trimmedText) {
+        current.c.push(trimmedText);
+      }
     }
-    return attrs;
   }
-
-  parse(src: string): TNode {
-    this.init(src + "</");
-    const nodes = this.parseTags();
-    if (this.p !== this.src.length - 2)
-      throw new SyntaxError("Unexpected end tag");
-    if (nodes[0] == null || nodes.length > 1)
-      throw new Error("Create only one root element in your template");
-    this.init("");
-    return nodes[0];
+  if (stack.length !== 0) {
+    throw new Error(`Unexpected end of source: unclosed tag <${current.t}>`);
   }
-}
-
-export function parseTemplate(src: string): TNode {
-  const parser = new Parser();
-  return parser.parse(src);
+  const nodes = root.c;
+  if (nodes[0] == null || nodes.length > 1)
+    throw new Error("Create only one root element in your template");
+  return nodes[0];
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
