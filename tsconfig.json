@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "sourceMap": true,
-    "target": "es2021",
-    "module": "esnext",
+    "target": "es2022",
+    "module": "es6",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "declaration": true,

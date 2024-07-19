@@ -76,6 +76,15 @@ describe('parseTemplate()', () => {
     expect(node.c).toHaveLength(1);
     expect(node.c[0]).toBe(' <i> hello </i> ');
   });
+  test('CDATA can have line breaks', () => {
+    const node = parseTemplate('<p> <![CDATA[hello\nworld]]> </p>');
+    if (typeof node === 'string') {
+      throw new Error('node is not an object');
+    }
+    expect(node.c).toBeInstanceOf(Array);
+    expect(node.c).toHaveLength(1);
+    expect(node.c[0]).toBe('hello\nworld');
+  });
   test('Comments', () => {
     const node = parseTemplate(`
       <body>
@@ -167,9 +176,9 @@ describe('Extends TComponent', () => {
         <p>Hello</p>
       `;
     }
-    expect(App.parsedTemplate).toBeUndefined();
+    expect(Object.hasOwn(App, 'parsedTemplate')).toBe(false);
     const app = new App();
-    expect(App.parsedTemplate).toBeDefined();
+    expect(Object.hasOwn(App, 'parsedTemplate')).toBe(true);
     expect(app.element).toBeInstanceOf(HTMLParagraphElement);
     expect(app.element.textContent).toBe('Hello');
   });
@@ -337,5 +346,50 @@ describe('Extends TComponent', () => {
     expect(app.myForm1.nodesPassedWhenUsed[0]?.textContent).toBe('some text');
     expect(app.myForm2.nodesPassedWhenUsed).toHaveLength(1);
     expect(app.myForm2.nodesPassedWhenUsed[0]).toBe(app.myForm2Child);
+  });
+});
+
+describe('TComponent.from', () => {
+  test('Basic usage', () => {
+    const component = new TComponent();
+    expect(TComponent.from(component.element)).toBe(component);
+  });
+  test('Multiple components', () => {
+    const component1 = new TComponent();
+    const component2 = new TComponent();
+    expect(TComponent.from(component1.element)).toBe(component1);
+    expect(TComponent.from(component2.element)).toBe(component2);
+  });
+  test('Irrelevant elements', () => {
+    const element = document.createElement('div');
+    expect(TComponent.from(element)).toBeUndefined();
+  });
+  test('Extended components are taken from their respective classes', () => {
+    class A extends TComponent {
+    }
+    class B extends A {
+    }
+    const a = new A();
+    const b = new B();
+    expect(TComponent.from(a.element)).toBeUndefined();
+    expect(TComponent.from(b.element)).toBeUndefined();
+    expect(A.from(a.element)).toBe(a);
+    expect(A.from(b.element)).toBeUndefined();
+    expect(B.from(a.element)).toBeUndefined();
+    expect(B.from(b.element)).toBe(b);
+  });
+  test('Elements are shared by extended components', () => {
+    class A extends TComponent {
+      static template = '<span></span>';
+    }
+    class B extends TComponent {
+      static uses = { A };
+      static template = '<A id="a" />';
+      a = this.id('a') as A;
+    }
+    const b = new B();
+    expect(b.element).toBe(b.a.element);
+    expect(A.from(b.element)).toBe(b.a);
+    expect(B.from(b.element)).toBe(b);
   });
 });

@@ -21,7 +21,7 @@ export type TNode =
 
 export function parseTemplate(src: string): TNode {
   const re =
-    /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/y;
+    /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/sy;
   const root: TNode = { t: "root", a: {}, c: [] };
   let current = root;
   const stack: TNode[] = [];
@@ -49,7 +49,7 @@ export function parseTemplate(src: string): TNode {
     } else if (start != null && attrs != null) {
       const newNode: TNode = { t: start, a: {}, c: [] };
       const trimmedAttrs = attrs.trimEnd();
-      const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/y;
+      const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/sy;
       while (attrRe.lastIndex < trimmedAttrs.length) {
         const attr = attrRe.exec(trimmedAttrs);
         if (attr == null) {
@@ -307,15 +307,27 @@ export function bindLabel(
 }
 
 export class TComponent {
+  private static nodeMap: WeakMap<Element, TComponent> = new WeakMap();
   static uses?: TComponentUses;
   static template = "<div></div>";
-  static parsedTemplate?: TNode;
+  static parsedTemplate: TNode = { t: "div", a: {}, c: [] };
   readonly element: HTMLElement;
   readonly parentComponent?: TComponent;
 
+  static from<T extends typeof TComponent>(
+    this: T,
+    element: Element,
+  ): InstanceType<T> | undefined {
+    const component =
+      Object.hasOwn(this, "nodeMap") && this.nodeMap.get(element);
+    if (component) {
+      return component as InstanceType<T>;
+    }
+  }
+
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
-    if (!Object.prototype.hasOwnProperty.call(SubComponent, "parsedTemplate")) {
+    if (!Object.hasOwn(SubComponent, "parsedTemplate")) {
       SubComponent.parsedTemplate = parseTemplate(SubComponent.template);
     }
     this.element = buildElement(
@@ -348,6 +360,11 @@ export class TComponent {
         }
       }
     }
+
+    if (!Object.hasOwn(SubComponent, "nodeMap")) {
+      SubComponent.nodeMap = new WeakMap();
+    }
+    SubComponent.nodeMap.set(this.element, this);
   }
 
   protected id(name: string): unknown {
