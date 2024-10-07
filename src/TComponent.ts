@@ -307,23 +307,11 @@ export function bindLabel(
 }
 
 export class TComponent {
-  private static nodeMap: WeakMap<Element, TComponent> = new WeakMap();
   static uses?: TComponentUses;
   static template = "<div></div>";
-  static parsedTemplate: TNode = { t: "div", a: {}, c: [] };
+  static parsedTemplate?: TNode;
   readonly element: HTMLElement;
   readonly parentComponent?: TComponent;
-
-  static from<T extends typeof TComponent>(
-    this: T,
-    element: Element,
-  ): InstanceType<T> | undefined {
-    const component =
-      Object.hasOwn(this, "nodeMap") && this.nodeMap.get(element);
-    if (component) {
-      return component as InstanceType<T>;
-    }
-  }
 
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
@@ -360,11 +348,6 @@ export class TComponent {
         }
       }
     }
-
-    if (!Object.hasOwn(SubComponent, "nodeMap")) {
-      SubComponent.nodeMap = new WeakMap();
-    }
-    SubComponent.nodeMap.set(this.element, this);
   }
 
   protected id(name: string): unknown {

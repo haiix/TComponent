@@ -31,13 +31,11 @@ export declare function buildElement(tNode: TNode, thisObj?: object, uses?: TCom
 export declare function createElement(html: string, thisObj?: object, uses?: TComponentUses): HTMLElement;
 export declare function bindLabel(labelElem: HTMLLabelElement, targetElem: HTMLElement): void;
 export declare class TComponent {
-    private static nodeMap;
     static uses?: TComponentUses;
     static template: string;
-    static parsedTemplate: TNode;
+    static parsedTemplate?: TNode;
     readonly element: HTMLElement;
     readonly parentComponent?: TComponent;
-    static from<T extends typeof TComponent>(this: T, element: Element): InstanceType<T> | undefined;
     constructor(attrs?: TAttributes, nodes?: Node[], parent?: object);
     protected id(name: string): unknown;
     onerror(error: unknown): void;
