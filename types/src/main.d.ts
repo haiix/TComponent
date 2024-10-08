@@ -1,2 +1,2 @@
-export * from "./TComponent";
-export { default } from "./TComponent";
+export * from './TComponent';
+export { default } from './TComponent';
