@@ -4,7 +4,7 @@
     "browser": true
   },
   "extends": [
-    "eslint:recommended",
+    "eslint:all",
     "plugin:@typescript-eslint/recommended",
     "prettier"
   ],
@@ -16,5 +16,45 @@
   "plugins": [
     "@typescript-eslint"
   ],
+  "rules": {
+    "no-use-before-define": "off",
+    "capitalized-comments": "off",
+    "class-methods-use-this": "off",
+    "consistent-return": "off",
+    "default-param-last": "off",
+    "eqeqeq": ["error", "smart"],
+    "func-style": ["error", "declaration", {
+      "allowArrowFunctions": true
+    }],
+    "id-length": "off",
+    "init-declarations": "off",
+    "max-classes-per-file": "off",
+    "max-lines": "off",
+    "max-lines-per-function": "off",
+    "max-params": "off",
+    "max-statements": "off",
+    "no-continue": "off",
+    "no-eq-null": "off",
+    "no-inline-comments": "off",
+    "no-magic-numbers": "off",
+    "no-param-reassign": "off",
+    "no-plusplus": ["error", {
+      "allowForLoopAfterthoughts": true
+    }],
+    "no-shadow": ["error", {
+      "ignoreOnInitialization": true
+    }],
+    "no-ternary": "off",
+    "no-warning-comments": "warn",
+    "one-var": "off",
+    "prefer-destructuring": "off",
+    "prefer-named-capture-group": "off",
+    "prefer-object-has-own": "off",
+    "prefer-template": "off",
+    "radix": "off",
+    "sort-imports": "off",
+    "sort-keys": "off",
+    "sort-vars": "off"
+  },
   "root": true
 }

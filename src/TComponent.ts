@@ -21,8 +21,8 @@ export type TNode =
 
 export function parseTemplate(src: string): TNode {
   const re =
-    /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/sy;
-  const root: TNode = { t: 'root', a: {}, c: [] };
+      /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy,
+    root: TNode = { t: 'root', a: {}, c: [] };
   let current = root;
   const stack: TNode[] = [];
   while (re.lastIndex < src.length) {
@@ -47,9 +47,9 @@ export function parseTemplate(src: string): TNode {
       }
       current = temp;
     } else if (start != null && attrs != null) {
-      const newNode: TNode = { t: start, a: {}, c: [] };
-      const trimmedAttrs = attrs.trimEnd();
-      const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/sy;
+      const newNode: TNode = { t: start, a: {}, c: [] },
+        trimmedAttrs = attrs.trimEnd(),
+        attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/suy;
       while (attrRe.lastIndex < trimmedAttrs.length) {
         const attr = attrRe.exec(trimmedAttrs);
         if (attr == null) {
@@ -78,16 +78,16 @@ export function parseTemplate(src: string): TNode {
     throw new Error(`Unexpected end of source: unclosed tag <${current.t}>`);
   }
   const nodes = root.c;
-  if (nodes[0] == null || nodes.length > 1)
+  if (nodes[0] == null || nodes.length > 1) {
     throw new Error('Create only one root element in your template');
+  }
   return nodes[0];
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-export type Constructable = new (...args: any[]) => object;
-/* eslint-enable @typescript-eslint/no-explicit-any */
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+export type Constructable<T> = new (...args: any[]) => T;
 
-export function removeUndefined<T>(arr: (T | undefined | null)[]): T[] {
+export function removeUndefined<T>(arr: (T | null | undefined)[]): T[] {
   return arr.filter((value): value is T => value != null);
 }
 
@@ -125,25 +125,27 @@ export function handleFunctionError(
         return result.catch((error: unknown): void => {
           handleError(error, thisObj);
         });
-      } else {
-        return result;
       }
+      return result;
     } catch (error) {
       handleError(error, thisObj);
     }
+    return null;
   };
 }
 
 const eventFuncCache: Record<string, unknown> = {};
 export function createEventFunction(
-  code: string = '',
+  code = '',
   thisObj?: object,
 ): (event?: unknown) => unknown {
   let fc = eventFuncCache[code];
   if (!fc) {
     try {
+      // eslint-disable-next-line no-new-func
       fc = new Function('event', `return (${code});`);
     } catch {
+      // eslint-disable-next-line no-new-func
       fc = new Function('event', code);
     }
     eventFuncCache[code] = fc;
@@ -160,13 +162,17 @@ export function mergeStyles(element: HTMLElement, attrs: TAttributes): void {
   if (typeof attrs.class === 'string') {
     let pClass = (element.getAttribute('class') ?? '').trim();
     const cClass = attrs.class.trim();
-    if (pClass !== '' && cClass !== '') pClass += ' ';
+    if (pClass !== '' && cClass !== '') {
+      pClass += ' ';
+    }
     element.setAttribute('class', pClass + cClass);
   }
   if (typeof attrs.style === 'string') {
     let pStyle = (element.getAttribute('style') ?? '').trim();
     const cStyle = attrs.style.trim();
-    if (pStyle !== '' && cStyle !== '' && !pStyle.endsWith(';')) pStyle += ';';
+    if (pStyle !== '' && cStyle !== '' && !pStyle.endsWith(';')) {
+      pStyle += ';';
+    }
     element.setAttribute('style', pStyle + cStyle);
   }
 }
@@ -177,7 +183,9 @@ export function mergeAttrsWithoutStyles(
   thisObj?: object,
 ): void {
   for (const [name, value] of Object.entries(attrs)) {
-    if (typeof value !== 'string') continue;
+    if (typeof value !== 'string') {
+      continue;
+    }
     if (
       !(
         (thisObj && name === 'id') ||
@@ -211,20 +219,24 @@ export function mergeAttrs(
   mergeStyles(element, attrs);
 }
 
-const idMap: WeakMap<
+const idMap = new WeakMap<
   object,
   { id: Record<string, object>; for: Record<string, object> }
-> = new WeakMap();
+>();
 function registerId(
   attrs: TAttributes,
   target: object,
   thisObj?: object,
 ): void {
-  if (!thisObj) return;
+  if (!thisObj) {
+    return;
+  }
   const types: ['id', 'for'] = ['id', 'for'];
   for (const type of types) {
     const id = attrs[type];
-    if (id == null) continue;
+    if (id == null) {
+      continue;
+    }
     let idm = idMap.get(thisObj);
     if (!idm) {
       idm = { id: Object.create(null), for: Object.create(null) };
@@ -235,10 +247,43 @@ function registerId(
 }
 export function getElementById(thisObj: object, name: string): unknown {
   const idm = idMap.get(thisObj);
-  return idm && idm['id'][name];
+  return idm && idm.id[name];
 }
 
-export type TComponentUses = Record<string, Constructable>;
+export type TComponentUses = Record<string, Constructable<object>>;
+
+function buildElementRecur(
+  tNode: TNode,
+  thisObj?: object,
+  uses?: TComponentUses,
+): Node | null {
+  // Text node
+  if (typeof tNode === 'string') {
+    return document.createTextNode(tNode);
+  }
+  const nodes = removeUndefined(
+      tNode.c.map((childNode) => buildElementRecur(childNode, thisObj, uses)),
+    ),
+    // Sub component
+    SubComponent = uses?.[tNode.t];
+  if (SubComponent) {
+    const attrs = { ...tNode.a };
+    if ('id' in attrs) {
+      delete attrs.id;
+    }
+    const obj = new SubComponent(attrs, nodes, thisObj);
+    registerId(tNode.a, obj, thisObj);
+    return 'element' in obj && obj.element instanceof Node ? obj.element : null;
+  }
+  // Element
+  const element = document.createElement(tNode.t);
+  mergeAttrs(element, tNode.a, thisObj);
+  for (const node of nodes) {
+    element.appendChild(node);
+  }
+  registerId(tNode.a, element, thisObj);
+  return element;
+}
 
 export function buildElement(
   tNode: TNode,
@@ -250,39 +295,6 @@ export function buildElement(
     throw new Error('The root node must be an HTMLElement.');
   }
   return node;
-}
-
-function buildElementRecur(
-  tNode: TNode,
-  thisObj?: object,
-  uses?: TComponentUses,
-): Node | undefined {
-  // Text node
-  if (typeof tNode === 'string') {
-    return document.createTextNode(tNode);
-  }
-  const nodes = removeUndefined(
-    tNode.c.map((tNode) => buildElementRecur(tNode, thisObj, uses)),
-  );
-  // Sub component
-  const SubComponent = uses?.[tNode.t];
-  if (SubComponent) {
-    const attrs = { ...tNode.a };
-    if ('id' in attrs) delete attrs.id;
-    const obj = new SubComponent(attrs, nodes, thisObj);
-    registerId(tNode.a, obj, thisObj);
-    return 'element' in obj && obj.element instanceof Node
-      ? obj.element
-      : undefined;
-  }
-  // Element
-  const element = document.createElement(tNode.t);
-  mergeAttrs(element, tNode.a, thisObj);
-  for (const node of nodes) {
-    element.appendChild(node);
-  }
-  registerId(tNode.a, element, thisObj);
-  return element;
 }
 
 export function createElement(
@@ -298,9 +310,10 @@ export function bindLabel(
   labelElem: HTMLLabelElement,
   targetElem: HTMLElement,
 ): void {
-  let id = targetElem.id;
+  let { id } = targetElem;
   if (!id) {
-    id = 't-component-global-id-' + ++globalIdCounter;
+    globalIdCounter += 1;
+    id = `t-component-global-id-${globalIdCounter}`;
     targetElem.id = id;
   }
   labelElem.htmlFor = id;
@@ -311,16 +324,16 @@ export class TComponent {
   static template = '<div></div>';
   static parsedTemplate?: TNode;
   readonly element: HTMLElement;
-  readonly parentComponent?: TComponent;
+  parentComponent: TComponent | null = null;
 
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
-    //if (!Object.hasOwn(SubComponent, "parsedTemplate")) { // ES2022
-    if (!Object.hasOwnProperty.call(SubComponent, 'parsedTemplate')) {
+    //if (!Object.hasOwn(SubComponent, 'parsedTemplate')) { // ES2022
+    if (!Object.prototype.hasOwnProperty.call(SubComponent, 'parsedTemplate')) {
       SubComponent.parsedTemplate = parseTemplate(SubComponent.template);
     }
     this.element = buildElement(
-      SubComponent.parsedTemplate as TNode,
+      SubComponent.parsedTemplate!,
       this,
       SubComponent.uses,
     );
@@ -338,14 +351,16 @@ export class TComponent {
     const idm = idMap.get(this);
     if (idm) {
       for (const key in idm.for) {
-        const labelElem = idm.for[key];
-        const targetElem = idm.id[key];
-        // TODO: Support HTMLOutputElement
-        if (
-          labelElem instanceof HTMLLabelElement &&
-          targetElem instanceof HTMLElement
-        ) {
-          bindLabel(labelElem, targetElem);
+        if (Object.prototype.hasOwnProperty.call(idm.for, key)) {
+          const labelElem = idm.for[key],
+            targetElem = idm.id[key];
+          // TODO: Support HTMLOutputElement
+          if (
+            labelElem instanceof HTMLLabelElement &&
+            targetElem instanceof HTMLElement
+          ) {
+            bindLabel(labelElem, targetElem);
+          }
         }
       }
     }
