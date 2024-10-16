@@ -12,7 +12,7 @@
     class MyListItem extends TComponent {
       static template = `<li id="_li"></li>`;
 
-      _li = this.id('_li');
+      _li = this.id('_li', HTMLElement);
 
       constructor(attrs, elems = []) {
         super()

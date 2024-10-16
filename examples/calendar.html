@@ -26,9 +26,9 @@
         </div>
       `;
 
-      _month = this.id('_month');
-      _year = this.id('_year');
-      _tbody = this.id('_tbody');
+      _month = this.id('_month', HTMLSelectElement);
+      _year = this.id('_year', HTMLInputElement);
+      _tbody = this.id('_tbody', HTMLElement);
 
       constructor({year = new Date().getFullYear(), month = new Date().getMonth()} = {}) {
         super();

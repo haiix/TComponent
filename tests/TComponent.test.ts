@@ -186,15 +186,16 @@ describe('Extends TComponent', () => {
   test('Bind ids', () => {
     class App extends TComponent {
       static template = `
-        <section>
+        <section id="section">
           <h2 id="title">here</h2>
           <p>
             It has <b id="bold">some</b> text.
           </p>
         </section>
       `;
-      title = this.id('title') as HTMLHeadingElement;
-      bold = this.id('bold') as HTMLElement;
+      section = this.id('section', HTMLElement);
+      title = this.id('title', HTMLHeadingElement);
+      bold = this.id('bold', HTMLElement);
     }
     const app = new App();
     expect(app.title).toBeInstanceOf(HTMLHeadingElement);
@@ -295,7 +296,7 @@ describe('Extends TComponent', () => {
 
   test('Use sub-component', () => {
     class SubComponent extends TComponent {
-      template = `
+      static template = `
         <label id="nameOfPet">
           <span>Please enter the name of your pet.</span>
           <input
@@ -304,7 +305,7 @@ describe('Extends TComponent', () => {
         </label>
       `;
 
-      nameOfPet = this.id('nameOfPet') as HTMLElement;
+      nameOfPet = this.id('nameOfPet', HTMLElement);
       attrsPassedWhenUsed: TAttributes;
       nodesPassedWhenUsed: Node[];
       modified = false;
@@ -329,13 +330,14 @@ describe('Extends TComponent', () => {
         </section>
       `;
 
-      myForm1 = this.id('myForm1') as SubComponent;
-      myForm2 = this.id('myForm2') as SubComponent;
-      myForm2Child = this.id('myForm2Child') as HTMLParagraphElement;
+      myForm1 = this.id('myForm1', SubComponent);
+      myForm2 = this.id('myForm2', SubComponent);
+      myForm2Child = this.id('myForm2Child', HTMLParagraphElement);
     }
     const app = new App();
     expect(app.element).toBeInstanceOf(HTMLElement);
     expect(app.myForm1).toBeInstanceOf(TComponent);
+    expect(app.myForm1.nameOfPet).toBeInstanceOf(HTMLElement);
     expect(app.myForm2).toBeInstanceOf(TComponent);
     expect(app.myForm2Child).toBeInstanceOf(HTMLParagraphElement);
     expect(app.element.childElementCount).toBe(3);

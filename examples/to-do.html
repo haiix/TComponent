@@ -17,9 +17,9 @@
         </li>
       `;
 
-      _item = this.id('_item');
-      _isCompleted = this.id('_isCompleted');
-      _task = this.id('_task');
+      _item = this.id('_item', HTMLElement);
+      _isCompleted = this.id('_isCompleted', HTMLInputElement);
+      _task = this.id('_task', HTMLElement);
 
       set task(v) {
         this._task.textContent = v;
@@ -55,9 +55,9 @@
         </div>
       `;
 
-      _filter = this.id('_filter');
-      _list = this.id('_list');
-      _newTask = this.id('_newTask');
+      _filter = this.id('_filter', HTMLSelectElement);
+      _list = this.id('_list', HTMLElement);
+      _newTask = this.id('_newTask', HTMLInputElement);
       _items = [];
 
       handleChange(event) {

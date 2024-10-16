@@ -42,9 +42,9 @@
         </div>
       `;
 
-      label = this.id('label');
-      numberInput = this.id('numberInput');
-      rangeInput = this.id('rangeInput');
+      label = this.id('label', HTMLElement);
+      numberInput = this.id('numberInput', HTMLInputElement);
+      rangeInput = this.id('rangeInput', HTMLInputElement);
 
       constructor(attr, nodes, parent) {
         super(attr, null, parent);
@@ -80,10 +80,10 @@
         </div>
       `;
 
-      colorView = this.id('colorView');
-      r = this.id('r');
-      g = this.id('g');
-      b = this.id('b');
+      colorView = this.id('colorView', HTMLElement);
+      r = this.id('r', ColorController);
+      g = this.id('g', ColorController);
+      b = this.id('b', ColorController);
 
       init() {
         this.handleChange();

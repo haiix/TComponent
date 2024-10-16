@@ -24,7 +24,7 @@ class App extends TComponent {
   `;
 
   // Bind the id to the instance.
-  myOutput = this.id('myOutput');
+  myOutput = this.id('myOutput', HTMLElement);
 
   handleMyButton(event) {
     this.myOutput.textContent += 'World!';

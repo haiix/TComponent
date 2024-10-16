@@ -85,7 +85,7 @@ export function parseTemplate(src: string): TNode {
 }
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-export type Constructable<T> = new (...args: any[]) => T;
+export type ConstructorOf<T> = new (...args: any[]) => T;
 
 export function removeUndefined<T>(arr: (T | null | undefined)[]): T[] {
   return arr.filter((value): value is T => value != null);
@@ -250,7 +250,7 @@ export function getElementById(thisObj: object, name: string): unknown {
   return idm && idm.id[name];
 }
 
-export type TComponentUses = Record<string, Constructable<object>>;
+export type TComponentUses = Record<string, ConstructorOf<object>>;
 
 function buildElementRecur(
   tNode: TNode,
@@ -366,8 +366,12 @@ export class TComponent {
     }
   }
 
-  protected id(name: string): unknown {
-    return getElementById(this, name);
+  protected id<T>(id: string, constructor: ConstructorOf<T>): T {
+    const element = getElementById(this, id);
+    if (!(element instanceof constructor)) {
+      throw new Error('Element is not an instance of the provided constructor');
+    }
+    return element;
   }
 
   onerror(error: unknown): void {

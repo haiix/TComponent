@@ -6,7 +6,7 @@ export type TNode = string | {
     c: TNode[];
 };
 export declare function parseTemplate(src: string): TNode;
-export type Constructable<T> = new (...args: any[]) => T;
+export type ConstructorOf<T> = new (...args: any[]) => T;
 export declare function removeUndefined<T>(arr: (T | null | undefined)[]): T[];
 export declare function isObject(value: unknown): value is object;
 export declare function handleFunctionError(fn: unknown, thisObj?: object): (...args: unknown[]) => unknown;
@@ -26,7 +26,7 @@ export declare function mergeAttrsWithoutStyles(element: HTMLElement, attrs: TAt
  */
 export declare function mergeAttrs(element: HTMLElement, attrs: TAttributes, thisObj?: object): void;
 export declare function getElementById(thisObj: object, name: string): unknown;
-export type TComponentUses = Record<string, Constructable<object>>;
+export type TComponentUses = Record<string, ConstructorOf<object>>;
 export declare function buildElement(tNode: TNode, thisObj?: object, uses?: TComponentUses): HTMLElement;
 export declare function createElement(html: string, thisObj?: object, uses?: TComponentUses): HTMLElement;
 export declare function bindLabel(labelElem: HTMLLabelElement, targetElem: HTMLElement): void;
@@ -37,7 +37,7 @@ export declare class TComponent {
     readonly element: HTMLElement;
     parentComponent: TComponent | null;
     constructor(attrs?: TAttributes, nodes?: Node[], parent?: object);
-    protected id(name: string): unknown;
+    protected id<T>(id: string, constructor: ConstructorOf<T>): T;
     onerror(error: unknown): void;
 }
 export default TComponent;
