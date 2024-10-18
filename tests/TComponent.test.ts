@@ -311,7 +311,7 @@ describe('Extends TComponent', () => {
       modified = false;
 
       constructor(attrs: TAttributes, nodes: Node[], parent: TComponent) {
-        super();
+        super({}, [], parent);
         this.attrsPassedWhenUsed = attrs;
         this.nodesPassedWhenUsed = nodes;
       }
@@ -336,9 +336,12 @@ describe('Extends TComponent', () => {
     }
     const app = new App();
     expect(app.element).toBeInstanceOf(HTMLElement);
+    expect(app.parentComponent).toBeNull();
     expect(app.myForm1).toBeInstanceOf(TComponent);
+    expect(app.myForm1.parentComponent).toBe(app);
     expect(app.myForm1.nameOfPet).toBeInstanceOf(HTMLElement);
     expect(app.myForm2).toBeInstanceOf(TComponent);
+    expect(app.myForm2.parentComponent).toBe(app);
     expect(app.myForm2Child).toBeInstanceOf(HTMLParagraphElement);
     expect(app.element.childElementCount).toBe(3);
     expect(app.element.children[0]).toBeInstanceOf(HTMLHeadingElement);

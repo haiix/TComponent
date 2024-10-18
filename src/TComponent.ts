@@ -9,6 +9,11 @@
 
 export const version = '1.1.0';
 
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+export type ConstructorOf<T> = new (...args: any[]) => T;
+
+export type AnyFunction = (...args: unknown[]) => unknown;
+
 export type TAttributes = Record<string, string>;
 
 export type TNode =
@@ -19,15 +24,50 @@ export type TNode =
       c: TNode[];
     };
 
+export function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+export function isFunction(target: unknown): target is AnyFunction {
+  return typeof target === 'function';
+}
+
+export function createDictionary<T>() {
+  return Object.create(null) as Record<string, T>;
+}
+
+export function removeUndefined<T>(arr: (T | null | undefined)[]): T[] {
+  return arr.filter((value): value is T => value != null);
+}
+
+function parseArguments(start: string, attrs: string) {
+  const newNode: TNode = { t: start, a: {}, c: [] };
+  const trimmedAttrs = attrs.trimEnd();
+  const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/suy;
+  while (attrRe.lastIndex < trimmedAttrs.length) {
+    const attr = attrRe.exec(trimmedAttrs);
+    if (!attr) {
+      throw new Error(
+        `Invalid attribute format at position ${attrRe.lastIndex}`,
+      );
+    }
+    const [, key, value] = attr;
+    if (key != null) {
+      newNode.a[key] = value == null ? key : value.slice(2, -1);
+    }
+  }
+  return newNode;
+}
+
 export function parseTemplate(src: string): TNode {
   const re =
-      /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy,
-    root: TNode = { t: 'root', a: {}, c: [] };
+    /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy;
+  const root: TNode = { t: 'root', a: {}, c: [] };
   let current = root;
   const stack: TNode[] = [];
   while (re.lastIndex < src.length) {
     const result = re.exec(src);
-    if (result == null) {
+    if (!result) {
       throw new Error(`Unexpected end of source at position ${re.lastIndex}`);
     }
     const [, cdata, end, start, attrs, oclose, text] = result;
@@ -47,21 +87,7 @@ export function parseTemplate(src: string): TNode {
       }
       current = temp;
     } else if (start != null && attrs != null) {
-      const newNode: TNode = { t: start, a: {}, c: [] },
-        trimmedAttrs = attrs.trimEnd(),
-        attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/suy;
-      while (attrRe.lastIndex < trimmedAttrs.length) {
-        const attr = attrRe.exec(trimmedAttrs);
-        if (attr == null) {
-          throw new Error(
-            `Invalid attribute format at position ${attrRe.lastIndex}`,
-          );
-        }
-        const [, key, value] = attr;
-        if (key != null) {
-          newNode.a[key] = value == null ? key : value.slice(2, -1);
-        }
-      }
+      const newNode = parseArguments(start, attrs);
       current.c.push(newNode);
       if (oclose === '') {
         stack.push(current);
@@ -84,45 +110,23 @@ export function parseTemplate(src: string): TNode {
   return nodes[0];
 }
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-export type ConstructorOf<T> = new (...args: any[]) => T;
-
-export function removeUndefined<T>(arr: (T | null | undefined)[]): T[] {
-  return arr.filter((value): value is T => value != null);
-}
-
-export function isObject(value: unknown): value is object {
-  return typeof value === 'object' && value !== null;
-}
-
 function handleError(error: unknown, thisObj?: object): void {
-  if (
-    thisObj &&
-    'onerror' in thisObj &&
-    typeof thisObj.onerror === 'function'
-  ) {
+  if (thisObj && 'onerror' in thisObj && isFunction(thisObj.onerror)) {
     thisObj.onerror(error);
   } else {
     throw error;
   }
 }
 
-export function handleFunctionError(
-  fn: unknown,
+export function wrapFunctionWithErrorHandling(
+  fn: AnyFunction,
   thisObj?: object,
-): (...args: unknown[]) => unknown {
-  if (typeof fn !== 'function') {
-    throw new Error();
-  }
-  return (...args: unknown[]): unknown => {
+): AnyFunction {
+  return (...args: unknown[]) => {
     try {
-      const result: unknown = fn.apply(thisObj, args);
-      if (
-        isObject(result) &&
-        'catch' in result &&
-        typeof result.catch === 'function'
-      ) {
-        return result.catch((error: unknown): void => {
+      const result = fn.apply(thisObj, args);
+      if (isObject(result) && isFunction(result.catch)) {
+        return result.catch((error: unknown) => {
           handleError(error, thisObj);
         });
       }
@@ -134,23 +138,23 @@ export function handleFunctionError(
   };
 }
 
-const eventFuncCache: Record<string, unknown> = {};
+const eventFuncCache = createDictionary<AnyFunction>();
 export function createEventFunction(
-  code = '',
+  code: string,
   thisObj?: object,
-): (event?: unknown) => unknown {
+): AnyFunction {
   let fc = eventFuncCache[code];
   if (!fc) {
     try {
-      // eslint-disable-next-line no-new-func
-      fc = new Function('event', `return (${code});`);
+      // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
+      fc = new Function('event', `return (${code});`) as AnyFunction;
     } catch {
-      // eslint-disable-next-line no-new-func
-      fc = new Function('event', code);
+      // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
+      fc = new Function('event', code) as AnyFunction;
     }
     eventFuncCache[code] = fc;
   }
-  return handleFunctionError(fc, thisObj);
+  return wrapFunctionWithErrorHandling(fc, thisObj);
 }
 
 /**
@@ -183,9 +187,6 @@ export function mergeAttrsWithoutStyles(
   thisObj?: object,
 ): void {
   for (const [name, value] of Object.entries(attrs)) {
-    if (typeof value !== 'string') {
-      continue;
-    }
     if (
       !(
         (thisObj && name === 'id') ||
@@ -196,7 +197,7 @@ export function mergeAttrsWithoutStyles(
     ) {
       if (thisObj && name.startsWith('on')) {
         const fn = createEventFunction(value, thisObj);
-        element.addEventListener(name.slice(2), fn);
+        (element as unknown as Record<string, unknown>)[name] = fn;
       } else {
         element.setAttribute(name, value);
       }
@@ -234,17 +235,20 @@ function registerId(
   const types: ['id', 'for'] = ['id', 'for'];
   for (const type of types) {
     const id = attrs[type];
-    if (id == null) {
-      continue;
+    if (id != null) {
+      let idm = idMap.get(thisObj);
+      if (!idm) {
+        idm = {
+          id: createDictionary<object>(),
+          for: createDictionary<object>(),
+        };
+        idMap.set(thisObj, idm);
+      }
+      idm[type][id] = target;
     }
-    let idm = idMap.get(thisObj);
-    if (!idm) {
-      idm = { id: Object.create(null), for: Object.create(null) };
-      idMap.set(thisObj, idm);
-    }
-    idm[type][id] = target;
   }
 }
+
 export function getElementById(thisObj: object, name: string): unknown {
   const idm = idMap.get(thisObj);
   return idm && idm.id[name];
@@ -262,10 +266,10 @@ function buildElementRecur(
     return document.createTextNode(tNode);
   }
   const nodes = removeUndefined(
-      tNode.c.map((childNode) => buildElementRecur(childNode, thisObj, uses)),
-    ),
-    // Sub component
-    SubComponent = uses?.[tNode.t];
+    tNode.c.map((childNode) => buildElementRecur(childNode, thisObj, uses)),
+  );
+  // Sub component
+  const SubComponent = uses?.[tNode.t];
   if (SubComponent) {
     const attrs = { ...tNode.a };
     if ('id' in attrs) {
@@ -329,14 +333,18 @@ export class TComponent {
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
     //if (!Object.hasOwn(SubComponent, 'parsedTemplate')) { // ES2022
-    if (!Object.prototype.hasOwnProperty.call(SubComponent, 'parsedTemplate')) {
+    if (
+      !Object.prototype.hasOwnProperty.call(SubComponent, 'parsedTemplate') ||
+      !SubComponent.parsedTemplate
+    ) {
       SubComponent.parsedTemplate = parseTemplate(SubComponent.template);
     }
     this.element = buildElement(
-      SubComponent.parsedTemplate!,
+      SubComponent.parsedTemplate,
       this,
       SubComponent.uses,
     );
+
     if (attrs) {
       mergeAttrs(this.element, attrs, parent);
     }
@@ -348,12 +356,13 @@ export class TComponent {
     if (parent instanceof TComponent) {
       this.parentComponent = parent;
     }
+
     const idm = idMap.get(this);
     if (idm) {
       for (const key in idm.for) {
         if (Object.prototype.hasOwnProperty.call(idm.for, key)) {
-          const labelElem = idm.for[key],
-            targetElem = idm.id[key];
+          const labelElem = idm.for[key];
+          const targetElem = idm.id[key];
           // TODO: Support HTMLOutputElement
           if (
             labelElem instanceof HTMLLabelElement &&
