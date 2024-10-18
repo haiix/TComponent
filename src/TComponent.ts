@@ -323,12 +323,25 @@ export function bindLabel(
   labelElem.htmlFor = id;
 }
 
+const nodeMap = new WeakMap<HTMLElement, TComponent>();
+
 export class TComponent {
   static uses?: TComponentUses;
   static template = '<div></div>';
   static parsedTemplate?: TNode;
   readonly element: HTMLElement;
   parentComponent: TComponent | null = null;
+
+  static from<T extends typeof TComponent>(
+    this: T,
+    element: HTMLElement,
+  ): InstanceType<T> | null {
+    const component = nodeMap.get(element);
+    if (component instanceof this) {
+      return component as InstanceType<T>;
+    }
+    return null;
+  }
 
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
@@ -373,6 +386,8 @@ export class TComponent {
         }
       }
     }
+
+    if (!nodeMap.get(this.element)) nodeMap.set(this.element, this);
   }
 
   protected id<T>(id: string, constructor: ConstructorOf<T>): T {

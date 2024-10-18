@@ -39,6 +39,7 @@ export declare class TComponent {
     static parsedTemplate?: TNode;
     readonly element: HTMLElement;
     parentComponent: TComponent | null;
+    static from<T extends typeof TComponent>(this: T, element: HTMLElement): InstanceType<T> | null;
     constructor(attrs?: TAttributes, nodes?: Node[], parent?: object);
     protected id<T>(id: string, constructor: ConstructorOf<T>): T;
     onerror(error: unknown): void;

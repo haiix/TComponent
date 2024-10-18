@@ -8,36 +8,44 @@ describe('parseTemplate()', () => {
     const node = parseTemplate('<p></p>');
     expect(node).toHaveProperty('t', 'p');
   });
+
   test('Closing tags allow spaces', () => {
     const node = parseTemplate('<p></p \n>');
     expect(node).toHaveProperty('t', 'p');
   });
+
   test('Omitted tag name', () => {
     const node = parseTemplate('<input />');
     expect(node).toHaveProperty('t', 'input');
   });
+
   test('Attributes', () => {
     const node = parseTemplate('<p foo="bar"></p>');
     expect(node).toHaveProperty('a.foo', 'bar');
   });
+
   test('Single quote attributes', () => {
     const node = parseTemplate("<p foo='bar'></p>");
     expect(node).toHaveProperty('a.foo', 'bar');
   });
+
   test('Empty attribute values', () => {
     const node = parseTemplate(`<p foo="" bar=''></p>`);
     expect(node).toHaveProperty('a.foo', '');
     expect(node).toHaveProperty('a.bar', '');
   });
+
   test('Omitted attributes', () => {
     const node = parseTemplate('<p foo></p>');
     expect(node).toHaveProperty('a.foo', 'foo');
   });
+
   test('Allow space on the end tag', () => {
     const node = parseTemplate('<p></p \t>');
     expect(node).toHaveProperty('a');
     expect(node).toHaveProperty('t', 'p');
   });
+
   test('Child nodes', () => {
     const node = parseTemplate(`
       <ul>
@@ -58,6 +66,7 @@ describe('parseTemplate()', () => {
     expect(node.c[1].c).toBeInstanceOf(Array);
     expect(node.c[1].c).toHaveLength(1);
   });
+
   test('Text content', () => {
     const node = parseTemplate('<p>hello</p>');
     if (typeof node === 'string') {
@@ -67,6 +76,7 @@ describe('parseTemplate()', () => {
     expect(node.c).toHaveLength(1);
     expect(node.c[0]).toBe('hello');
   });
+
   test('CDATA', () => {
     const node = parseTemplate('<p> <![CDATA[ <i> hello </i> ]]> </p>');
     if (typeof node === 'string') {
@@ -76,6 +86,7 @@ describe('parseTemplate()', () => {
     expect(node.c).toHaveLength(1);
     expect(node.c[0]).toBe(' <i> hello </i> ');
   });
+
   test('CDATA can have line breaks', () => {
     const node = parseTemplate('<p> <![CDATA[hello\nworld]]> </p>');
     if (typeof node === 'string') {
@@ -85,6 +96,7 @@ describe('parseTemplate()', () => {
     expect(node.c).toHaveLength(1);
     expect(node.c[0]).toBe('hello\nworld');
   });
+
   test('Comments', () => {
     const node = parseTemplate(`
       <body>
@@ -104,6 +116,7 @@ describe('parseTemplate()', () => {
     expect(node.c).toBeInstanceOf(Array);
     expect(node.c).toHaveLength(2);
   });
+
   test('Errors', () => {
     expect(() => { parseTemplate('<p /><p>Multi tags</p>') }).toThrow(Error);
     expect(() => { parseTemplate('<!-- Unexpected end of input') }).toThrow(Error);
@@ -136,7 +149,8 @@ describe('buildElement()', () => {
     expect(spanElement.textContent).toBe('Please enter the name of your pet.');
     expect(inputElement.getAttribute('onclick')).toBe('handleClick(event)');
     expect(inputElement.onclick).toBeInstanceOf(Function);
-  })
+  });
+
   test('Component', () => {
     const node = parseTemplate(`
       <label id="nameOfPet">
@@ -351,5 +365,54 @@ describe('Extends TComponent', () => {
     expect(app.myForm1.nodesPassedWhenUsed[0]?.textContent).toBe('some text');
     expect(app.myForm2.nodesPassedWhenUsed).toHaveLength(1);
     expect(app.myForm2.nodesPassedWhenUsed[0]).toBe(app.myForm2Child);
+  });
+});
+
+describe('TComponent.from', () => {
+  test('Basic usage', () => {
+    const component = new TComponent();
+    expect(TComponent.from(component.element)).toBe(component);
+  });
+
+  test('Multiple components', () => {
+    const component1 = new TComponent();
+    const component2 = new TComponent();
+    expect(TComponent.from(component1.element)).toBe(component1);
+    expect(TComponent.from(component2.element)).toBe(component2);
+  });
+
+  test('Irrelevant elements', () => {
+    const element = document.createElement('div');
+    expect(TComponent.from(element)).toBeNull();
+  });
+
+  test('Extended components are taken from their respective classes', () => {
+    class A extends TComponent {
+    }
+    class B extends A {
+    }
+    const a = new A();
+    const b = new B();
+    expect(TComponent.from(a.element)).toBe(a);
+    expect(TComponent.from(b.element)).toBe(b);
+    expect(A.from(a.element)).toBe(a);
+    expect(A.from(b.element)).toBe(b);
+    expect(B.from(a.element)).toBeNull();
+    expect(B.from(b.element)).toBe(b);
+  });
+
+  test('When the element is shared, the child component should take precedence', () => {
+    class A extends TComponent {
+      static template = '<span></span>';
+    }
+    class B extends TComponent {
+      static uses = { A };
+      static template = '<A id="a" />';
+      a = this.id('a', A);
+    }
+    const b = new B();
+    expect(b.element).toBe(b.a.element);
+    expect(A.from(b.a.element)).toBe(b.a);
+    expect(B.from(b.element)).toBeNull();
   });
 });
