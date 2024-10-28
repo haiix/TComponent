@@ -16,15 +16,15 @@ export type AnyFunction = (...args: unknown[]) => unknown;
 
 export type TAttributes = Record<string, string>;
 
-export type TNode =
-  | string
-  | {
-      t: string;
-      a: TAttributes;
-      c: TNode[];
-    };
+export type TIntermediateNode = {
+  t: string;
+  a: TAttributes;
+  c: TNode[];
+};
 
-export function isObject(value: unknown): value is Record<string, unknown> {
+export type TNode = TIntermediateNode | string;
+
+export function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null;
 }
 
@@ -32,16 +32,16 @@ export function isFunction(target: unknown): target is AnyFunction {
   return typeof target === 'function';
 }
 
-export function createDictionary<T>() {
+export function createDictionary<T>(): Record<string, T> {
   return Object.create(null) as Record<string, T>;
 }
 
-export function removeUndefined<T>(arr: (T | null | undefined)[]): T[] {
+export function removeNull<T>(arr: (T | null | undefined)[]): T[] {
   return arr.filter((value): value is T => value != null);
 }
 
-function parseArguments(start: string, attrs: string) {
-  const newNode: TNode = { t: start, a: {}, c: [] };
+function parseArguments(start: string, attrs: string): TIntermediateNode {
+  const newNode: TIntermediateNode = { t: start, a: {}, c: [] };
   const trimmedAttrs = attrs.trimEnd();
   const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/suy;
   while (attrRe.lastIndex < trimmedAttrs.length) {
@@ -52,7 +52,7 @@ function parseArguments(start: string, attrs: string) {
       );
     }
     const [, key, value] = attr;
-    if (key != null) {
+    if (key) {
       newNode.a[key] = value == null ? key : value.slice(2, -1);
     }
   }
@@ -62,7 +62,7 @@ function parseArguments(start: string, attrs: string) {
 export function parseTemplate(src: string): TNode {
   const re =
     /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy;
-  const root: TNode = { t: 'root', a: {}, c: [] };
+  const root: TIntermediateNode = { t: 'root', a: {}, c: [] };
   let current = root;
   const stack: TNode[] = [];
   while (re.lastIndex < src.length) {
@@ -125,7 +125,7 @@ export function wrapFunctionWithErrorHandling(
   return (...args: unknown[]) => {
     try {
       const result = fn.apply(thisObj, args);
-      if (isObject(result) && isFunction(result.catch)) {
+      if (isObject(result) && 'catch' in result && isFunction(result.catch)) {
         return result.catch((error: unknown) => {
           handleError(error, thisObj);
         });
@@ -265,7 +265,7 @@ function buildElementRecur(
   if (typeof tNode === 'string') {
     return document.createTextNode(tNode);
   }
-  const nodes = removeUndefined(
+  const nodes = removeNull(
     tNode.c.map((childNode) => buildElementRecur(childNode, thisObj, uses)),
   );
   // Sub component
@@ -323,7 +323,7 @@ export function bindLabel(
   labelElem.htmlFor = id;
 }
 
-const nodeMap = new WeakMap<HTMLElement, TComponent>();
+const nodeMap = new WeakMap<object, TComponent>();
 
 export class TComponent {
   static uses?: TComponentUses;
@@ -334,13 +334,12 @@ export class TComponent {
 
   static from<T extends typeof TComponent>(
     this: T,
-    element: HTMLElement,
+    element: unknown,
   ): InstanceType<T> | null {
+    if (!isObject(element)) return null;
     const component = nodeMap.get(element);
-    if (component instanceof this) {
-      return component as InstanceType<T>;
-    }
-    return null;
+    if (!(component instanceof this)) return null;
+    return component as InstanceType<T>;
   }
 
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
@@ -390,9 +389,11 @@ export class TComponent {
     if (!nodeMap.get(this.element)) nodeMap.set(this.element, this);
   }
 
-  protected id<T>(id: string, constructor: ConstructorOf<T>): T {
+  protected id(id: string): unknown;
+  protected id<T>(id: string, constructor: ConstructorOf<T>): T;
+  protected id<T>(id: string, constructor?: ConstructorOf<T>): unknown {
     const element = getElementById(this, id);
-    if (!(element instanceof constructor)) {
+    if (constructor && !(element instanceof constructor)) {
       throw new Error('Element is not an instance of the provided constructor');
     }
     return element;
