@@ -16,13 +16,13 @@ export type AnyFunction = (...args: unknown[]) => unknown;
 
 export type TAttributes = Record<string, string>;
 
-export type TIntermediateNode = {
+interface IntermediateTNode {
   t: string;
   a: TAttributes;
   c: TNode[];
-};
+}
 
-export type TNode = TIntermediateNode | string;
+export type TNode = IntermediateTNode | string;
 
 export function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null;
@@ -40,8 +40,13 @@ export function removeNull<T>(arr: (T | null | undefined)[]): T[] {
   return arr.filter((value): value is T => value != null);
 }
 
-function parseArguments(start: string, attrs: string): TIntermediateNode {
-  const newNode: TIntermediateNode = { t: start, a: {}, c: [] };
+function createFunction(...args: string[]): AnyFunction {
+  // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
+  return new Function(...args) as AnyFunction;
+}
+
+function parseArguments(start: string, attrs: string): IntermediateTNode {
+  const newNode: IntermediateTNode = { t: start, a: {}, c: [] };
   const trimmedAttrs = attrs.trimEnd();
   const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/suy;
   while (attrRe.lastIndex < trimmedAttrs.length) {
@@ -62,7 +67,7 @@ function parseArguments(start: string, attrs: string): TIntermediateNode {
 export function parseTemplate(src: string): TNode {
   const re =
     /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy;
-  const root: TIntermediateNode = { t: 'root', a: {}, c: [] };
+  const root: IntermediateTNode = { t: 'root', a: {}, c: [] };
   let current = root;
   const stack: TNode[] = [];
   while (re.lastIndex < src.length) {
@@ -146,11 +151,9 @@ export function createEventFunction(
   let fc = eventFuncCache[code];
   if (!fc) {
     try {
-      // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
-      fc = new Function('event', `return (${code});`) as AnyFunction;
+      fc = createFunction('event', `return (${code});`);
     } catch {
-      // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
-      fc = new Function('event', code) as AnyFunction;
+      fc = createFunction('event', code);
     }
     eventFuncCache[code] = fc;
   }
@@ -189,7 +192,7 @@ export function mergeAttrsWithoutStyles(
   for (const [name, value] of Object.entries(attrs)) {
     if (
       !(
-        (thisObj && name === 'id') ||
+        (thisObj != null && name === 'id') ||
         name === 'for' ||
         name === 'class' ||
         name === 'style'
