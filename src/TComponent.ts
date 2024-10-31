@@ -48,7 +48,7 @@ function createFunction(...args: string[]): AnyFunction {
 function parseArguments(start: string, attrs: string): IntermediateTNode {
   const newNode: IntermediateTNode = { t: start, a: {}, c: [] };
   const trimmedAttrs = attrs.trimEnd();
-  const attrRe = /\s+([^\s=>]+)(="[^"]*"|='[^']*')?/suy;
+  const attrRe = /\s+([^\s=>]+)(="([^"]*)"|='([^']*)')?/suy;
   while (attrRe.lastIndex < trimmedAttrs.length) {
     const attr = attrRe.exec(trimmedAttrs);
     if (!attr) {
@@ -56,18 +56,17 @@ function parseArguments(start: string, attrs: string): IntermediateTNode {
         `Invalid attribute format at position ${attrRe.lastIndex}`,
       );
     }
-    const [, key, value] = attr;
+    const [, key, , sqValue, dqValue] = attr;
     if (key) {
-      newNode.a[key] = value == null ? key : value.slice(2, -1);
+      newNode.a[key] = sqValue ?? dqValue ?? key;
     }
   }
   return newNode;
 }
 
-export function parseTemplate(src: string): TNode {
+function parseTemplateProc(src: string, root: IntermediateTNode): void {
   const re =
     /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy;
-  const root: IntermediateTNode = { t: 'root', a: {}, c: [] };
   let current = root;
   const stack: TNode[] = [];
   while (re.lastIndex < src.length) {
@@ -105,14 +104,19 @@ export function parseTemplate(src: string): TNode {
       }
     }
   }
-  if (stack.length !== 0) {
+  if (stack.length) {
     throw new Error(`Unexpected end of source: unclosed tag <${current.t}>`);
   }
-  const nodes = root.c;
-  if (nodes[0] == null || nodes.length > 1) {
+}
+
+export function parseTemplate(src: string): TNode {
+  const root: IntermediateTNode = { t: 'root', a: {}, c: [] };
+  parseTemplateProc(src, root);
+  const firstNode = root.c.shift();
+  if (!firstNode || root.c.length) {
     throw new Error('Create only one root element in your template');
   }
-  return nodes[0];
+  return firstNode;
 }
 
 function handleError(error: unknown, thisObj?: object): void {
