@@ -1,19 +1,22 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Color checker</title>
   </head>
   <body>
     <script type="module">
-    import TComponent from '../dist/TComponent.mjs';
+      import TComponent from '../dist/TComponent.mjs';
 
-    class Calendar extends TComponent {
-      static template = `
+      class Calendar extends TComponent {
+        static template = `
         <div>
           <select id="_month" onchange="this.setYearAndMonth()">
-            ${'January,February,March,April,May,June,July,August,September,October,November,December'.split(',').map((v, i) => `<option value="${i}">${v}</option>`).join('')}
+            ${'January,February,March,April,May,June,July,August,September,October,November,December'
+              .split(',')
+              .map((v, i) => `<option value="${i}">${v}</option>`)
+              .join('')}
           </select>
           <span>, </span>
           <input type="number" id="_year" min="1900" max="2100" onchange="this.setYearAndMonth()" />
@@ -26,46 +29,52 @@
         </div>
       `;
 
-      _month = this.id('_month', HTMLSelectElement);
-      _year = this.id('_year', HTMLInputElement);
-      _tbody = this.id('_tbody', HTMLElement);
+        _month = this.id('_month', HTMLSelectElement);
+        _year = this.id('_year', HTMLInputElement);
+        _tbody = this.id('_tbody', HTMLElement);
 
-      constructor({year = new Date().getFullYear(), month = new Date().getMonth()} = {}) {
-        super();
-        this.setYearAndMonth(year, month);
-      }
+        constructor({
+          year = new Date().getFullYear(),
+          month = new Date().getMonth(),
+        } = {}) {
+          super();
+          this.setYearAndMonth(year, month);
+        }
 
-      get year() {
-        return this._year.value - 0;
-      }
+        get year() {
+          return this._year.value - 0;
+        }
 
-      get month() {
-        return this._month.value - 0;
-      }
+        get month() {
+          return this._month.value - 0;
+        }
 
-      setYearAndMonth(year = this.year, month = this.month) {
-        year = year - 0;
-        if ( Math.floor(year) !== year) throw new Error('Invalid year: ' + year);
-        year = Math.min(Math.max(this._year.min, year), this._year.max);
-        month = month - 0;
-        if (month < 0 || 12 <= month || Math.floor(month) !== month) throw new Error('Invalid month: ' + month);
-        this._year.value = '' + year;
-        this._month.value = '' + month;
-        const lastDate = new Date(new Date(year, month + 1).getTime() - 1).getDate();
-        let date = 1 - new Date(year, month).getDay();
-        for (const tr of this._tbody.childNodes) {
-          tr.style.display = date <= lastDate ? null : 'none';
-          for (const td of tr.childNodes) {
-            td.textContent = 0 < date && date <= lastDate ? '' + date : '';
-            date++;
+        setYearAndMonth(year = this.year, month = this.month) {
+          year = year - 0;
+          if (Math.floor(year) !== year)
+            throw new Error('Invalid year: ' + year);
+          year = Math.min(Math.max(this._year.min, year), this._year.max);
+          month = month - 0;
+          if (month < 0 || 12 <= month || Math.floor(month) !== month)
+            throw new Error('Invalid month: ' + month);
+          this._year.value = '' + year;
+          this._month.value = '' + month;
+          const lastDate = new Date(
+            new Date(year, month + 1).getTime() - 1,
+          ).getDate();
+          let date = 1 - new Date(year, month).getDay();
+          for (const tr of this._tbody.childNodes) {
+            tr.style.display = date <= lastDate ? null : 'none';
+            for (const td of tr.childNodes) {
+              td.textContent = 0 < date && date <= lastDate ? '' + date : '';
+              date++;
+            }
           }
         }
       }
-    }
 
-    const calendar = new Calendar();
-    document.body.appendChild(calendar.element);
-
+      const calendar = new Calendar();
+      document.body.appendChild(calendar.element);
     </script>
   </body>
 </html>

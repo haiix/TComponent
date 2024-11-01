@@ -1,7 +1,12 @@
 /**
  * @jest-environment jsdom
  */
-import TComponent, { parseTemplate, buildElement, getElementById, TAttributes } from '../src/TComponent';
+import TComponent, {
+  parseTemplate,
+  buildElement,
+  getElementById,
+  TAttributes,
+} from '../src/TComponent';
 
 describe('parseTemplate()', () => {
   test('Tag name', () => {
@@ -118,15 +123,33 @@ describe('parseTemplate()', () => {
   });
 
   test('Errors', () => {
-    expect(() => { parseTemplate('<p /><p>Multi tags</p>') }).toThrow(Error);
-    expect(() => { parseTemplate('<!-- Unexpected end of input') }).toThrow(Error);
-    expect(() => { parseTemplate('<>No tag name< />') }).toThrow(Error);
-    expect(() => { parseTemplate('<a><b>Unexpected end of input</b>') }).toThrow(Error);
-    expect(() => { parseTemplate('<p>Start and end tag name do not match</q>') }).toThrow(Error);
-    expect(() => { parseTemplate('<Tag></Tag is not closed>') }).toThrow(Error);
-    expect(() => { parseTemplate('<a <The start tag is not closed') }).toThrow(Error);
-    expect(() => { parseTemplate('<p a=1>Attribute value does not start with "</p>') }).toThrow(Error);
-    expect(() => { parseTemplate('<![CDATA[ Unexpected end of input') }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<p /><p>Multi tags</p>');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<!-- Unexpected end of input');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<>No tag name< />');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<a><b>Unexpected end of input</b>');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<p>Start and end tag name do not match</q>');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<Tag></Tag is not closed>');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<a <The start tag is not closed');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<p a=1>Attribute value does not start with "</p>');
+    }).toThrow(Error);
+    expect(() => {
+      parseTemplate('<![CDATA[ Unexpected end of input');
+    }).toThrow(Error);
   });
 });
 
@@ -162,12 +185,14 @@ describe('buildElement()', () => {
       modified: false,
       handleClick() {
         this.modified = true;
-      }
+      },
     };
     const element = buildElement(node, thisObj);
     expect(element).toBeInstanceOf(HTMLLabelElement);
     expect(element.getAttribute('id')).toBeNull();
-    expect(getElementById(thisObj, 'nameOfPet')).toBeInstanceOf(HTMLLabelElement);
+    expect(getElementById(thisObj, 'nameOfPet')).toBeInstanceOf(
+      HTMLLabelElement,
+    );
     expect(element.childElementCount).toBe(2);
     expect(element.children[0]).toBeInstanceOf(HTMLSpanElement);
     const spanElement = element.children[0] as HTMLSpanElement;
@@ -387,10 +412,8 @@ describe('TComponent.from', () => {
   });
 
   test('Extended components are taken from their respective classes', () => {
-    class A extends TComponent {
-    }
-    class B extends A {
-    }
+    class A extends TComponent {}
+    class B extends A {}
     const a = new A();
     const b = new B();
     expect(TComponent.from(a.element)).toBe(a);

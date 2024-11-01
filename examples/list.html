@@ -1,38 +1,38 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>List</title>
   </head>
   <body>
     <script type="module">
-    import TComponent from '../dist/TComponent.mjs';
+      import TComponent from '../dist/TComponent.mjs';
 
-    class MyListItem extends TComponent {
-      static template = `<li id="_li"></li>`;
+      class MyListItem extends TComponent {
+        static template = `<li id="_li"></li>`;
 
-      _li = this.id('_li', HTMLElement);
+        _li = this.id('_li', HTMLElement);
 
-      constructor(attrs, elems = []) {
-        super()
-        for (const node of elems) {
-          this.value += node.textContent;
+        constructor(attrs, elems = []) {
+          super();
+          for (const node of elems) {
+            this.value += node.textContent;
+          }
+        }
+
+        set value(v) {
+          this._li.textContent = v;
+        }
+
+        get value() {
+          return this._li.textContent;
         }
       }
 
-      set value(v) {
-        this._li.textContent = v;
-      }
-
-      get value() {
-        return this._li.textContent;
-      }
-    }
-
-    class App extends TComponent {
-      static uses = { MyListItem };
-      static template = `
+      class App extends TComponent {
+        static uses = { MyListItem };
+        static template = `
         <section>
           <ul id="_ul">
             <MyListItem>Buy snacks.</MyListItem>
@@ -46,28 +46,28 @@
         </section>
       `;
 
-      _ul = this.id('_ul');
-      _input = this.id('_input');
+        _ul = this.id('_ul');
+        _input = this.id('_input');
 
-      init() {
-        this._input.value = '';
-        this._input.focus();
+        init() {
+          this._input.value = '';
+          this._input.focus();
+        }
+
+        handleAddButton(event) {
+          event.preventDefault();
+          if (!this._input.value) return;
+          const item = new MyListItem();
+          item.value = this._input.value;
+          this._ul.appendChild(item.element);
+          this._input.value = '';
+          this.init();
+        }
       }
 
-      handleAddButton(event) {
-        event.preventDefault()
-        if (!this._input.value) return;
-        const item = new MyListItem();
-        item.value = this._input.value;
-        this._ul.appendChild(item.element);
-        this._input.value = '';
-        this.init();
-      }
-    }
-
-    const app = new App();
-    document.body.appendChild(app.element);
-    app.init();
+      const app = new App();
+      document.body.appendChild(app.element);
+      app.init();
     </script>
   </body>
 </html>

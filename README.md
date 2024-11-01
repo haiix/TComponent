@@ -1,4 +1,5 @@
 # TComponent
+
 A tiny component system written in TypeScript.
 
 ## Installation
@@ -10,7 +11,7 @@ npm install @haiix/tcomponent
 ## Usage
 
 ```javascript
-import TComponent from '@haiix/tcomponent'
+import TComponent from '@haiix/tcomponent';
 
 class App extends TComponent {
   static template = `
@@ -47,4 +48,3 @@ https://haiix.github.io/TComponent/examples/
 ## License
 
 MIT
-

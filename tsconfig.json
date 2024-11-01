@@ -2,8 +2,9 @@
   "compilerOptions": {
     "sourceMap": true,
     "target": "es2022",
-    "module": "es6",
+    "module": "esnext",
     "strict": true,
+    "esModuleInterop": true,
     "noUncheckedIndexedAccess": true,
     "declaration": true,
     "declarationDir": "./types"

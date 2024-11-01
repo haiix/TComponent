@@ -5,12 +5,13 @@
   "main": "dist/TComponent.mjs",
   "types": "types/src/TComponent.d.ts",
   "scripts": {
+    "dev": "npm run watch",
     "build": "npm run clean && npm run fix && npm run test && npm run webpack",
     "webpack": "cross-env NODE_ENV=production webpack",
     "watch": "cross-env NODE_ENV=development webpack -w",
-    "format": "prettier --write src/**/*.ts",
-    "lint": "eslint --fix src/**/*.ts",
-    "fix": "npm run format && npm run lint",
+    "prettier": "prettier --write src/**/*.ts",
+    "eslint": "eslint --fix src/**/*.ts",
+    "fix": "npm run prettier && npm run eslint",
     "test": "jest",
     "clean": "rimraf dist"
   },
@@ -34,7 +35,8 @@
     "rimraf": "^5.0.10",
     "ts-jest": "^29.1.2",
     "ts-loader": "^9.5.1",
-    "typescript": "^5.3.3",
+    "typescript": "5.5",
+    "typescript-eslint": "^8.12.2",
     "webpack": "^5.90.3",
     "webpack-cli": "^5.1.4"
   }

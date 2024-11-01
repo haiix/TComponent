@@ -1,49 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>To Do</title>
   </head>
   <body>
     <script type="module">
-    import TComponent from '../dist/TComponent.mjs'
+      import TComponent from '../dist/TComponent.mjs';
 
-    class ToDoItem extends TComponent {
-      static template = `
+      class ToDoItem extends TComponent {
+        static template = `
         <li id="_item">
           <input type="checkbox" id="_isCompleted" />
           <label id="_task" for="_isCompleted"></label>
         </li>
       `;
 
-      _item = this.id('_item', HTMLElement);
-      _isCompleted = this.id('_isCompleted', HTMLInputElement);
-      _task = this.id('_task', HTMLElement);
+        _item = this.id('_item', HTMLElement);
+        _isCompleted = this.id('_isCompleted', HTMLInputElement);
+        _task = this.id('_task', HTMLElement);
 
-      set task(v) {
-        this._task.textContent = v;
+        set task(v) {
+          this._task.textContent = v;
+        }
+
+        get task() {
+          return this._task.textContent;
+        }
+
+        get isCompleted() {
+          return this._isCompleted.checked;
+        }
+
+        show() {
+          this._item.style.display = 'list-item';
+        }
+
+        hide() {
+          this._item.style.display = 'none';
+        }
       }
 
-      get task() {
-        return this._task.textContent;
-      }
-
-      get isCompleted() {
-        return this._isCompleted.checked;
-      }
-
-      show() {
-        this._item.style.display = 'list-item';
-      }
-
-      hide() {
-        this._item.style.display = 'none';
-      }
-    }
-
-    class App extends TComponent {
-      static template = `
+      class App extends TComponent {
+        static template = `
         <div>
           Filter: <select id="_filter" onchange="this.handleChange(event)">
             <option value="all">All</option>
@@ -55,39 +55,39 @@
         </div>
       `;
 
-      _filter = this.id('_filter', HTMLSelectElement);
-      _list = this.id('_list', HTMLElement);
-      _newTask = this.id('_newTask', HTMLInputElement);
-      _items = [];
+        _filter = this.id('_filter', HTMLSelectElement);
+        _list = this.id('_list', HTMLElement);
+        _newTask = this.id('_newTask', HTMLInputElement);
+        _items = [];
 
-      handleChange(event) {
-        for (const item of this._items) {
-          if (this._filter.value === 'incomplete' && item.isCompleted) {
-            item.hide();
-          } else {
-            item.show();
+        handleChange(event) {
+          for (const item of this._items) {
+            if (this._filter.value === 'incomplete' && item.isCompleted) {
+              item.hide();
+            } else {
+              item.show();
+            }
           }
+        }
+
+        handleAddButton(event) {
+          if (!this._newTask.value) return;
+          const item = new ToDoItem();
+          item.task = this._newTask.value;
+          this._list.appendChild(item.element);
+          this._items.push(item);
+          this._newTask.value = '';
+          this._newTask.focus();
+        }
+
+        init() {
+          this._newTask.focus();
         }
       }
 
-      handleAddButton(event) {
-        if (!this._newTask.value) return;
-        const item = new ToDoItem();
-        item.task = this._newTask.value;
-        this._list.appendChild(item.element);
-        this._items.push(item);
-        this._newTask.value = '';
-        this._newTask.focus();
-      }
-
-      init() {
-        this._newTask.focus();
-      }
-    }
-
-    const app = new App();
-    document.body.appendChild(app.element);
-    app.init();
+      const app = new App();
+      document.body.appendChild(app.element);
+      app.init();
     </script>
   </body>
 </html>

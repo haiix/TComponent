@@ -1,22 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>TComponent examples</title>
   </head>
   <body>
     <script type="module">
-    import { createElement } from '../dist/TComponent.mjs';
+      import { createElement } from '../dist/TComponent.mjs';
 
-    const PAGE_NAMES = ['hello', 'list', 'to-do', 'color checker', 'calendar'];
+      const PAGE_NAMES = [
+        'hello',
+        'list',
+        'to-do',
+        'color checker',
+        'calendar',
+      ];
 
-    document.body.appendChild(createElement(`
+      document.body.appendChild(
+        createElement(`
       <section>
         <h1>${document.title}</h1>
-        <ul>${PAGE_NAMES.map(page => `<li><a href="${page}.html">${page}</a></li>`).join('')}</ul>
+        <ul>${PAGE_NAMES.map((page) => `<li><a href="${page}.html">${page}</a></li>`).join('')}</ul>
       </section>
-    `));
+    `),
+      );
     </script>
   </body>
 </html>

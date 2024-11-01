@@ -2,11 +2,11 @@ export declare const version = "1.1.0";
 export type ConstructorOf<T> = new (...args: any[]) => T;
 export type AnyFunction = (...args: unknown[]) => unknown;
 export type TAttributes = Record<string, string>;
-interface IntermediateTNode {
+type IntermediateTNode = {
     t: string;
     a: TAttributes;
     c: TNode[];
-}
+};
 export type TNode = IntermediateTNode | string;
 export declare function isObject(value: unknown): value is object;
 export declare function isFunction(target: unknown): target is AnyFunction;

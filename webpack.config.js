@@ -8,11 +8,11 @@ module.exports = {
     path: path.resolve(__dirname, isProduction ? 'dist' : 'dist-dev'),
     filename: 'TComponent.mjs',
     library: {
-      type: 'module'
+      type: 'module',
     },
   },
   experiments: {
-    outputModule: true
+    outputModule: true,
   },
   module: {
     rules: [
@@ -23,8 +23,6 @@ module.exports = {
     ],
   },
   resolve: {
-    extensions: [
-      '.ts', '.js',
-    ],
+    extensions: ['.ts', '.js'],
   },
 };

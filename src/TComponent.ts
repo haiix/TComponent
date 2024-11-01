@@ -3,8 +3,8 @@
  *
  * Copyright (c) 2024 haiix
  *
- * This module is released under the MIT license:
- * https://opensource.org/licenses/MIT
+ * This software is released under the MIT license.
+ * See: https://opensource.org/licenses/MIT
  */
 
 export const version = '1.1.0';
@@ -16,11 +16,11 @@ export type AnyFunction = (...args: unknown[]) => unknown;
 
 export type TAttributes = Record<string, string>;
 
-interface IntermediateTNode {
+type IntermediateTNode = {
   t: string;
   a: TAttributes;
   c: TNode[];
-}
+};
 
 export type TNode = IntermediateTNode | string;
 
@@ -351,7 +351,6 @@ export class TComponent {
 
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
-    //if (!Object.hasOwn(SubComponent, 'parsedTemplate')) { // ES2022
     if (
       !Object.prototype.hasOwnProperty.call(SubComponent, 'parsedTemplate') ||
       !SubComponent.parsedTemplate
@@ -382,7 +381,6 @@ export class TComponent {
         if (Object.prototype.hasOwnProperty.call(idm.for, key)) {
           const labelElem = idm.for[key];
           const targetElem = idm.id[key];
-          // TODO: Support HTMLOutputElement
           if (
             labelElem instanceof HTMLLabelElement &&
             targetElem instanceof HTMLElement
