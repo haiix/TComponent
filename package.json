@@ -9,9 +9,9 @@
     "build": "npm run clean && npm run fix && npm run test && npm run webpack",
     "webpack": "cross-env NODE_ENV=production webpack",
     "watch": "cross-env NODE_ENV=development webpack -w",
-    "prettier": "prettier --write src/**/*.ts",
-    "eslint": "eslint --fix src/**/*.ts",
-    "fix": "npm run prettier && npm run eslint",
+    "format": "prettier --write src/**/*.ts",
+    "lint": "eslint --fix src/**/*.ts",
+    "fix": "npm run format && npm run lint",
     "test": "jest",
     "clean": "rimraf dist"
   },

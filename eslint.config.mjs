@@ -1,22 +1,22 @@
+import eslintConfigPrettier from 'eslint-config-prettier';
 import globals from 'globals';
 import pluginJs from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default [
   {
     ignores: [
       'dist/**',
-      'tests/**',
-      'webpack.config.js',
+      'dist-dev/**',
+      'webpack.config.mjs',
       'eslint.config.mjs',
-      'jest.config.js',
+      'jest.config.mjs',
     ],
   },
   { files: ['**/*.{js,mjs,cjs,ts}'] },
   { languageOptions: { globals: globals.browser } },
   pluginJs.configs.all,
-  // https://typescript-eslint.io/getting-started/typed-linting/
+  // See: https://typescript-eslint.io/getting-started/typed-linting/
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   {
@@ -28,12 +28,12 @@ export default [
     },
   },
   {
-    // https://eslint.org/docs/latest/rules/
+    // See: https://eslint.org/docs/latest/rules/
     rules: {
       'no-use-before-define': 'off',
       'capitalized-comments': 'off',
       'class-methods-use-this': 'off',
-      'eqeqeq': ['error', 'smart'],
+      eqeqeq: ['error', 'smart'],
       'func-style': [
         'error',
         'declaration',
@@ -41,7 +41,7 @@ export default [
           allowArrowFunctions: true,
         },
       ],
-      'id-length': 'off',
+      'id-length': ['error', { properties: 'never' }],
       'init-declarations': 'off', // Conflicts with no-useless-assignment
       'max-classes-per-file': 'off',
       'max-lines': 'off',
