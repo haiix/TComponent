@@ -7,7 +7,7 @@
  * See: https://opensource.org/licenses/MIT
  */
 
-export const version = '1.1.0';
+export const version = '1.1.1';
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export type ConstructorOf<T> = new (...args: any[]) => T;
@@ -284,7 +284,10 @@ function buildElementRecur(
     }
     const obj = new SubComponent(attrs, nodes, thisObj);
     registerId(tNode.a, obj, thisObj);
-    return 'element' in obj && obj.element instanceof Node ? obj.element : null;
+    if ('element' in obj && obj.element instanceof Node) {
+      return obj.element;
+    }
+    return null;
   }
   // Element
   const element = document.createElement(tNode.t);
@@ -377,16 +380,14 @@ export class TComponent {
 
     const idm = idMap.get(this);
     if (idm) {
-      for (const key in idm.for) {
-        if (Object.prototype.hasOwnProperty.call(idm.for, key)) {
-          const labelElem = idm.for[key];
-          const targetElem = idm.id[key];
-          if (
-            labelElem instanceof HTMLLabelElement &&
-            targetElem instanceof HTMLElement
-          ) {
-            bindLabel(labelElem, targetElem);
-          }
+      for (const key of Object.keys(idm.for)) {
+        const labelElem = idm.for[key];
+        const targetElem = idm.id[key];
+        if (
+          labelElem instanceof HTMLLabelElement &&
+          targetElem instanceof HTMLElement
+        ) {
+          bindLabel(labelElem, targetElem);
         }
       }
     }

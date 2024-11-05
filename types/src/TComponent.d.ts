@@ -1,4 +1,4 @@
-export declare const version = "1.1.0";
+export declare const version = "1.1.1";
 export type ConstructorOf<T> = new (...args: any[]) => T;
 export type AnyFunction = (...args: unknown[]) => unknown;
 export type TAttributes = Record<string, string>;
