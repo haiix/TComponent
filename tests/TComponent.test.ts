@@ -1,12 +1,11 @@
-/**
- * @jest-environment jsdom
- */
 import TComponent, {
   parseTemplate,
   buildElement,
   getElementById,
   TAttributes,
 } from '../src/TComponent';
+
+/* eslint max-lines-per-function: off */
 
 describe('parseTemplate()', () => {
   test('Tag name', () => {
@@ -262,7 +261,7 @@ describe('Extends TComponent', () => {
       }
 
       handleButton(name: string) {
-        this.text = name + ' Clicked.';
+        this.text = `${name} Clicked.`;
       }
     }
     const app1 = new App('App1');
@@ -289,7 +288,7 @@ describe('Extends TComponent', () => {
 
       text = '';
 
-      handleButton(event: MouseEvent) {
+      handleButton() {
         throw new Error('Test error handling.');
       }
 
@@ -306,6 +305,8 @@ describe('Extends TComponent', () => {
   });
 
   test('Async error handling', async () => {
+    let callback: ((value: unknown) => void) | null = null;
+
     class App extends TComponent {
       static template = `
         <p>
@@ -317,7 +318,8 @@ describe('Extends TComponent', () => {
 
       text = '';
 
-      async handleButton(event: MouseEvent) {
+      async handleButton() {
+        await Promise.resolve();
         throw new Error('Test async error handling.');
       }
 
@@ -325,11 +327,18 @@ describe('Extends TComponent', () => {
         if (error instanceof Error) {
           this.text = error.message;
         }
+        if (callback) {
+          callback(null);
+        }
       }
     }
+
     const app = new App();
     expect(app.text).toBe('');
-    await app.element.querySelector('button')?.click();
+    await new Promise((resolve) => {
+      callback = resolve;
+      app.element.querySelector('button')?.click();
+    });
     expect(app.text).toBe('Test async error handling.');
   });
 
@@ -355,7 +364,7 @@ describe('Extends TComponent', () => {
         this.nodesPassedWhenUsed = nodes;
       }
 
-      handleChange(event: MouseEvent) {
+      handleChange() {
         this.modified = true;
       }
     }
@@ -412,30 +421,30 @@ describe('TComponent.from', () => {
   });
 
   test('Extended components are taken from their respective classes', () => {
-    class A extends TComponent {}
-    class B extends A {}
-    const a = new A();
-    const b = new B();
-    expect(TComponent.from(a.element)).toBe(a);
-    expect(TComponent.from(b.element)).toBe(b);
-    expect(A.from(a.element)).toBe(a);
-    expect(A.from(b.element)).toBe(b);
-    expect(B.from(a.element)).toBeNull();
-    expect(B.from(b.element)).toBe(b);
+    class ClassA extends TComponent {}
+    class ClassB extends ClassA {}
+    const ta = new ClassA();
+    const tb = new ClassB();
+    expect(TComponent.from(ta.element)).toBe(ta);
+    expect(TComponent.from(tb.element)).toBe(tb);
+    expect(ClassA.from(ta.element)).toBe(ta);
+    expect(ClassA.from(tb.element)).toBe(tb);
+    expect(ClassB.from(ta.element)).toBeNull();
+    expect(ClassB.from(tb.element)).toBe(tb);
   });
 
   test('When the element is shared, the child component should take precedence', () => {
-    class A extends TComponent {
+    class ClassA extends TComponent {
       static template = '<span></span>';
     }
-    class B extends TComponent {
-      static uses = { A };
-      static template = '<A id="a" />';
-      a = this.id('a', A);
+    class ClassB extends TComponent {
+      static uses = { ClassA };
+      static template = '<ClassA id="a" />';
+      ta = this.id('a', ClassA);
     }
-    const b = new B();
-    expect(b.element).toBe(b.a.element);
-    expect(A.from(b.a.element)).toBe(b.a);
-    expect(B.from(b.element)).toBeNull();
+    const tb = new ClassB();
+    expect(tb.element).toBe(tb.ta.element);
+    expect(ClassA.from(tb.ta.element)).toBe(tb.ta);
+    expect(ClassB.from(tb.element)).toBeNull();
   });
 });
