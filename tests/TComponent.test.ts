@@ -1,8 +1,8 @@
 import TComponent, {
-  parseTemplate,
+  TAttributes,
   buildElement,
   getElementById,
-  TAttributes,
+  parseTemplate,
 } from '../src/TComponent';
 
 /* eslint max-lines-per-function: off */

@@ -1,0 +1,19 @@
+{
+  "mainEntryPointFilePath": "<projectFolder>/types/src/main.d.ts",
+  "newlineKind": "lf",
+  "compiler": {
+    "skipLibCheck": true
+  },
+  "apiReport": {
+    "enabled": false
+  },
+  "docModel": {
+    "enabled": false
+  },
+  "dtsRollup": {
+    "enabled": true
+  },
+  "tsdocMetadata": {
+    "enabled": false
+  }
+}

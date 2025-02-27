@@ -7,7 +7,7 @@
  * See: https://opensource.org/licenses/MIT
  */
 
-export const version = '1.1.1';
+export const version = '1.1.2';
 
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 export type ConstructorOf<T> = new (...args: any[]) => T;
@@ -16,11 +16,11 @@ export type AnyFunction = (...args: unknown[]) => unknown;
 
 export type TAttributes = Record<string, string>;
 
-type IntermediateTNode = {
+interface IntermediateTNode {
   t: string;
   a: TAttributes;
   c: TNode[];
-};
+}
 
 export type TNode = IntermediateTNode | string;
 
@@ -64,45 +64,64 @@ function parseArguments(start: string, attrs: string): IntermediateTNode {
   return newNode;
 }
 
+function validateEndTag(
+  current: IntermediateTNode,
+  node: TNode | undefined,
+  end: string,
+  lastIndex: number,
+): IntermediateTNode {
+  if (!node || typeof node === 'string') {
+    throw new Error(
+      `No opening tag for closing tag </${end}> at position ${lastIndex}`,
+    );
+  }
+  if (current.t !== end) {
+    throw new Error(
+      `Tag mismatch: opened <${current.t}> but closed </${end}> at position ${lastIndex}`,
+    );
+  }
+  return node;
+}
+
+function parseTemplateProcPart(
+  src: string,
+  re: RegExp,
+  _current: IntermediateTNode,
+  stack: TNode[],
+): IntermediateTNode {
+  let current = _current;
+  const result = re.exec(src);
+  if (!result) {
+    throw new Error(`Unexpected end of source at position ${re.lastIndex}`);
+  }
+  const [, cdata, end, start, attrs, oclose, text] = result;
+  if (cdata != null) {
+    current.c.push(cdata);
+  } else if (end != null) {
+    current = validateEndTag(current, stack.pop(), end, re.lastIndex);
+  } else if (start != null && attrs != null) {
+    const newNode = parseArguments(start, attrs);
+    current.c.push(newNode);
+    if (oclose === '') {
+      stack.push(current);
+      current = newNode;
+    }
+  } else if (text != null) {
+    const trimmedText = text.trim();
+    if (trimmedText) {
+      current.c.push(trimmedText);
+    }
+  }
+  return current;
+}
+
 function parseTemplateProc(src: string, root: IntermediateTNode): void {
   const re =
     /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy;
   let current = root;
   const stack: TNode[] = [];
   while (re.lastIndex < src.length) {
-    const result = re.exec(src);
-    if (!result) {
-      throw new Error(`Unexpected end of source at position ${re.lastIndex}`);
-    }
-    const [, cdata, end, start, attrs, oclose, text] = result;
-    if (cdata != null) {
-      current.c.push(cdata);
-    } else if (end != null) {
-      const temp = stack.pop();
-      if (!temp || typeof temp === 'string') {
-        throw new Error(
-          `No opening tag for closing tag </${end}> at position ${re.lastIndex}`,
-        );
-      }
-      if (current.t !== end) {
-        throw new Error(
-          `Tag mismatch: opened <${current.t}> but closed </${end}> at position ${re.lastIndex}`,
-        );
-      }
-      current = temp;
-    } else if (start != null && attrs != null) {
-      const newNode = parseArguments(start, attrs);
-      current.c.push(newNode);
-      if (oclose === '') {
-        stack.push(current);
-        current = newNode;
-      }
-    } else if (text != null) {
-      const trimmedText = text.trim();
-      if (trimmedText) {
-        current.c.push(trimmedText);
-      }
-    }
+    current = parseTemplateProcPart(src, re, current, stack);
   }
   if (stack.length) {
     throw new Error(`Unexpected end of source: unclosed tag <${current.t}>`);
@@ -239,7 +258,7 @@ function registerId(
   if (!thisObj) {
     return;
   }
-  const types: ['id', 'for'] = ['id', 'for'];
+  const types = ['id', 'for'] as const;
   for (const type of types) {
     const id = attrs[type];
     if (id != null) {
@@ -355,7 +374,7 @@ export class TComponent {
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
     if (
-      !Object.prototype.hasOwnProperty.call(SubComponent, 'parsedTemplate') ||
+      !Object.hasOwn(SubComponent, 'parsedTemplate') ||
       !SubComponent.parsedTemplate
     ) {
       SubComponent.parsedTemplate = parseTemplate(SubComponent.template);

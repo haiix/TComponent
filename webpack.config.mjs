@@ -19,6 +19,7 @@ export default {
   experiments: {
     outputModule: true,
   },
+  devtool: 'source-map',
   module: {
     rules: [
       {

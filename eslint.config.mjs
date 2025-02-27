@@ -30,7 +30,6 @@ export default [
   {
     // See: https://eslint.org/docs/latest/rules/
     rules: {
-      'no-use-before-define': 'off',
       'capitalized-comments': 'off',
       'class-methods-use-this': 'off',
       eqeqeq: ['error', 'smart'],
@@ -46,7 +45,11 @@ export default [
       'max-classes-per-file': 'off',
       'max-lines': 'off',
       'max-params': ['error', 5],
-      'max-statements': ['error', 30],
+      'max-statements': ['error', 20],
+      'no-await-in-loop': 'warn',
+      'no-bitwise': 'warn',
+      'no-console': 'warn',
+      'no-continue': 'off',
       'no-eq-null': 'off', // Conflicts with eqeqeq:smart
       'no-inline-comments': 'off',
       'no-magic-numbers': 'off',
@@ -62,16 +65,19 @@ export default [
           ignoreOnInitialization: true,
         },
       ],
-      'no-ternary': 'off',
+      'no-ternary': 'off', // no-nested-ternary is still enabled
+      'no-use-before-define': 'off', // Should use @typescript-eslint/no-use-before-define
       'no-warning-comments': 'warn',
       'one-var': ['error', 'never'],
       'prefer-destructuring': 'off',
       'prefer-named-capture-group': 'off',
-      'prefer-object-has-own': 'off', // ES2022
-      'sort-imports': 'off',
+      radix: ['error', 'as-needed'],
       'sort-keys': 'off',
       'sort-vars': 'off',
 
+      '@typescript-eslint/no-use-before-define': 'warn',
+      '@typescript-eslint/non-nullable-type-assertion-style': 'off', // Conflicts with @typescript-eslint/no-non-null-assertion
+      '@typescript-eslint/prefer-promise-reject-errors': 'off', // Duplicate @typescript-eslint/only-throw-error
       '@typescript-eslint/restrict-template-expressions': [
         'error',
         {
@@ -83,8 +89,6 @@ export default [
           allowRegExp: false,
         },
       ],
-      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
-      '@typescript-eslint/non-nullable-type-assertion-style': 'off', // Conflicts with @typescript-eslint/no-non-null-assertion
     },
   },
   eslintConfigPrettier,
