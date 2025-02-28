@@ -7,63 +7,126 @@
  * See: https://opensource.org/licenses/MIT
  */
 
+/**
+ * The version of TComponent.
+ * @public
+ */
 export const version = '1.1.2';
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+/**
+ * The regex flags for the regex used in the parseTemplate function.
+ * @public
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ConstructorOf<T> = new (...args: any[]) => T;
 
+/**
+ * Generic type representing a function.
+ * @public
+ */
 export type AnyFunction = (...args: unknown[]) => unknown;
 
+/**
+ * TComponent attributes.
+ * @public
+ */
 export type TAttributes = Record<string, string>;
 
-interface IntermediateTNode {
+/**
+ * TNode type intermediate.
+ * @public
+ */
+export interface IntermediateTNode {
   t: string;
   a: TAttributes;
   c: TNode[];
 }
 
+/**
+ * TNode type.
+ * @public
+ */
 export type TNode = IntermediateTNode | string;
 
+/**
+ * Checks if the value is an object.
+ * @param value - The value to check.
+ * @returns True if the value is an object, otherwise false.
+ * @public
+ */
 export function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null;
 }
 
+/**
+ * Checks if the target is a function.
+ * @param target - The target to check.
+ * @returns True if the target is a function, otherwise false.
+ * @public
+ */
 export function isFunction(target: unknown): target is AnyFunction {
   return typeof target === 'function';
 }
 
+/**
+ * Creates a dictionary object.
+ * @returns A new dictionary object.
+ * @public
+ */
 export function createDictionary<T>(): Record<string, T> {
   return Object.create(null) as Record<string, T>;
 }
 
+/**
+ * Removes null and undefined values from an array.
+ * @param arr - The array to filter.
+ * @returns A new array without null and undefined values.
+ * @public
+ */
 export function removeNull<T>(arr: (T | null | undefined)[]): T[] {
   return arr.filter((value): value is T => value != null);
 }
 
+/**
+ * Creates a new function from the given arguments.
+ * @param args - The arguments for the function.
+ * @returns The created function.
+ */
 function createFunction(...args: string[]): AnyFunction {
   // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
   return new Function(...args) as AnyFunction;
 }
 
+/**
+ * Parses the arguments of a tag.
+ * @param start - The start tag.
+ * @param attrs - The attributes string.
+ * @returns The parsed IntermediateTNode.
+ */
 function parseArguments(start: string, attrs: string): IntermediateTNode {
   const newNode: IntermediateTNode = { t: start, a: {}, c: [] };
-  const trimmedAttrs = attrs.trimEnd();
-  const attrRe = /\s+([^\s=>]+)(="([^"]*)"|='([^']*)')?/suy;
-  while (attrRe.lastIndex < trimmedAttrs.length) {
-    const attr = attrRe.exec(trimmedAttrs);
-    if (!attr) {
-      throw new Error(
-        `Invalid attribute format at position ${attrRe.lastIndex}`,
-      );
+  const attrRe = /\s+([^\s=>]+)(?:="([^"]*)"|='([^']*)'|(=))?/suy;
+  let match;
+  while ((match = attrRe.exec(attrs))) {
+    const [, key, dqValue, sqValue, invalid] = match;
+    if (invalid) {
+      throw new Error(`Invalid attribute value at position ${match.index + 1}`);
     }
-    const [, key, , sqValue, dqValue] = attr;
     if (key) {
-      newNode.a[key] = sqValue ?? dqValue ?? key;
+      newNode.a[key] = dqValue ?? sqValue ?? key;
     }
   }
   return newNode;
 }
 
+/**
+ * Validates the end tag.
+ * @param current - The current node.
+ * @param node - The node to validate.
+ * @param end - The end tag.
+ * @param lastIndex - The last index of the regex.
+ * @returns The validated node.
+ */
 function validateEndTag(
   current: IntermediateTNode,
   node: TNode | undefined,
@@ -83,6 +146,14 @@ function validateEndTag(
   return node;
 }
 
+/**
+ * Processes a part of the template.
+ * @param src - The source string.
+ * @param re - The regex to use.
+ * @param _current - The current node.
+ * @param stack - The stack of nodes.
+ * @returns The processed node.
+ */
 function parseTemplateProcPart(
   src: string,
   re: RegExp,
@@ -115,6 +186,12 @@ function parseTemplateProcPart(
   return current;
 }
 
+/**
+ * Processes the template.
+ * @param src - The source string.
+ * @param root - The root node.
+ * @public
+ */
 function parseTemplateProc(src: string, root: IntermediateTNode): void {
   const re =
     /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy;
@@ -128,6 +205,12 @@ function parseTemplateProc(src: string, root: IntermediateTNode): void {
   }
 }
 
+/**
+ * Parses the template string.
+ * @param src - The template string.
+ * @returns The parsed TNode.
+ * @public
+ */
 export function parseTemplate(src: string): TNode {
   const root: IntermediateTNode = { t: 'root', a: {}, c: [] };
   parseTemplateProc(src, root);
@@ -138,6 +221,11 @@ export function parseTemplate(src: string): TNode {
   return firstNode;
 }
 
+/**
+ * Handles errors by calling the onerror method if available.
+ * @param error - The error to handle.
+ * @param thisObj - The object that may have an onerror method.
+ */
 function handleError(error: unknown, thisObj?: object): void {
   if (thisObj && 'onerror' in thisObj && isFunction(thisObj.onerror)) {
     thisObj.onerror(error);
@@ -146,6 +234,13 @@ function handleError(error: unknown, thisObj?: object): void {
   }
 }
 
+/**
+ * Wraps a function with error handling.
+ * @param fn - The function to wrap.
+ * @param thisObj - The object that may have an onerror method.
+ * @returns The wrapped function.
+ * @public
+ */
 export function wrapFunctionWithErrorHandling(
   fn: AnyFunction,
   thisObj?: object,
@@ -167,6 +262,14 @@ export function wrapFunctionWithErrorHandling(
 }
 
 const eventFuncCache = createDictionary<AnyFunction>();
+
+/**
+ * Creates an event function from the given code.
+ * @param code - The code for the function.
+ * @param thisObj - The object that may have an onerror method.
+ * @returns The created event function.
+ * @public
+ */
 export function createEventFunction(
   code: string,
   thisObj?: object,
@@ -187,6 +290,7 @@ export function createEventFunction(
  * Merge classes and styles into components.
  * @param element - Element whose attributes are to be merged.
  * @param attrs - Attribute values passed in the constructor.
+ * @public
  */
 export function mergeStyles(element: HTMLElement, attrs: TAttributes): void {
   if (typeof attrs.class === 'string') {
@@ -207,6 +311,13 @@ export function mergeStyles(element: HTMLElement, attrs: TAttributes): void {
   }
 }
 
+/**
+ * Merges attributes into an element without merging styles.
+ * @param element - The element to merge attributes into.
+ * @param attrs - The attributes to merge.
+ * @param thisObj - The object that may have event handlers.
+ * @public
+ */
 export function mergeAttrsWithoutStyles(
   element: HTMLElement,
   attrs: TAttributes,
@@ -236,6 +347,7 @@ export function mergeAttrsWithoutStyles(
  * @param element - Element whose attributes are to be merged.
  * @param attrs - Attribute values passed in the constructor.
  * @param thisObj - TComponent instance.
+ * @public
  */
 export function mergeAttrs(
   element: HTMLElement,
@@ -250,6 +362,13 @@ const idMap = new WeakMap<
   object,
   { id: Record<string, object>; for: Record<string, object> }
 >();
+
+/**
+ * Registers an ID for the target object.
+ * @param attrs - The attributes containing the ID.
+ * @param target - The target object.
+ * @param thisObj - The object to register the ID with.
+ */
 function registerId(
   attrs: TAttributes,
   target: object,
@@ -275,13 +394,31 @@ function registerId(
   }
 }
 
+/**
+ * Gets an element by its ID.
+ * @param thisObj - The object containing the ID map.
+ * @param name - The ID of the element.
+ * @returns The element with the given ID.
+ * @public
+ */
 export function getElementById(thisObj: object, name: string): unknown {
   const idm = idMap.get(thisObj);
   return idm && idm.id[name];
 }
 
+/**
+ * A dictionary of components to use.
+ * @public
+ */
 export type TComponentUses = Record<string, ConstructorOf<object>>;
 
+/**
+ * Recursively builds an element from a TNode.
+ * @param tNode - The TNode to build from.
+ * @param thisObj - The object to associate with the element.
+ * @param uses - The components to use.
+ * @returns The built node.
+ */
 function buildElementRecur(
   tNode: TNode,
   thisObj?: object,
@@ -318,6 +455,14 @@ function buildElementRecur(
   return element;
 }
 
+/**
+ * Builds an element from a TNode.
+ * @param tNode - The TNode to build from.
+ * @param thisObj - The object to associate with the element.
+ * @param uses - The components to use.
+ * @returns The built HTMLElement.
+ * @public
+ */
 export function buildElement(
   tNode: TNode,
   thisObj?: object,
@@ -330,6 +475,14 @@ export function buildElement(
   return node;
 }
 
+/**
+ * Creates an element from an HTML string.
+ * @param html - The HTML string.
+ * @param thisObj - The object to associate with the element.
+ * @param uses - The components to use.
+ * @returns The created HTMLElement.
+ * @public
+ */
 export function createElement(
   html: string,
   thisObj?: object,
@@ -339,6 +492,13 @@ export function createElement(
 }
 
 let globalIdCounter = 0;
+
+/**
+ * Binds a label element to a target element.
+ * @param labelElem - The label element.
+ * @param targetElem - The target element.
+ * @public
+ */
 export function bindLabel(
   labelElem: HTMLLabelElement,
   targetElem: HTMLElement,
@@ -354,6 +514,10 @@ export function bindLabel(
 
 const nodeMap = new WeakMap<object, TComponent>();
 
+/**
+ * The base class for TComponent.
+ * @public
+ */
 export class TComponent {
   static uses?: TComponentUses;
   static template = '<div></div>';
@@ -361,6 +525,12 @@ export class TComponent {
   readonly element: HTMLElement;
   parentComponent: TComponent | null = null;
 
+  /**
+   * Retrieves a TComponent instance from an element.
+   * @param this - The TComponent constructor.
+   * @param element - The element to retrieve the instance from.
+   * @returns The TComponent instance or null.
+   */
   static from<T extends typeof TComponent>(
     this: T,
     element: unknown,
@@ -371,6 +541,12 @@ export class TComponent {
     return component as InstanceType<T>;
   }
 
+  /**
+   * Creates an instance of TComponent.
+   * @param attrs - The attributes for the component.
+   * @param nodes - The child nodes for the component.
+   * @param parent - The parent object.
+   */
   constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
     const SubComponent = this.constructor as typeof TComponent;
     if (
@@ -414,8 +590,21 @@ export class TComponent {
     if (!nodeMap.get(this.element)) nodeMap.set(this.element, this);
   }
 
+  /**
+   * Retrieves an element by its ID.
+   * @param id - The ID of the element.
+   * @returns The element with the given ID.
+   */
   protected id(id: string): unknown;
+
+  /**
+   * Retrieves an element by its ID and checks its constructor.
+   * @param id - The ID of the element.
+   * @param constructor - The constructor to check.
+   * @returns The element with the given ID.
+   */
   protected id<T>(id: string, constructor: ConstructorOf<T>): T;
+
   protected id<T>(id: string, constructor?: ConstructorOf<T>): unknown {
     const element = getElementById(this, id);
     if (constructor && !(element instanceof constructor)) {
@@ -424,6 +613,10 @@ export class TComponent {
     return element;
   }
 
+  /**
+   * Handles errors by propagating them to the parent component or throwing them.
+   * @param error - The error to handle.
+   */
   onerror(error: unknown): void {
     if (this.parentComponent) {
       this.parentComponent.onerror(error);
