@@ -51,7 +51,7 @@ export default [
       'no-console': 'warn',
       'no-continue': 'off',
       'no-eq-null': 'off', // Conflicts with eqeqeq:smart
-      'no-inline-comments': 'off',
+      'no-inline-comments': 'warn',
       'no-magic-numbers': 'off',
       'no-plusplus': [
         'error',
@@ -69,15 +69,14 @@ export default [
       'no-use-before-define': 'off', // Should use @typescript-eslint/no-use-before-define
       'no-warning-comments': 'warn',
       'one-var': ['error', 'never'],
-      'prefer-destructuring': 'off',
+      'prefer-destructuring': 'warn',
       'prefer-named-capture-group': 'off',
       radix: ['error', 'as-needed'],
       'sort-keys': 'off',
       'sort-vars': 'off',
 
       '@typescript-eslint/no-use-before-define': 'warn',
-      '@typescript-eslint/non-nullable-type-assertion-style': 'off', // Conflicts with @typescript-eslint/no-non-null-assertion
-      '@typescript-eslint/prefer-promise-reject-errors': 'off', // Duplicate @typescript-eslint/only-throw-error
+      //'@typescript-eslint/non-nullable-type-assertion-style': 'off', // Conflicts with @typescript-eslint/no-non-null-assertion
       '@typescript-eslint/restrict-template-expressions': [
         'error',
         {

@@ -11,7 +11,8 @@
     "enabled": false
   },
   "dtsRollup": {
-    "enabled": true
+    "enabled": true,
+    "untrimmedFilePath": "<projectFolder>/dist/TComponent.d.ts"
   },
   "tsdocMetadata": {
     "enabled": false

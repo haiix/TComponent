@@ -1,7 +1,9 @@
 import TComponent, {
   TAttributes,
+  bindLabel,
   buildElement,
   getElementById,
+  mergeStyles,
   parseTemplate,
 } from '../src/TComponent';
 
@@ -204,6 +206,105 @@ describe('buildElement()', () => {
     expect(thisObj.modified).toBeFalsy();
     inputElement.click();
     expect(thisObj.modified).toBeTruthy();
+  });
+});
+
+describe('mergeStyles()', () => {
+  test('Merges class attributes', () => {
+    const element = document.createElement('div');
+    element.setAttribute('class', 'existing-class');
+    const attrs: TAttributes = { class: 'new-class' };
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('class')).toBe('existing-class new-class');
+  });
+
+  test('Handles empty existing class attribute', () => {
+    const element = document.createElement('div');
+    const attrs: TAttributes = { class: 'new-class' };
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('class')).toBe('new-class');
+  });
+
+  test('Handles empty new class attribute', () => {
+    const element = document.createElement('div');
+    element.setAttribute('class', 'existing-class');
+    const attrs: TAttributes = { class: '' };
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('class')).toBe('existing-class');
+  });
+
+  test('Merges style attributes', () => {
+    const element = document.createElement('div');
+    element.setAttribute('style', 'color: red');
+    const attrs: TAttributes = { style: 'background: blue' };
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('style')).toBe('color: red; background: blue');
+  });
+
+  test('Handles empty existing style attribute', () => {
+    const element = document.createElement('div');
+    const attrs: TAttributes = { style: 'background: blue' };
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('style')).toBe('background: blue');
+  });
+
+  test('Handles empty new style attribute', () => {
+    const element = document.createElement('div');
+    element.setAttribute('style', 'color: red');
+    const attrs: TAttributes = { style: '' };
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('style')).toBe('color: red');
+  });
+
+  test('Handles both class and style attributes', () => {
+    const element = document.createElement('div');
+    element.setAttribute('class', 'existing-class');
+    element.setAttribute('style', 'color: red');
+    const attrs: TAttributes = {
+      class: 'new-class',
+      style: 'background: blue',
+    };
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('class')).toBe('existing-class new-class');
+    expect(element.getAttribute('style')).toBe('color: red; background: blue');
+  });
+
+  test('Handles missing class and style attributes', () => {
+    const element = document.createElement('div');
+    const attrs: TAttributes = {};
+    mergeStyles(element, attrs);
+    expect(element.getAttribute('class')).toBeNull();
+    expect(element.getAttribute('style')).toBeNull();
+  });
+});
+
+describe('bindLabel()', () => {
+  test('Binds label to target with existing id', () => {
+    const labelElem = document.createElement('label');
+    const targetElem = document.createElement('input');
+    targetElem.id = 'existing-id';
+    bindLabel(labelElem, targetElem);
+    expect(labelElem.htmlFor).toBe('existing-id');
+  });
+
+  test('Binds label to target without id', () => {
+    const labelElem = document.createElement('label');
+    const targetElem = document.createElement('input');
+    bindLabel(labelElem, targetElem);
+    expect(labelElem.htmlFor).toMatch(/^t-component-global-id-\d+$/u);
+    expect(targetElem.id).toBe(labelElem.htmlFor);
+  });
+
+  test('Generates unique ids for multiple targets', () => {
+    const labelElem1 = document.createElement('label');
+    const targetElem1 = document.createElement('input');
+    const labelElem2 = document.createElement('label');
+    const targetElem2 = document.createElement('input');
+    bindLabel(labelElem1, targetElem1);
+    bindLabel(labelElem2, targetElem2);
+    expect(labelElem1.htmlFor).not.toBe(labelElem2.htmlFor);
+    expect(targetElem1.id).toBe(labelElem1.htmlFor);
+    expect(targetElem2.id).toBe(labelElem2.htmlFor);
   });
 });
 

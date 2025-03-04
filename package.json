@@ -3,7 +3,7 @@
   "version": "1.1.2",
   "description": "A tiny component system written in TypeScript.",
   "main": "dist/TComponent.mjs",
-  "types": "dist/tcomponent.d.ts",
+  "types": "dist/TComponent.d.ts",
   "files": [
     "dist"
   ],

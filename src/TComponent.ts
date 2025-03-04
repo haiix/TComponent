@@ -14,11 +14,14 @@
 export const version = '1.1.2';
 
 /**
- * The regex flags for the regex used in the parseTemplate function.
+ * A type alias for a constructor function that creates an instance of type `T`.
  * @public
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ConstructorOf<T> = new (...args: any[]) => T;
+export interface ConstructorOf<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  new (...args: any[]): T;
+  prototype: T;
+}
 
 /**
  * Generic type representing a function.
@@ -293,19 +296,19 @@ export function createEventFunction(
  * @public
  */
 export function mergeStyles(element: HTMLElement, attrs: TAttributes): void {
-  if (typeof attrs.class === 'string') {
+  if (attrs.class) {
     let pClass = (element.getAttribute('class') ?? '').trim();
     const cClass = attrs.class.trim();
-    if (pClass !== '' && cClass !== '') {
+    if (pClass && cClass) {
       pClass += ' ';
     }
     element.setAttribute('class', pClass + cClass);
   }
-  if (typeof attrs.style === 'string') {
+  if (attrs.style) {
     let pStyle = (element.getAttribute('style') ?? '').trim();
     const cStyle = attrs.style.trim();
-    if (pStyle !== '' && cStyle !== '' && !pStyle.endsWith(';')) {
-      pStyle += ';';
+    if (pStyle && cStyle && !pStyle.endsWith(';')) {
+      pStyle += '; ';
     }
     element.setAttribute('style', pStyle + cStyle);
   }
@@ -608,7 +611,9 @@ export class TComponent {
   protected id<T>(id: string, constructor?: ConstructorOf<T>): unknown {
     const element = getElementById(this, id);
     if (constructor && !(element instanceof constructor)) {
-      throw new Error('Element is not an instance of the provided constructor');
+      throw new Error(
+        `Element with id "${id}" is not an instance of ${constructor.name}`,
+      );
     }
     return element;
   }
