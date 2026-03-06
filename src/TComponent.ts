@@ -1,633 +1,317 @@
-/*
- * TComponent.ts
- *
- * Copyright (c) 2024 haiix
- *
- * This software is released under the MIT license.
- * See: https://opensource.org/licenses/MIT
- */
-
 /**
- * The version of TComponent.
- * @public
+ * Represents an Abstract Syntax Tree (AST) node of a parsed template.
  */
-export const version = '1.1.2';
-
-/**
- * A type alias for a constructor function that creates an instance of type `T`.
- * @public
- */
-export interface ConstructorOf<T> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  new (...args: any[]): T;
-  prototype: T;
-}
-
-/**
- * Generic type representing a function.
- * @public
- */
-export type AnyFunction = (...args: unknown[]) => unknown;
-
-/**
- * TComponent attributes.
- * @public
- */
-export type TAttributes = Record<string, string>;
-
-/**
- * TNode type intermediate.
- * @public
- */
-export interface IntermediateTNode {
+interface TNode {
+  /** The tag name of the element (converted to lowercase). */
   t: string;
-  a: TAttributes;
-  c: TNode[];
+  /** A dictionary of the element's attributes. */
+  a: Record<string, string>;
+  /** An array of child nodes, which can be either `TNode` objects or plain text strings. */
+  c: (TNode | string)[];
 }
 
 /**
- * TNode type.
- * @public
+ * Recursively parses a DOM Node into a `TNode` or a text string.
+ *
+ * @param node - The DOM node to parse.
+ * @returns A parsed `TNode`, a text string, or `null` if the node should be ignored.
  */
-export type TNode = IntermediateTNode | string;
-
-/**
- * Checks if the value is an object.
- * @param value - The value to check.
- * @returns True if the value is an object, otherwise false.
- * @public
- */
-export function isObject(value: unknown): value is object {
-  return typeof value === 'object' && value !== null;
-}
-
-/**
- * Checks if the target is a function.
- * @param target - The target to check.
- * @returns True if the target is a function, otherwise false.
- * @public
- */
-export function isFunction(target: unknown): target is AnyFunction {
-  return typeof target === 'function';
-}
-
-/**
- * Creates a dictionary object.
- * @returns A new dictionary object.
- * @public
- */
-export function createDictionary<T>(): Record<string, T> {
-  return Object.create(null) as Record<string, T>;
-}
-
-/**
- * Removes null and undefined values from an array.
- * @param arr - The array to filter.
- * @returns A new array without null and undefined values.
- * @public
- */
-export function removeNull<T>(arr: (T | null | undefined)[]): T[] {
-  return arr.filter((value): value is T => value != null);
-}
-
-/**
- * Creates a new function from the given arguments.
- * @param args - The arguments for the function.
- * @returns The created function.
- */
-function createFunction(...args: string[]): AnyFunction {
-  // eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval
-  return new Function(...args) as AnyFunction;
-}
-
-/**
- * Parses the arguments of a tag.
- * @param start - The start tag.
- * @param attrs - The attributes string.
- * @returns The parsed IntermediateTNode.
- */
-function parseArguments(start: string, attrs: string): IntermediateTNode {
-  const newNode: IntermediateTNode = { t: start, a: {}, c: [] };
-  const attrRe = /\s+([^\s=>]+)(?:="([^"]*)"|='([^']*)'|(=))?/suy;
-  let match;
-  while ((match = attrRe.exec(attrs))) {
-    const [, key, dqValue, sqValue, invalid] = match;
-    if (invalid) {
-      throw new Error(`Invalid attribute value at position ${match.index + 1}`);
-    }
-    if (key) {
-      newNode.a[key] = dqValue ?? sqValue ?? key;
-    }
+function parseTemplateRecur(node: Node): TNode | string | null {
+  if (node instanceof Element) {
+    return {
+      t: node.tagName.toLowerCase(),
+      a: Object.fromEntries(
+        Array.from(node.attributes, (attr) => [attr.name, attr.value]),
+      ),
+      c: Array.from(node.childNodes)
+        .map((cNode) => parseTemplateRecur(cNode))
+        .filter((cNode): cNode is TNode | string => cNode != null),
+    };
   }
-  return newNode;
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent ?? '';
+    // Exclude text nodes that are completely empty or contain only line breaks (keep single spaces, etc.)
+    if (!text.trim() && text.includes('\n')) return null;
+    return text;
+  }
+  return null;
 }
 
 /**
- * Validates the end tag.
- * @param current - The current node.
- * @param node - The node to validate.
- * @param end - The end tag.
- * @param lastIndex - The last index of the regex.
- * @returns The validated node.
+ * Parses an HTML template string into a `TNode` tree.
+ *
+ * @param html - The HTML string to parse.
+ * @returns The parsed `TNode` representation of the root element.
+ * @throws {Error} If the template does not have exactly one root element.
  */
-function validateEndTag(
-  current: IntermediateTNode,
-  node: TNode | undefined,
-  end: string,
-  lastIndex: number,
-): IntermediateTNode {
-  if (!node || typeof node === 'string') {
+export function parseTemplate(html: string): TNode {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+
+  if (template.content.children.length !== 1) {
     throw new Error(
-      `No opening tag for closing tag </${end}> at position ${lastIndex}`,
+      'ParseError: The template must have exactly one root element.',
     );
   }
-  if (current.t !== end) {
-    throw new Error(
-      `Tag mismatch: opened <${current.t}> but closed </${end}> at position ${lastIndex}`,
-    );
-  }
-  return node;
+  /* eslint-disable @typescript-eslint/no-non-null-assertion */
+  return parseTemplateRecur(template.content.firstElementChild!) as TNode;
+  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
 
 /**
- * Processes a part of the template.
- * @param src - The source string.
- * @param re - The regex to use.
- * @param _current - The current node.
- * @param stack - The stack of nodes.
- * @returns The processed node.
+ * Parameters required to initialize a component.
  */
-function parseTemplateProcPart(
-  src: string,
-  re: RegExp,
-  _current: IntermediateTNode,
-  stack: TNode[],
-): IntermediateTNode {
-  let current = _current;
-  const result = re.exec(src);
-  if (!result) {
-    throw new Error(`Unexpected end of source at position ${re.lastIndex}`);
+export interface ComponentParams {
+  /** The parent component instance, if any. */
+  parent?: AbstractComponent;
+  /** Attributes passed down to the component. */
+  attributes?: Record<string, string>;
+  /** Child nodes passed to the component. */
+  childNodes?: (TNode | string)[];
+  /** An `AbortSignal` used to manage event listeners and component teardown. */
+  signal: AbortSignal;
+}
+
+/**
+ * The base abstract class for all components.
+ * Provides basic properties to manage the component hierarchy, attributes, and children.
+ */
+abstract class AbstractComponent {
+  /** The root DOM Element of the component. */
+  abstract element: Element;
+  /** The parent component instance, if any. */
+  parent?: AbstractComponent;
+  /** Attributes passed to the component. */
+  attributes: Record<string, string>;
+  /** Child nodes passed to the component. */
+  childNodes: (TNode | string)[];
+
+  /**
+   * Creates an instance of `AbstractComponent`.
+   *
+   * @param params - The initialization parameters.
+   */
+  constructor(params: ComponentParams) {
+    this.parent = params.parent;
+    this.attributes = params.attributes ?? {};
+    this.childNodes = params.childNodes ?? [];
   }
-  const [, cdata, end, start, attrs, oclose, text] = result;
-  if (cdata != null) {
-    current.c.push(cdata);
-  } else if (end != null) {
-    current = validateEndTag(current, stack.pop(), end, re.lastIndex);
-  } else if (start != null && attrs != null) {
-    const newNode = parseArguments(start, attrs);
-    current.c.push(newNode);
-    if (oclose === '') {
-      stack.push(current);
-      current = newNode;
+
+  /**
+   * Handles errors by delegating them to the parent component, or throws if there is no parent.
+   *
+   * @param error - The error to be handled.
+   */
+  onerror(error: unknown): void {
+    if (this.parent) {
+      this.parent.onerror(error);
+    } else {
+      throw error;
     }
-  } else if (text != null) {
-    const trimmedText = text.trim();
-    if (trimmedText) {
-      current.c.push(trimmedText);
-    }
-  }
-  return current;
-}
-
-/**
- * Processes the template.
- * @param src - The source string.
- * @param root - The root node.
- * @public
- */
-function parseTemplateProc(src: string, root: IntermediateTNode): void {
-  const re =
-    /<!--.*?-->|<!\[CDATA\[(.*?)\]\]>|<\/([^>\s]+)\s*>|<([^>\s]+)([^>/]*)(\/?)>|([^<]+)/suy;
-  let current = root;
-  const stack: TNode[] = [];
-  while (re.lastIndex < src.length) {
-    current = parseTemplateProcPart(src, re, current, stack);
-  }
-  if (stack.length) {
-    throw new Error(`Unexpected end of source: unclosed tag <${current.t}>`);
   }
 }
 
 /**
- * Parses the template string.
- * @param src - The template string.
- * @returns The parsed TNode.
- * @public
+ * Context object used during the recursive build process.
  */
-export function parseTemplate(src: string): TNode {
-  const root: IntermediateTNode = { t: 'root', a: {}, c: [] };
-  parseTemplateProc(src, root);
-  const firstNode = root.c.shift();
-  if (!firstNode || root.c.length) {
-    throw new Error('Create only one root element in your template');
-  }
-  return firstNode;
+interface BuildContext {
+  /** Map of original IDs to newly generated unique elements. */
+  idMap: Record<string, Element | AbstractComponent>;
+  /** List of elements that reference other elements by ID, needing resolution. */
+  idReferenceMap: { attrName: string; refId: string; element: Element }[];
+  /** The component instance that owns the template being built. */
+  component: AbstractComponent;
+  /** A dictionary of custom components to be used within the template. */
+  uses: Record<string, typeof AbstractComponent>;
+  /** An `AbortSignal` to attach to event listeners. */
+  signal: AbortSignal;
 }
 
 /**
- * Handles errors by calling the onerror method if available.
- * @param error - The error to handle.
- * @param thisObj - The object that may have an onerror method.
+ * List of attributes that reference elements by their ID.
  */
-function handleError(error: unknown, thisObj?: object): void {
-  if (thisObj && 'onerror' in thisObj && isFunction(thisObj.onerror)) {
-    thisObj.onerror(error);
-  } else {
-    throw error;
-  }
-}
+const ID_REF_ATTRIBUTES = [
+  'for',
+  'aria-labelledby',
+  'aria-describedby',
+  'aria-controls',
+];
 
 /**
- * Wraps a function with error handling.
- * @param fn - The function to wrap.
- * @param thisObj - The object that may have an onerror method.
- * @returns The wrapped function.
- * @public
+ * Recursively builds a DOM tree from a `TNode`.
+ *
+ * @param tNode - The current `TNode` to build.
+ * @param context - The context containing maps and component references.
+ * @returns The constructed DOM Element.
  */
-export function wrapFunctionWithErrorHandling(
-  fn: AnyFunction,
-  thisObj?: object,
-): AnyFunction {
-  return (...args: unknown[]) => {
-    try {
-      const result = fn.apply(thisObj, args);
-      if (isObject(result) && 'catch' in result && isFunction(result.catch)) {
-        return result.catch((error: unknown) => {
-          handleError(error, thisObj);
-        });
+function buildRecur(tNode: TNode, context: BuildContext): Element {
+  const { idMap, idReferenceMap, component, uses, signal } = context;
+  const element: Element = document.createElement(tNode.t);
+
+  for (const [name, value] of Object.entries(tNode.a)) {
+    if (name === 'id') {
+      element.id = crypto.randomUUID();
+      idMap[value] = element;
+    } else if (ID_REF_ATTRIBUTES.includes(name)) {
+      idReferenceMap.push({ attrName: name, refId: value, element });
+    } else if (name.startsWith('on')) {
+      const fn = (component as unknown as Record<string, unknown>)[value];
+
+      if (typeof fn !== 'function') {
+        console.warn(
+          `Method "${value}" not found on component for event "${name}"`,
+        );
+        continue;
       }
-      return result;
-    } catch (error) {
-      handleError(error, thisObj);
-    }
-    return null;
-  };
-}
 
-const eventFuncCache = createDictionary<AnyFunction>();
-
-/**
- * Creates an event function from the given code.
- * @param code - The code for the function.
- * @param thisObj - The object that may have an onerror method.
- * @returns The created event function.
- * @public
- */
-export function createEventFunction(
-  code: string,
-  thisObj?: object,
-): AnyFunction {
-  let fc = eventFuncCache[code];
-  if (!fc) {
-    try {
-      fc = createFunction('event', `return (${code});`);
-    } catch {
-      fc = createFunction('event', code);
+      const eventType = name.slice(2).toLowerCase();
+      const wrappedFn = (event: Event): void => {
+        try {
+          const result = fn.call(component, event) as unknown;
+          if (result instanceof Promise) {
+            result.catch((error: unknown) => {
+              component.onerror(error);
+            });
+          }
+        } catch (error) {
+          component.onerror(error);
+        }
+      };
+      element.addEventListener(eventType, wrappedFn, { signal });
+    } else {
+      element.setAttribute(name, value);
     }
-    eventFuncCache[code] = fc;
   }
-  return wrapFunctionWithErrorHandling(fc, thisObj);
-}
 
-/**
- * Merge classes and styles into components.
- * @param element - Element whose attributes are to be merged.
- * @param attrs - Attribute values passed in the constructor.
- * @public
- */
-export function mergeStyles(element: HTMLElement, attrs: TAttributes): void {
-  if (attrs.class) {
-    let pClass = (element.getAttribute('class') ?? '').trim();
-    const cClass = attrs.class.trim();
-    if (pClass && cClass) {
-      pClass += ' ';
-    }
-    element.setAttribute('class', pClass + cClass);
-  }
-  if (attrs.style) {
-    let pStyle = (element.getAttribute('style') ?? '').trim();
-    const cStyle = attrs.style.trim();
-    if (pStyle && cStyle && !pStyle.endsWith(';')) {
-      pStyle += '; ';
-    }
-    element.setAttribute('style', pStyle + cStyle);
-  }
-}
-
-/**
- * Merges attributes into an element without merging styles.
- * @param element - The element to merge attributes into.
- * @param attrs - The attributes to merge.
- * @param thisObj - The object that may have event handlers.
- * @public
- */
-export function mergeAttrsWithoutStyles(
-  element: HTMLElement,
-  attrs: TAttributes,
-  thisObj?: object,
-): void {
-  for (const [name, value] of Object.entries(attrs)) {
-    if (
-      !(
-        (thisObj != null && name === 'id') ||
-        name === 'for' ||
-        name === 'class' ||
-        name === 'style'
-      )
-    ) {
-      if (thisObj && name.startsWith('on')) {
-        const fn = createEventFunction(value, thisObj);
-        (element as unknown as Record<string, unknown>)[name] = fn;
-      } else {
-        element.setAttribute(name, value);
+  for (const cNode of tNode.c) {
+    if (typeof cNode === 'string') {
+      element.appendChild(document.createTextNode(cNode));
+    } else if (cNode.t in uses) {
+      const Component = uses[cNode.t] as new (
+        params: ComponentParams,
+      ) => AbstractComponent;
+      const cComponent = new Component({
+        parent: component,
+        attributes: cNode.a,
+        childNodes: cNode.c,
+        signal,
+      });
+      if (cNode.a.id) {
+        idMap[cNode.a.id] = cComponent;
       }
+      element.appendChild(cComponent.element);
+    } else {
+      element.appendChild(buildRecur(cNode, context));
     }
   }
-}
 
-/**
- * Merge attributes into components.
- * @param element - Element whose attributes are to be merged.
- * @param attrs - Attribute values passed in the constructor.
- * @param thisObj - TComponent instance.
- * @public
- */
-export function mergeAttrs(
-  element: HTMLElement,
-  attrs: TAttributes,
-  thisObj?: object,
-): void {
-  mergeAttrsWithoutStyles(element, attrs, thisObj);
-  mergeStyles(element, attrs);
-}
-
-const idMap = new WeakMap<
-  object,
-  { id: Record<string, object>; for: Record<string, object> }
->();
-
-/**
- * Registers an ID for the target object.
- * @param attrs - The attributes containing the ID.
- * @param target - The target object.
- * @param thisObj - The object to register the ID with.
- */
-function registerId(
-  attrs: TAttributes,
-  target: object,
-  thisObj?: object,
-): void {
-  if (!thisObj) {
-    return;
-  }
-  const types = ['id', 'for'] as const;
-  for (const type of types) {
-    const id = attrs[type];
-    if (id != null) {
-      let idm = idMap.get(thisObj);
-      if (!idm) {
-        idm = {
-          id: createDictionary<object>(),
-          for: createDictionary<object>(),
-        };
-        idMap.set(thisObj, idm);
-      }
-      idm[type][id] = target;
-    }
-  }
-}
-
-/**
- * Gets an element by its ID.
- * @param thisObj - The object containing the ID map.
- * @param name - The ID of the element.
- * @returns The element with the given ID.
- * @public
- */
-export function getElementById(thisObj: object, name: string): unknown {
-  const idm = idMap.get(thisObj);
-  return idm && idm.id[name];
-}
-
-/**
- * A dictionary of components to use.
- * @public
- */
-export type TComponentUses = Record<string, ConstructorOf<object>>;
-
-/**
- * Recursively builds an element from a TNode.
- * @param tNode - The TNode to build from.
- * @param thisObj - The object to associate with the element.
- * @param uses - The components to use.
- * @returns The built node.
- */
-function buildElementRecur(
-  tNode: TNode,
-  thisObj?: object,
-  uses?: TComponentUses,
-): Node | null {
-  // Text node
-  if (typeof tNode === 'string') {
-    return document.createTextNode(tNode);
-  }
-  const nodes = removeNull(
-    tNode.c.map((childNode) => buildElementRecur(childNode, thisObj, uses)),
-  );
-  // Sub component
-  const SubComponent = uses?.[tNode.t];
-  if (SubComponent) {
-    const attrs = { ...tNode.a };
-    if ('id' in attrs) {
-      delete attrs.id;
-    }
-    const obj = new SubComponent(attrs, nodes, thisObj);
-    registerId(tNode.a, obj, thisObj);
-    if ('element' in obj && obj.element instanceof Node) {
-      return obj.element;
-    }
-    return null;
-  }
-  // Element
-  const element = document.createElement(tNode.t);
-  mergeAttrs(element, tNode.a, thisObj);
-  for (const node of nodes) {
-    element.appendChild(node);
-  }
-  registerId(tNode.a, element, thisObj);
   return element;
 }
 
 /**
- * Builds an element from a TNode.
- * @param tNode - The TNode to build from.
- * @param thisObj - The object to associate with the element.
- * @param uses - The components to use.
- * @returns The built HTMLElement.
- * @public
+ * Builds a DOM tree from a parsed template (`TNode`) and resolves ID references.
+ *
+ * @param tNode - The root `TNode` to build from.
+ * @param component - The component instance that owns this template.
+ * @param uses - A map of custom component classes to be used within the template.
+ * @param signal - An `AbortSignal` for cleaning up event listeners.
+ * @returns An object containing the built root element and a map of original IDs to uniquely generated elements.
  */
-export function buildElement(
+export function build(
   tNode: TNode,
-  thisObj?: object,
-  uses?: TComponentUses,
-): HTMLElement {
-  const node = buildElementRecur(tNode, thisObj, uses);
-  if (!(node instanceof HTMLElement)) {
-    throw new Error('The root node must be an HTMLElement.');
-  }
-  return node;
-}
+  component: AbstractComponent,
+  uses: Record<string, typeof AbstractComponent>,
+  signal: AbortSignal,
+): { element: Element; idMap: Record<string, Element | AbstractComponent> } {
+  const idMap: Record<string, Element | AbstractComponent> = {};
+  const idReferenceMap: {
+    attrName: string;
+    refId: string;
+    element: Element;
+  }[] = [];
 
-/**
- * Creates an element from an HTML string.
- * @param html - The HTML string.
- * @param thisObj - The object to associate with the element.
- * @param uses - The components to use.
- * @returns The created HTMLElement.
- * @public
- */
-export function createElement(
-  html: string,
-  thisObj?: object,
-  uses?: TComponentUses,
-): HTMLElement {
-  return buildElement(parseTemplate(html), thisObj, uses);
-}
+  const context: BuildContext = {
+    idMap,
+    idReferenceMap,
+    component,
+    uses,
+    signal,
+  };
+  const element = buildRecur(tNode, context);
 
-let globalIdCounter = 0;
-
-/**
- * Binds a label element to a target element.
- * @param labelElem - The label element.
- * @param targetElem - The target element.
- * @public
- */
-export function bindLabel(
-  labelElem: HTMLLabelElement,
-  targetElem: HTMLElement,
-): void {
-  let { id } = targetElem;
-  if (!id) {
-    globalIdCounter += 1;
-    id = `t-component-global-id-${globalIdCounter}`;
-    targetElem.id = id;
-  }
-  labelElem.htmlFor = id;
-}
-
-const nodeMap = new WeakMap<object, TComponent>();
-
-/**
- * The base class for TComponent.
- * @public
- */
-export class TComponent {
-  static uses?: TComponentUses;
-  static template = '<div></div>';
-  static parsedTemplate?: TNode;
-  readonly element: HTMLElement;
-  parentComponent: TComponent | null = null;
-
-  /**
-   * Retrieves a TComponent instance from an element.
-   * @param this - The TComponent constructor.
-   * @param element - The element to retrieve the instance from.
-   * @returns The TComponent instance or null.
-   */
-  static from<T extends typeof TComponent>(
-    this: T,
-    element: unknown,
-  ): InstanceType<T> | null {
-    if (!isObject(element)) return null;
-    const component = nodeMap.get(element);
-    if (!(component instanceof this)) return null;
-    return component as InstanceType<T>;
-  }
-
-  /**
-   * Creates an instance of TComponent.
-   * @param attrs - The attributes for the component.
-   * @param nodes - The child nodes for the component.
-   * @param parent - The parent object.
-   */
-  constructor(attrs?: TAttributes, nodes?: Node[], parent?: object) {
-    const SubComponent = this.constructor as typeof TComponent;
-    if (
-      !Object.hasOwn(SubComponent, 'parsedTemplate') ||
-      !SubComponent.parsedTemplate
-    ) {
-      SubComponent.parsedTemplate = parseTemplate(SubComponent.template);
-    }
-    this.element = buildElement(
-      SubComponent.parsedTemplate,
-      this,
-      SubComponent.uses,
-    );
-
-    if (attrs) {
-      mergeAttrs(this.element, attrs, parent);
-    }
-    if (nodes) {
-      for (const node of nodes) {
-        this.element.appendChild(node);
-      }
-    }
-    if (parent instanceof TComponent) {
-      this.parentComponent = parent;
-    }
-
-    const idm = idMap.get(this);
-    if (idm) {
-      for (const key of Object.keys(idm.for)) {
-        const labelElem = idm.for[key];
-        const targetElem = idm.id[key];
-        if (
-          labelElem instanceof HTMLLabelElement &&
-          targetElem instanceof HTMLElement
-        ) {
-          bindLabel(labelElem, targetElem);
+  for (const { attrName, refId, element: refElement } of idReferenceMap) {
+    const resolvedIds = refId
+      .split(/\s+/)
+      .map((id) => {
+        const target = idMap[id];
+        if (target instanceof Element) {
+          return target.id;
         }
-      }
+        // For custom components (AbstractComponent) or unresolvable IDs,
+        // leave the original string as-is and defer handling to the child component.
+        return id;
+      })
+      .join(' ');
+
+    refElement.setAttribute(attrName, resolvedIds);
+  }
+  return { element, idMap };
+}
+
+/**
+ * A practical base component class that automatically parses its template,
+ * builds its DOM, binds events, and resolves sub-components.
+ *
+ * @template T - The type of the root DOM Element.
+ */
+export class TComponent<T extends Element = Element> extends AbstractComponent {
+  /** A dictionary of custom components to be used within the template. */
+  static uses: Record<string, typeof AbstractComponent> = {};
+  /** The HTML string template for the component. */
+  static template = '<div></div>';
+  /** Lowercased uses cache */
+  static parsedUses?: Record<string, typeof AbstractComponent>;
+  /** The parsed AST (`TNode`) of the HTML template. Cached across instances. */
+  static parsedTemplate?: TNode;
+
+  /** The root DOM Element of the component. */
+  readonly element: T;
+  /** A map of original template IDs to uniquely generated DOM elements. */
+  readonly idMap: Record<string, Element | AbstractComponent>;
+
+  /**
+   * Creates an instance of `TComponent`.
+   *
+   * @param params - The initialization parameters.
+   */
+  constructor(params: ComponentParams) {
+    super(params);
+
+    const Component = this.constructor as typeof TComponent;
+
+    if (
+      !Object.hasOwn(Component, 'parsedTemplate') ||
+      !Component.parsedTemplate
+    ) {
+      Component.parsedTemplate = parseTemplate(Component.template);
     }
 
-    if (!nodeMap.get(this.element)) nodeMap.set(this.element, this);
-  }
-
-  /**
-   * Retrieves an element by its ID.
-   * @param id - The ID of the element.
-   * @returns The element with the given ID.
-   */
-  protected id(id: string): unknown;
-
-  /**
-   * Retrieves an element by its ID and checks its constructor.
-   * @param id - The ID of the element.
-   * @param constructor - The constructor to check.
-   * @returns The element with the given ID.
-   */
-  protected id<T>(id: string, constructor: ConstructorOf<T>): T;
-
-  protected id<T>(id: string, constructor?: ConstructorOf<T>): unknown {
-    const element = getElementById(this, id);
-    if (constructor && !(element instanceof constructor)) {
-      throw new Error(
-        `Element with id "${id}" is not an instance of ${constructor.name}`,
+    if (!Object.hasOwn(Component, 'parsedUses') || !Component.parsedUses) {
+      Component.parsedUses = Object.fromEntries(
+        Object.entries(Component.uses).map(([k, v]) => [k.toLowerCase(), v]),
       );
     }
-    return element;
-  }
 
-  /**
-   * Handles errors by propagating them to the parent component or throwing them.
-   * @param error - The error to handle.
-   */
-  onerror(error: unknown): void {
-    if (this.parentComponent) {
-      this.parentComponent.onerror(error);
-    } else {
-      throw error;
-    }
+    const { element, idMap } = build(
+      Component.parsedTemplate,
+      this,
+      Component.parsedUses,
+      params.signal,
+    );
+
+    this.element = element as T;
+    this.idMap = idMap;
   }
 }
 
