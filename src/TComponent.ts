@@ -130,6 +130,13 @@ const ID_REF_ATTRIBUTES = [
   'aria-labelledby',
   'aria-describedby',
   'aria-controls',
+  'aria-owns',
+  'aria-activedescendant',
+  'aria-flowto',
+  'aria-errormessage',
+  'aria-details',
+  'headers',
+  'list',
 ];
 
 /**
