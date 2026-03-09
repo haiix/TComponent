@@ -290,3 +290,61 @@ describe('Component Composition (uses) & Props/Slots', () => {
     expect(parsedUses).toHaveProperty('mycustomchild');
   });
 });
+
+describe('Namespaces (SVG & MathML)', () => {
+  it('creates elements with correct namespace URIs and handles foreignObject correctly', () => {
+    class NamespaceComponent extends TComponent<HTMLDivElement> {
+      static template = `
+        <div>
+          <!-- SVG Scope -->
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="40" onclick="handleSvgClick" />
+            <!-- foreignObject (case-insensitive in parsed TNode) -->
+            <foreignObject width="100" height="100">
+              <div class="html-in-svg">I am HTML inside SVG</div>
+            </foreignObject>
+          </svg>
+
+          <!-- MathML Scope -->
+          <math>
+            <mi>x</mi>
+            <mo>+</mo>
+            <mi>y</mi>
+          </math>
+        </div>
+      `;
+
+      public svgClickCount = 0;
+      handleSvgClick() {
+        this.svgClickCount++;
+      }
+    }
+
+    const controller = new AbortController();
+    const comp = new NamespaceComponent({ signal: controller.signal });
+
+    const HTML_NS = 'http://www.w3.org/1999/xhtml';
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
+
+    expect(comp.element.namespaceURI).toBe(HTML_NS);
+
+    const svg = comp.element.querySelector('svg')!;
+    const circle = comp.element.querySelector('circle')!;
+    expect(svg.namespaceURI).toBe(SVG_NS);
+    expect(circle.namespaceURI).toBe(SVG_NS);
+
+    const foreignObj = comp.element.querySelector('foreignobject')!;
+    const divInSvg = comp.element.querySelector('.html-in-svg')!;
+    expect(foreignObj.namespaceURI).toBe(SVG_NS);
+    expect(divInSvg.namespaceURI).toBe(HTML_NS);
+
+    const math = comp.element.querySelector('math')!;
+    const mi = comp.element.querySelector('mi')!;
+    expect(math.namespaceURI).toBe(MATHML_NS);
+    expect(mi.namespaceURI).toBe(MATHML_NS);
+
+    circle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(comp.svgClickCount).toBe(1);
+  });
+});

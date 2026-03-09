@@ -137,11 +137,24 @@ const ID_REF_ATTRIBUTES = [
  *
  * @param tNode - The current `TNode` to build.
  * @param context - The context containing maps and component references.
+ * @param ns - Namespace URI used when creating an element.
  * @returns The constructed DOM Element.
  */
-function buildRecur(tNode: TNode, context: BuildContext): Element {
+function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
   const { idMap, idReferenceMap, component, uses, signal } = context;
-  const element: Element = document.createElement(tNode.t);
+
+  let elementNs = ns;
+  if (tNode.t === 'svg') {
+    elementNs = 'http://www.w3.org/2000/svg';
+  } else if (tNode.t === 'math') {
+    elementNs = 'http://www.w3.org/1998/Math/MathML';
+  }
+
+  const element: Element = elementNs
+    ? document.createElementNS(elementNs, tNode.t)
+    : document.createElement(tNode.t);
+
+  const childNs = tNode.t === 'foreignobject' ? undefined : elementNs;
 
   for (const [name, value] of Object.entries(tNode.a)) {
     if (name === 'id') {
@@ -196,7 +209,7 @@ function buildRecur(tNode: TNode, context: BuildContext): Element {
       }
       element.appendChild(cComponent.element);
     } else {
-      element.appendChild(buildRecur(cNode, context));
+      element.appendChild(buildRecur(cNode, context, childNs));
     }
   }
 
