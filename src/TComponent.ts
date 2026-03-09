@@ -133,6 +133,30 @@ const ID_REF_ATTRIBUTES = [
 ];
 
 /**
+ * Wraps a function and returns a new event handler that forwards all errors to `onerror`.
+ *
+ * @param component - The component instance.
+ * @param fn - The function to execute when the event occurs.
+ * @returns A new event handler function that wraps `fn` with error handling.
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-function-type */
+export function createEventHandler(component: AbstractComponent, fn: Function) {
+  /* eslint-enable @typescript-eslint/no-unsafe-function-type */
+  return (event: Event): void => {
+    try {
+      const result = fn.call(component, event) as unknown;
+      if (result instanceof Promise) {
+        result.catch((error: unknown) => {
+          component.onerror(error);
+        });
+      }
+    } catch (error) {
+      component.onerror(error);
+    }
+  };
+}
+
+/**
  * Recursively builds a DOM tree from a `TNode`.
  *
  * @param tNode - The current `TNode` to build.
@@ -173,18 +197,7 @@ function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
       }
 
       const eventType = name.slice(2).toLowerCase();
-      const wrappedFn = (event: Event): void => {
-        try {
-          const result = fn.call(component, event) as unknown;
-          if (result instanceof Promise) {
-            result.catch((error: unknown) => {
-              component.onerror(error);
-            });
-          }
-        } catch (error) {
-          component.onerror(error);
-        }
-      };
+      const wrappedFn = createEventHandler(component, fn);
       element.addEventListener(eventType, wrappedFn, { signal });
     } else {
       element.setAttribute(name, value);
