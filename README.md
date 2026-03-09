@@ -112,6 +112,12 @@ class ParentComponent extends TComponent<HTMLDivElement> {
 }
 ```
 
+**Note**:
+
+In `TComponent`, attributes (props) and child nodes (slots) passed to a sub-component are **not** automatically applied to its root element. This is a deliberate design choice: a component might need to apply certain attributes to a specific internal element rather than the root, ensuring complete explicit control.
+
+You must manually handle them inside the child component's constructor using `params.attributes` and `params.childNodes`.
+
 ### Accessibility and ID References
 
 `TComponent` automatically generates UUIDs for elements with an `id` attribute. It also intelligently updates attributes that reference IDs (such as `for` on labels, or `aria-labelledby`) so that your accessibility tree remains intact without worrying about global ID collisions.
