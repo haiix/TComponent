@@ -149,7 +149,7 @@ function buildRecur(tNode: TNode, context: BuildContext): Element {
       idMap[value] = element;
     } else if (ID_REF_ATTRIBUTES.includes(name)) {
       idReferenceMap.push({ attrName: name, refId: value, element });
-    } else if (name.startsWith('on')) {
+    } else if (/^on[a-z]+$/.test(name) && !['online', 'once'].includes(name)) {
       const fn = (component as unknown as Record<string, unknown>)[value];
 
       if (typeof fn !== 'function') {
