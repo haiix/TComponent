@@ -77,15 +77,11 @@ export interface ComponentParams {
  * The base abstract class for all components.
  * Provides basic properties to manage the component hierarchy, attributes, and children.
  */
-abstract class AbstractComponent {
+export abstract class AbstractComponent {
   /** The root DOM Element of the component. */
   abstract element: Element;
   /** The parent component instance, if any. */
   parent?: AbstractComponent;
-  /** Attributes passed to the component. */
-  attributes: Record<string, string>;
-  /** Child nodes passed to the component. */
-  childNodes: (TNode | string)[];
 
   /**
    * Creates an instance of `AbstractComponent`.
@@ -94,8 +90,6 @@ abstract class AbstractComponent {
    */
   constructor(params: ComponentParams) {
     this.parent = params.parent;
-    this.attributes = params.attributes ?? {};
-    this.childNodes = params.childNodes ?? [];
   }
 
   /**
