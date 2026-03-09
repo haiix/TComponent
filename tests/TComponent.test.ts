@@ -63,8 +63,11 @@ describe('TComponent & build', () => {
     const controller = new AbortController();
     const comp = new MyComponent({ signal: controller.signal });
 
-    const label = comp.element.querySelector('label')!;
-    const input = comp.element.querySelector('input')!;
+    const label = comp.idMap['label-1'] as HTMLLabelElement;
+    const input = comp.idMap['input-1'] as HTMLInputElement;
+
+    expect(label).toBe(comp.element.querySelector('label'));
+    expect(input).toBe(comp.element.querySelector('input'));
 
     expect(input.getAttribute('type')).toBe('text');
 
@@ -89,8 +92,8 @@ describe('TComponent & build', () => {
     const controller = new AbortController();
     const comp = new MultiIdComponent({ signal: controller.signal });
 
-    const h1 = comp.element.querySelector('h1')!;
-    const p = comp.element.querySelector('p')!;
+    const h1 = comp.idMap['title-1'] as HTMLHeadingElement;
+    const p = comp.idMap['desc-1'] as HTMLParagraphElement;
     const div = comp.element.querySelector('div')!;
 
     expect(h1.id).toBe('mock-uuid-1');
@@ -200,12 +203,14 @@ describe('Component Composition (uses) & Props/Slots', () => {
 
     constructor(params: ComponentParams) {
       super(params);
-      if (this.attributes['data-text']) {
-        this.element.textContent = this.attributes['data-text'];
+      if (params.attributes?.['data-text']) {
+        this.element.textContent = params.attributes['data-text'];
       }
-      for (const child of this.childNodes) {
-        if (typeof child === 'string') {
-          this.element.appendChild(document.createTextNode(child));
+      if (params.childNodes) {
+        for (const child of params.childNodes) {
+          if (typeof child === 'string') {
+            this.element.appendChild(document.createTextNode(child));
+          }
         }
       }
     }
@@ -224,11 +229,10 @@ describe('Component Composition (uses) & Props/Slots', () => {
     const controller = new AbortController();
     const parent = new ParentComponent({ signal: controller.signal });
 
-    const childEl = parent.element.querySelector('.child');
-    expect(childEl).not.toBeNull();
-    expect(childEl!.textContent).toBe('Props DataSlot Text');
-
-    expect(parent.idMap['my-child']).toBeInstanceOf(ChildComponent);
+    const child = parent.idMap['my-child'] as ChildComponent;
+    expect(child).toBeInstanceOf(ChildComponent);
+    expect(child.element).toBe(parent.element.querySelector('.child'));
+    expect(child.element.textContent).toBe('Props DataSlot Text');
   });
 
   it('propagates child component errors to the parent component (Error Boundary)', () => {
@@ -243,7 +247,7 @@ describe('Component Composition (uses) & Props/Slots', () => {
 
     class ErrorParent extends TComponent<HTMLDivElement> {
       static uses = { errorchild: ErrorChild };
-      static template = `<div><errorchild></errorchild></div>`;
+      static template = `<div><errorchild id="my-child"></errorchild></div>`;
     }
 
     const parent = new ErrorParent({ signal: controller.signal });
@@ -251,8 +255,8 @@ describe('Component Composition (uses) & Props/Slots', () => {
       .spyOn(parent, 'onerror')
       .mockImplementation(() => {});
 
-    const childEl = parent.element.querySelector('div')!;
-    childEl.click();
+    const child = parent.idMap['my-child'] as ErrorChild;
+    child.element.click();
 
     expect(parentOnErrorSpy).toHaveBeenCalledTimes(1);
     expect(parentOnErrorSpy).toHaveBeenCalledWith(
@@ -269,7 +273,7 @@ describe('Component Composition (uses) & Props/Slots', () => {
       static uses = { MyCustomChild: MockChild };
       static template = `
         <div>
-          <mycustomchild></mycustomchild>
+          <mycustomchild id="child-1"></mycustomchild>
         </div>
       `;
     }
@@ -278,8 +282,8 @@ describe('Component Composition (uses) & Props/Slots', () => {
     const parent1 = new CachedParent({ signal: controller.signal });
     const parent2 = new CachedParent({ signal: controller.signal });
 
-    expect(parent1.element.querySelector('.mock-child')).not.toBeNull();
-    expect(parent2.element.querySelector('.mock-child')).not.toBeNull();
+    expect(parent1.idMap['child-1']).toBeInstanceOf(MockChild);
+    expect(parent2.idMap['child-1']).toBeInstanceOf(MockChild);
 
     const parsedUses = CachedParent.parsedUses;
     expect(parsedUses).toBeDefined();
