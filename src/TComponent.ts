@@ -1,7 +1,7 @@
 /**
  * Represents an Abstract Syntax Tree (AST) node of a parsed template.
  */
-interface TNode {
+export interface TNode {
   /** The tag name of the element (converted to lowercase). */
   t: string;
   /** A dictionary of the element's attributes. */
@@ -193,7 +193,7 @@ function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
       idMap[value] = element;
     } else if (ID_REF_ATTRIBUTES.includes(name)) {
       idReferenceMap.push({ attrName: name, refId: value, element });
-    } else if (/^on[a-z]+$/.test(name) && !['online', 'once'].includes(name)) {
+    } else if (/^on[a-z]+$/u.test(name) && !['online', 'once'].includes(name)) {
       const fn = (component as unknown as Record<string, unknown>)[value];
 
       if (typeof fn !== 'function') {
@@ -269,7 +269,7 @@ export function build(
 
   for (const { attrName, refId, element: refElement } of idReferenceMap) {
     const resolvedIds = refId
-      .split(/\s+/)
+      .split(/\s+/u)
       .map((id) => {
         const target = idMap[id];
         if (target instanceof Element) {
@@ -326,7 +326,10 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
 
     if (!Object.hasOwn(Component, 'parsedUses') || !Component.parsedUses) {
       Component.parsedUses = Object.fromEntries(
-        Object.entries(Component.uses).map(([k, v]) => [k.toLowerCase(), v]),
+        Object.entries(Component.uses).map(([name, Comp]) => [
+          name.toLowerCase(),
+          Comp,
+        ]),
       );
     }
 
