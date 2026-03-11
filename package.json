@@ -1,8 +1,26 @@
 {
   "name": "@haiix/tcomponent",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A tiny, zero-dependency, non-reactive component system written in TypeScript.",
-  "keywords": [],
+  "keywords": [
+    "typescript",
+    "component-system",
+    "ui-component",
+    "framework",
+    "micro-framework",
+    "dom",
+    "dom-manipulation",
+    "html-template",
+    "template",
+    "non-reactive",
+    "no-virtual-dom",
+    "vanilla-js",
+    "zero-dependency",
+    "lightweight",
+    "frontend",
+    "ui",
+    "widget"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/haiix/TComponent.git"
