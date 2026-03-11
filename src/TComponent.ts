@@ -164,6 +164,16 @@ export function createEventHandler(component: AbstractComponent, fn: Function) {
 }
 
 /**
+ * Checks whether the given string is a valid HTML/XML tag name.
+ *
+ * @param tagName The tag name to check.
+ * @returns True if the tag name is valid.
+ */
+export function isSafeTagName(tagName: string): boolean {
+  return /^[a-zA-Z][a-zA-Z0-9-]*$/.test(tagName);
+}
+
+/**
  * Recursively builds a DOM tree from a `TNode`.
  *
  * @param tNode - The current `TNode` to build.
@@ -181,9 +191,14 @@ function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
     elementNs = 'http://www.w3.org/1998/Math/MathML';
   }
 
+  const tagName = tNode.t;
+  if (!isSafeTagName(tagName)) {
+    throw new Error(`Invalid tag name: ${tagName}`);
+  }
+
   const element: Element = elementNs
-    ? document.createElementNS(elementNs, tNode.t)
-    : document.createElement(tNode.t);
+    ? document.createElementNS(elementNs, tagName)
+    : document.createElement(tagName);
 
   const childNs = tNode.t === 'foreignobject' ? undefined : elementNs;
 
