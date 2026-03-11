@@ -70,7 +70,7 @@ export interface ComponentParams {
   /** Child nodes passed to the component. */
   childNodes?: (TNode | string)[];
   /** An `AbortSignal` used to manage event listeners and component teardown. */
-  signal: AbortSignal;
+  signal?: AbortSignal;
 }
 
 /**
@@ -88,8 +88,8 @@ export abstract class AbstractComponent {
    *
    * @param params - The initialization parameters.
    */
-  constructor(params: ComponentParams) {
-    this.parent = params.parent;
+  constructor(params?: ComponentParams) {
+    this.parent = params?.parent;
   }
 
   /**
@@ -170,7 +170,7 @@ export function createEventHandler(component: AbstractComponent, fn: Function) {
  * @returns True if the tag name is valid.
  */
 export function isSafeTagName(tagName: string): boolean {
-  return /^[a-zA-Z][a-zA-Z0-9-]*$/.test(tagName);
+  return /^[a-zA-Z][a-zA-Z0-9-]*$/u.test(tagName);
 }
 
 /**
@@ -317,6 +317,8 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
   /** The parsed AST (`TNode`) of the HTML template. Cached across instances. */
   static parsedTemplate?: TNode;
 
+  private static warnedNoSignal = false;
+
   /** The root DOM Element of the component. */
   readonly element: T;
   /** A map of original template IDs to uniquely generated DOM elements. */
@@ -327,10 +329,20 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
    *
    * @param params - The initialization parameters.
    */
-  constructor(params: ComponentParams) {
+  constructor(params: ComponentParams = {}) {
     super(params);
 
     const Component = this.constructor as typeof TComponent;
+
+    if (
+      !params.signal &&
+      (!Object.hasOwn(Component, 'warnedNoSignal') || !Component.warnedNoSignal)
+    ) {
+      Component.warnedNoSignal = true;
+      console.warn(
+        `[TComponent] ${Component.name}: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via new ${Component.name}({ signal: controller.signal }) to enable cleanup.`,
+      );
+    }
 
     if (
       !Object.hasOwn(Component, 'parsedTemplate') ||
@@ -352,7 +364,7 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
       Component.parsedTemplate,
       this,
       Component.parsedUses,
-      params.signal,
+      params.signal ?? new AbortController().signal,
     );
 
     this.element = element as T;
