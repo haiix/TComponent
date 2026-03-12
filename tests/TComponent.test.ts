@@ -195,6 +195,33 @@ describe('Event Binding & Error Handling', () => {
       comp.onerror(new Error('Fatal Error'));
     }).toThrow('Fatal Error');
   });
+
+  it('works without AbortSignal and warns only once per component class', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    class NoSignalComponent extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="handleClick">No Signal</button>`;
+      public clickCount = 0;
+
+      handleClick() {
+        this.clickCount++;
+      }
+    }
+
+    const comp1 = new NoSignalComponent();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[TComponent] NoSignalComponent: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via "new NoSignalComponent({ signal: controller.signal })" to enable cleanup.',
+    );
+
+    comp1.element.click();
+    expect(comp1.clickCount).toBe(1);
+
+    const comp2 = new NoSignalComponent();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+
+    comp2.element.click();
+    expect(comp2.clickCount).toBe(1);
+  });
 });
 
 describe('Component Composition (uses) & Props/Slots', () => {

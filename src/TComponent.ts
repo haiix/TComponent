@@ -339,7 +339,7 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
     ) {
       Component.warnedNoSignal = true;
       console.warn(
-        `[TComponent] ${Component.name}: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via new ${Component.name}({ signal: controller.signal }) to enable cleanup.`,
+        `[TComponent] ${Component.name}: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via "new ${Component.name}({ signal: controller.signal })" to enable cleanup.`,
       );
     }
 
