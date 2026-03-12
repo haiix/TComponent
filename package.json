@@ -1,6 +1,6 @@
 {
   "name": "@haiix/tcomponent",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "A tiny, zero-dependency, non-reactive component system written in TypeScript.",
   "keywords": [
     "typescript",
