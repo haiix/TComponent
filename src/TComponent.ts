@@ -321,7 +321,10 @@ export function build(
  *
  * @template T - The type of the root DOM Element.
  */
-export class TComponent<T extends Element = Element> extends AbstractComponent {
+export class TComponent<
+  T extends Element = Element,
+  IDMap = Record<string, Element | AbstractComponent>,
+> extends AbstractComponent {
   /** A dictionary of custom components to be used within the template. */
   static uses: Record<string, typeof AbstractComponent> = {};
   /** The HTML string template for the component. */
@@ -336,7 +339,7 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
   /** The root DOM Element of the component. */
   readonly element: T;
   /** A map of original template IDs to uniquely generated DOM elements. */
-  readonly idMap: Record<string, Element | AbstractComponent>;
+  readonly idMap: IDMap;
 
   /**
    * Creates an instance of `TComponent`.
@@ -382,7 +385,7 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
     );
 
     this.element = element as T;
-    this.idMap = idMap;
+    this.idMap = idMap as IDMap;
   }
 }
 
