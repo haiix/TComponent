@@ -175,6 +175,20 @@ export function isSafeTagName(tagName: string): boolean {
 }
 
 /**
+ * Generates a unique identifier string.
+ *
+ * @returns A unique identifier string. The value will either be a UUID
+ * (when `crypto.randomUUID` is available) or a pseudo-random fallback ID.
+ */
+function generateId(): string {
+  /* eslint-disable @typescript-eslint/no-unnecessary-condition */
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : 'tcomp-' + Math.random().toString(36).slice(2, 11);
+  /* eslint-enable @typescript-eslint/no-unnecessary-condition */
+}
+
+/**
  * Recursively builds a DOM tree from a `TNode`.
  *
  * @param tNode - The current `TNode` to build.
@@ -219,7 +233,7 @@ function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
 
   for (const [name, value] of Object.entries(tNode.a)) {
     if (name === 'id') {
-      element.id = crypto.randomUUID();
+      element.id = generateId();
       idMap[value] = element;
     } else if (ID_REF_ATTRIBUTES.has(name)) {
       idReferenceMap.push({ attrName: name, refId: value, element });
