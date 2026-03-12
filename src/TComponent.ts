@@ -23,18 +23,19 @@ function parseTemplateRecur(node: Node): TNode | string | null {
       a: Object.fromEntries(
         Array.from(node.attributes, (attr) => [attr.name, attr.value]),
       ),
-      c: Array.from(node.childNodes)
-        .map((cNode) => parseTemplateRecur(cNode))
-        .filter((cNode): cNode is TNode | string => cNode != null),
+      c: Array.from(node.childNodes, (cNode) =>
+        parseTemplateRecur(cNode),
+      ).filter((cNode): cNode is TNode | string => cNode != null),
     };
   }
 
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? '';
     // Exclude text nodes that are completely empty or contain only line breaks (keep single spaces, etc.)
-    if (!text.trim() && text.includes('\n')) return null;
-    return text;
+    const isEmpty = !text.trim() && text.includes('\n');
+    return isEmpty ? null : text;
   }
+
   return null;
 }
 
@@ -119,13 +120,13 @@ interface BuildContext {
   /** A dictionary of custom components to be used within the template. */
   uses: Record<string, typeof AbstractComponent>;
   /** An `AbortSignal` to attach to event listeners. */
-  signal: AbortSignal;
+  signal?: AbortSignal;
 }
 
 /**
  * List of attributes that reference elements by their ID.
  */
-const ID_REF_ATTRIBUTES = [
+const ID_REF_ATTRIBUTES = new Set([
   'for',
   'aria-labelledby',
   'aria-describedby',
@@ -137,7 +138,7 @@ const ID_REF_ATTRIBUTES = [
   'aria-details',
   'headers',
   'list',
-];
+]);
 
 /**
  * Wraps a function and returns a new event handler that forwards all errors to `onerror`.
@@ -184,11 +185,20 @@ export function isSafeTagName(tagName: string): boolean {
 function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
   const { idMap, idReferenceMap, component, uses, signal } = context;
 
-  let elementNs = ns;
-  if (tNode.t === 'svg') {
-    elementNs = 'http://www.w3.org/2000/svg';
-  } else if (tNode.t === 'math') {
-    elementNs = 'http://www.w3.org/1998/Math/MathML';
+  if (tNode.t in uses) {
+    const Component = uses[tNode.t] as new (
+      params: ComponentParams,
+    ) => AbstractComponent;
+    const cComponent = new Component({
+      parent: component,
+      attributes: tNode.a,
+      childNodes: tNode.c,
+      signal,
+    });
+    if (tNode.a.id) {
+      idMap[tNode.a.id] = cComponent;
+    }
+    return cComponent.element;
   }
 
   const tagName = tNode.t;
@@ -196,19 +206,24 @@ function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
     throw new Error(`Invalid tag name: ${tagName}`);
   }
 
+  let elementNs = ns;
+  if (tNode.t === 'svg') {
+    elementNs = 'http://www.w3.org/2000/svg';
+  } else if (tNode.t === 'math') {
+    elementNs = 'http://www.w3.org/1998/Math/MathML';
+  }
+
   const element: Element = elementNs
     ? document.createElementNS(elementNs, tagName)
     : document.createElement(tagName);
-
-  const childNs = tNode.t === 'foreignobject' ? undefined : elementNs;
 
   for (const [name, value] of Object.entries(tNode.a)) {
     if (name === 'id') {
       element.id = crypto.randomUUID();
       idMap[value] = element;
-    } else if (ID_REF_ATTRIBUTES.includes(name)) {
+    } else if (ID_REF_ATTRIBUTES.has(name)) {
       idReferenceMap.push({ attrName: name, refId: value, element });
-    } else if (/^on[a-z]+$/u.test(name) && !['online', 'once'].includes(name)) {
+    } else if (name.startsWith('on')) {
       const fn = (component as unknown as Record<string, unknown>)[value];
 
       if (typeof fn !== 'function') {
@@ -229,21 +244,8 @@ function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
   for (const cNode of tNode.c) {
     if (typeof cNode === 'string') {
       element.appendChild(document.createTextNode(cNode));
-    } else if (cNode.t in uses) {
-      const Component = uses[cNode.t] as new (
-        params: ComponentParams,
-      ) => AbstractComponent;
-      const cComponent = new Component({
-        parent: component,
-        attributes: cNode.a,
-        childNodes: cNode.c,
-        signal,
-      });
-      if (cNode.a.id) {
-        idMap[cNode.a.id] = cComponent;
-      }
-      element.appendChild(cComponent.element);
     } else {
+      const childNs = tNode.t === 'foreignobject' ? undefined : elementNs;
       element.appendChild(buildRecur(cNode, context, childNs));
     }
   }
@@ -257,14 +259,14 @@ function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
  * @param tNode - The root `TNode` to build from.
  * @param component - The component instance that owns this template.
  * @param uses - A map of custom component classes to be used within the template.
- * @param signal - An `AbortSignal` for cleaning up event listeners.
+ * @param signal - An AbortSignal to clean up event listeners. To skip cleanup, you must explicitly pass false to prevent accidental omission.
  * @returns An object containing the built root element and a map of original IDs to uniquely generated elements.
  */
 export function build(
   tNode: TNode,
   component: AbstractComponent,
   uses: Record<string, typeof AbstractComponent>,
-  signal: AbortSignal,
+  signal: AbortSignal | false,
 ): { element: Element; idMap: Record<string, Element | AbstractComponent> } {
   const idMap: Record<string, Element | AbstractComponent> = {};
   const idReferenceMap: {
@@ -278,7 +280,7 @@ export function build(
     idReferenceMap,
     component,
     uses,
-    signal,
+    signal: signal || undefined,
   };
   const element = buildRecur(tNode, context);
 
@@ -287,12 +289,9 @@ export function build(
       .split(/\s+/u)
       .map((id) => {
         const target = idMap[id];
-        if (target instanceof Element) {
-          return target.id;
-        }
         // For custom components (AbstractComponent) or unresolvable IDs,
         // leave the original string as-is and defer handling to the child component.
-        return id;
+        return target instanceof Element ? target.id : id;
       })
       .join(' ');
 
@@ -364,7 +363,7 @@ export class TComponent<T extends Element = Element> extends AbstractComponent {
       Component.parsedTemplate,
       this,
       Component.parsedUses,
-      params.signal ?? new AbortController().signal,
+      params.signal ?? false,
     );
 
     this.element = element as T;
