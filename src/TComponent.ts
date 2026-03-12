@@ -300,6 +300,7 @@ export function build(
 
   for (const { attrName, refId, element: refElement } of idReferenceMap) {
     const resolvedIds = refId
+      .trim()
       .split(/\s+/u)
       .map((id) => {
         const target = idMap[id];

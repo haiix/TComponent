@@ -78,13 +78,14 @@ describe('TComponent & build', () => {
     expect(input.getAttribute('aria-labelledby')).toBe('mock-uuid-1');
   });
 
-  it('resolves multiple space-separated IDs and preserves unresolvable/custom component IDs', () => {
+  it('resolves multiple space-separated IDs with irregular whitespaces and preserves unresolvable/custom component IDs', () => {
     class MultiIdComponent extends TComponent<HTMLDivElement> {
       static template = `
         <div>
           <h1 id="title-1">Title</h1>
           <p id="desc-1">Description</p>
-          <div aria-labelledby="title-1 desc-1 unknown-id">Content</div>
+          <div aria-labelledby="  title-1    desc-1
+             unknown-id  ">Content</div>
         </div>
       `;
     }
