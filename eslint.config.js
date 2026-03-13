@@ -47,6 +47,7 @@ export default defineConfig(
       '@typescript-eslint/restrict-template-expressions': 'off',
       '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/no-extraneous-class': 'off',
     },
   },
 
