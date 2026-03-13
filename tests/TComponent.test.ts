@@ -30,10 +30,10 @@ describe('parseTemplate', () => {
   });
 
   it('throws an error if there is not exactly one root element', () => {
-    expect(() => parseTemplate(`<div></div><span></span>`)).toThrowError(
+    expect(() => parseTemplate(`<div></div><span></span>`)).toThrow(
       'ParseError: The template must have exactly one root element.',
     );
-    expect(() => parseTemplate(`Text node`)).toThrowError(
+    expect(() => parseTemplate(`Text node`)).toThrow(
       'ParseError: The template must have exactly one root element.',
     );
   });
