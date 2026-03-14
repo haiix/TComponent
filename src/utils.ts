@@ -1,3 +1,5 @@
+import { type ComponentParams, type TComponent, build } from './TComponent';
+
 /**
  * Converts a string to kebab-case.
  * Safely handles PascalCase, camelCase, and consecutive uppercase letters (acronyms).
@@ -36,4 +38,74 @@ export function kebabKeys<T>(obj: Record<string, T>): Record<string, T> {
     result[toKebabCase(key)] = value;
   }
   return result;
+}
+
+/**
+ * Applies component parameters (attributes and child nodes) to a specific target DOM element.
+ * This utility drastically simplifies routing "Props" (attributes) and "Slots" (childNodes)
+ * to either the component's root element or a specific internal element.
+ *
+ * It smartly handles merging of `class` and `style` attributes, and skips `id` and `on*`
+ * attributes to prevent DOM conflicts and invalid inline event handlers.
+ *
+ * @example
+ * class Card extends TComponent<HTMLDivElement> {
+ *   static template = `<div class="card"><div id="body"></div></div>`;
+ *   constructor(params: ComponentParams) {
+ *     super(params);
+ *     // Inject props and slots into the internal body element
+ *     applyParams(this, this.idMap['body'], params);
+ *   }
+ * }
+ *
+ * @param component - The current component instance.
+ * @param target - The DOM element to receive the attributes and children.
+ * @param params - The ComponentParams object containing attributes and childNodes.
+ */
+export function applyParams(
+  component: TComponent,
+  target: Element,
+  params: ComponentParams,
+): void {
+  // 1. Apply Attributes (Props)
+  if (params.attributes) {
+    for (const [name, value] of Object.entries(params.attributes)) {
+      if (name === 'id' || name.startsWith('on')) {
+        continue; // Skip 'id' and 'on*' attributes.
+      }
+
+      if (name === 'class') {
+        const classes = value.trim().split(/\s+/u).filter(Boolean);
+        if (classes.length) target.classList.add(...classes);
+      } else if (name === 'style') {
+        const existingStyle = target.getAttribute('style')?.trim() ?? '';
+        const appendStyle = value.trim();
+
+        if (existingStyle && appendStyle) {
+          const separator = existingStyle.endsWith(';') ? ' ' : '; ';
+          target.setAttribute('style', existingStyle + separator + appendStyle);
+        } else {
+          target.setAttribute('style', existingStyle || appendStyle);
+        }
+      } else {
+        target.setAttribute(name, value);
+      }
+    }
+  }
+
+  // 2. Append Child Nodes (Slots)
+  if (params.childNodes && params.childNodes.length > 0) {
+    const uses = (component.constructor as typeof TComponent).parsedUses ?? {};
+    const signal = params.signal ?? false;
+
+    for (const child of params.childNodes) {
+      if (typeof child === 'string') {
+        target.appendChild(document.createTextNode(child));
+      } else {
+        const { element, idMap } = build(child, component, uses, signal);
+        target.appendChild(element);
+        Object.assign(component.idMap, idMap);
+      }
+    }
+  }
 }
