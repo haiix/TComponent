@@ -8,52 +8,89 @@ This document covers detailed usage, composition strategies, and edge cases.
 
 ## 1. Component Composition
 
-You can compose complex UIs by registering child components using the `static uses` property. The key is matched against the tag name used in the template (case-insensitive).
+You can compose complex UIs by registering child components using the `static uses` property. The key in this object determines the HTML tag name you will use in your template (case-insensitive).
+
+To make your templates look like standard HTML Web Components (using hyphenated tags), you can use the `kebabKeys` utility.
 
 ### Important Note on Props and Slots
 
 In `TComponent`, attributes (props) and child nodes (slots) passed to a sub-component are **not** automatically applied to its root element.
 
-This is a deliberate design choice: a component might need to apply certain attributes to a specific internal element rather than the root, ensuring you have complete, explicit control over the DOM. You must manually handle them inside the child component's constructor via `params.attributes` and `params.childNodes`.
+This is a deliberate design choice: a component might need to apply certain attributes to a specific internal element rather than the root, ensuring you have complete, explicit control over the DOM.
 
-### Basic Example: Handling Props and Slots
+### The `applyParams` Utility
+
+While you can manually parse `params.attributes` and `params.childNodes` in the constructor, `TComponent` provides a powerful `applyParams` utility to seamlessly route props and slots to any target element.
+
+`applyParams` intelligently handles:
+
+- **Merging**: Safely merges `class` and `style` attributes without overwriting existing ones on the target element.
+- **Security**: Automatically skips `id` and `on*` (event) attributes, preventing global ID collisions and invalid inline event handlers on the component's internal DOM.
+- **Slot Scope Isolation**: Automatically builds child AST nodes (`TNode`) within the **parent component's context**. This means event listeners inside slots correctly bind to the parent's methods, and any new IDs inside the slot are merged directly into the **parent's `idMap`**.
+
+### Example: Composing Components with Utilities
 
 ```typescript
-import TComponent, { ComponentParams } from '@haiix/tcomponent';
+import TComponent, {
+  ComponentParams,
+  kebabKeys,
+  applyParams,
+} from '@haiix/tcomponent';
 
 class ChildComponent extends TComponent<HTMLDivElement> {
-  static template = /* HTML */ `<div class="child"></div>`;
+  static template = /* HTML */ `
+    <div class="card-wrapper">
+      <!-- We want to inject props and slots directly into this inner element -->
+      <div
+        id="card-body"
+        class="base-card"
+        style="border: 1px solid #ccc;"
+      ></div>
+    </div>
+  `;
 
   constructor(params: ComponentParams) {
     super(params);
 
-    // 1. Manually apply passed attributes (Props)
-    if (params.attributes?.['data-text']) {
-      this.element.textContent = params.attributes['data-text'];
-    }
+    // 1. Get the target internal element
+    const target = this.idMap['card-body'] as HTMLDivElement;
 
-    // 2. Manually append child nodes (Slots)
-    if (params.childNodes) {
-      for (const child of params.childNodes) {
-        if (typeof child === 'string') {
-          this.element.appendChild(document.createTextNode(child));
-        }
-        // Note: If 'child' is a TNode, you could build it here using the `build` function.
-      }
-    }
+    // 2. Safely apply all passed attributes and child nodes (slots) to it
+    applyParams(this, target, params);
   }
 }
 
 class ParentComponent extends TComponent<HTMLDivElement> {
-  static uses = { ChildComponent };
+  // kebabKeys automatically transforms { ChildComponent } into { 'child-component': ChildComponent }
+  static uses = kebabKeys({ ChildComponent });
 
   static template = /* HTML */ `
     <div>
-      <childcomponent data-text="Hello from Parent!">
-        This is slot text.
-      </childcomponent>
+      <h2>Parent Dashboard</h2>
+
+      <!-- The component is now accessible via standard kebab-case -->
+      <child-component class="extra-padding" style="background: #f9f9f9;">
+        <!-- This slot element belongs to the Parent's scope -->
+        <button id="slot-btn" onclick="handleSlotClick">
+          Dynamic Slot Button
+        </button>
+      </child-component>
     </div>
   `;
+
+  constructor(params: ComponentParams) {
+    super(params);
+
+    // Because applyParams merges slot IDs into the parent's scope,
+    // you can access elements inside the slot directly from the parent!
+    const btn = this.idMap['slot-btn'] as HTMLButtonElement;
+  }
+
+  handleSlotClick() {
+    console.log(
+      'Slot button clicked! This correctly runs in the Parent scope.',
+    );
+  }
 }
 ```
 
@@ -77,7 +114,7 @@ You should extend `AbstractComponent` instead of `TComponent` when:
 **Example of a purely manual component:**
 
 ```typescript
-import { AbstractComponent, ComponentParams } from '@user/tcomponent';
+import { AbstractComponent, ComponentParams } from '@haiix/tcomponent';
 
 export class ManualComponent extends AbstractComponent {
   element: HTMLDivElement;
@@ -182,7 +219,6 @@ class DynamicList extends AbstractComponent {
 // --- Usage ---
 
 class App extends TComponent {
-  // The kebabKeys utility automatically converts PascalCase component names into kebab-case tag names.
   static uses = kebabKeys({ DynamicList });
 
   static template = /* HTML */ `
@@ -337,7 +373,7 @@ While this keeps the component definition simple, you might prefer strict, autom
 By defining an interface for your IDs and passing it to `TComponent`, your editor will provide full auto-completion for ID strings, and automatically infer the correct DOM element or Component types—eliminating the need for repetitive `as` assertions.
 
 ```typescript
-import TComponent, { ComponentParams, kebabKeys } from '@user/tcomponent';
+import TComponent, { ComponentParams, kebabKeys } from '@haiix/tcomponent';
 
 class CustomAvatar extends TComponent<HTMLImageElement> {
   static template = /* HTML */ `<img class="avatar" />`;

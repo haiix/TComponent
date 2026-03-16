@@ -339,7 +339,7 @@ export class TComponent<
   /** The root DOM Element of the component. */
   readonly element: T;
   /** A map of original template IDs to uniquely generated DOM elements. */
-  readonly idMap: IDMap;
+  readonly idMap: IDMap = {} as IDMap;
 
   /**
    * Creates an instance of `TComponent`.
@@ -385,7 +385,7 @@ export class TComponent<
     );
 
     this.element = element as T;
-    this.idMap = idMap as IDMap;
+    this.idMap = { ...this.idMap, ...idMap };
   }
 }
 

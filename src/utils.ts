@@ -1,4 +1,4 @@
-import { type ComponentParams, type TComponent, build } from './TComponent';
+import { type ComponentParams, TComponent, build } from './TComponent';
 
 /**
  * Converts a string to kebab-case.
@@ -95,16 +95,21 @@ export function applyParams(
 
   // 2. Append Child Nodes (Slots)
   if (params.childNodes && params.childNodes.length > 0) {
-    const uses = (component.constructor as typeof TComponent).parsedUses ?? {};
+    // Since slots are defined in the parent component's template,
+    // if a parent exists, the context (event handlers and `uses`) should be directed to the parent.
+    const contextComponent =
+      component.parent instanceof TComponent ? component.parent : component;
+    const uses =
+      (contextComponent.constructor as typeof TComponent).parsedUses ?? {};
     const signal = params.signal ?? false;
 
     for (const child of params.childNodes) {
       if (typeof child === 'string') {
         target.appendChild(document.createTextNode(child));
       } else {
-        const { element, idMap } = build(child, component, uses, signal);
+        const { element, idMap } = build(child, contextComponent, uses, signal);
         target.appendChild(element);
-        Object.assign(component.idMap, idMap);
+        Object.assign(contextComponent.idMap, idMap);
       }
     }
   }

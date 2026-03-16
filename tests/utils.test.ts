@@ -38,7 +38,7 @@ describe('kebabKeys utility', () => {
 });
 
 describe('applyParams utility', () => {
-  it('merges class, style, and applies attributes, whilst skipping id and on*', () => {
+  it('merges class, style, applies attributes, and correctly binds slot scope to parent', () => {
     class ChildCard extends TComponent<HTMLDivElement> {
       static template = /* HTML */ `
         <div class="base-card">
@@ -66,12 +66,16 @@ describe('applyParams utility', () => {
             class="extra-class"
             style="color: red;"
             data-custom="123"
-            onclick="handleParentClick"
           >
-            <span id="slot-item">Slot Content</span>
+            <span id="slot-item" onclick="handleSlotClick">Slot Content</span>
           </childcard>
         </div>
       `;
+
+      public slotClicked = false;
+      handleSlotClick() {
+        this.slotClicked = true;
+      }
     }
 
     const app = new ParentApp();
@@ -94,6 +98,9 @@ describe('applyParams utility', () => {
     expect(slotSpan).not.toBeNull();
     expect(slotSpan.textContent).toBe('Slot Content');
 
-    expect(card.idMap['slot-item']).toBe(slotSpan);
+    expect(app.idMap['slot-item']).toBe(slotSpan);
+
+    slotSpan.click();
+    expect(app.slotClicked).toBe(true);
   });
 });
