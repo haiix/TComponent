@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   parseTemplate,
+  type ParseOptions,
   TComponent,
   type ComponentParams,
 } from '../src/TComponent';
@@ -116,6 +117,41 @@ describe('TComponent & build', () => {
     expect(div.getAttribute('aria-labelledby')).toBe(
       'mock-uuid-1 mock-uuid-2 unknown-id',
     );
+  });
+});
+
+describe('parseOptions inside TComponent', () => {
+  it('applies parseOptions.preserveWhitespace when explicitly set, and does not implicitly inherit to subclasses', () => {
+    class PreservedComp extends TComponent<HTMLDivElement> {
+      static parseOptions: ParseOptions = { preserveWhitespace: true };
+      static template = `
+        <div>
+          <span>A</span>
+          <span>B</span>
+        </div>
+      `;
+    }
+
+    class DefaultComp extends PreservedComp {
+      static template = `
+        <div>
+          <span>A</span>
+          <span>B</span>
+        </div>
+      `;
+    }
+
+    const preservedInstance = new PreservedComp();
+    const defaultInstance = new DefaultComp();
+
+    const preservedChildNodes = Array.from(
+      preservedInstance.element.childNodes,
+    );
+    expect(preservedChildNodes).toHaveLength(5);
+    expect(preservedChildNodes[0]!.nodeType).toBe(Node.TEXT_NODE);
+
+    const defaultChildNodes = Array.from(defaultInstance.element.childNodes);
+    expect(defaultChildNodes).toHaveLength(2);
   });
 });
 

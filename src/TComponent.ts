@@ -26,7 +26,7 @@ export interface ParseOptions {
  * Recursively parses a DOM Node into a `TNode` or a text string.
  *
  * @param node - The DOM node to parse.
- * @param options - The parse options.
+ * @param options - Options for parsing.
  * @returns A parsed `TNode`, a text string, or `null` if the node should be ignored.
  */
 function parseTemplateRecur(
@@ -60,7 +60,7 @@ function parseTemplateRecur(
  * Parses an HTML template string into a `TNode` tree.
  *
  * @param html - The HTML string to parse.
- * @param options - The parse options.
+ * @param options - Options for parsing.
  * @returns The parsed `TNode` representation of the root element.
  * @throws {Error} If the template does not have exactly one root element.
  */
@@ -350,6 +350,9 @@ export class TComponent<
   static uses: Record<string, typeof AbstractComponent> = {};
   /** The HTML string template for the component. */
   static template = '<div></div>';
+  /** The options passed when parsing the template. */
+  static parseOptions?: ParseOptions;
+
   /** Lowercased uses cache */
   static parsedUses?: Record<string, typeof AbstractComponent>;
   /** The parsed AST (`TNode`) of the HTML template. Cached across instances. */
@@ -386,7 +389,13 @@ export class TComponent<
       !Object.hasOwn(Component, 'parsedTemplate') ||
       !Component.parsedTemplate
     ) {
-      Component.parsedTemplate = parseTemplate(Component.template);
+      const parseOptions = Object.hasOwn(Component, 'parseOptions')
+        ? Component.parseOptions
+        : {};
+      Component.parsedTemplate = parseTemplate(
+        Component.template,
+        parseOptions,
+      );
     }
 
     if (!Object.hasOwn(Component, 'parsedUses') || !Component.parsedUses) {
