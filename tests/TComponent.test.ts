@@ -38,7 +38,7 @@ describe('parseTemplate', () => {
     );
   });
 
-  it('removes unnecessary newlines but keeps meaningful spaces', () => {
+  it('removes unnecessary newlines but keeps meaningful spaces by default', () => {
     const html = `
       <div>
         <span>A</span> <span>B</span>
@@ -46,6 +46,19 @@ describe('parseTemplate', () => {
     `;
     const tNode = parseTemplate(html);
     expect(tNode.c[1]).toBe(' ');
+  });
+
+  it('preserves all whitespace when preserveWhitespace option is true', () => {
+    const html = `
+      <div>
+        <span>A</span>
+        <span>B</span>
+      </div>
+    `;
+    const tNode = parseTemplate(html, { preserveWhitespace: true });
+
+    expect(typeof tNode.c[0]).toBe('string');
+    expect((tNode.c[0] as string).includes('\n')).toBe(true);
   });
 });
 

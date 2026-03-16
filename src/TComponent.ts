@@ -11,12 +11,28 @@ export interface TNode {
 }
 
 /**
+ * Options required for template parsing.
+ */
+export interface ParseOptions {
+  /**
+   * Preserve text nodes that consist only of newline whitespace.
+   * When false, newline-only whitespace between elements is removed.
+   * @default false
+   */
+  preserveWhitespace?: boolean;
+}
+
+/**
  * Recursively parses a DOM Node into a `TNode` or a text string.
  *
  * @param node - The DOM node to parse.
+ * @param options - The parse options.
  * @returns A parsed `TNode`, a text string, or `null` if the node should be ignored.
  */
-function parseTemplateRecur(node: Node): TNode | string | null {
+function parseTemplateRecur(
+  node: Node,
+  options: ParseOptions,
+): TNode | string | null {
   if (node instanceof Element) {
     return {
       t: node.tagName.toLowerCase(),
@@ -24,7 +40,7 @@ function parseTemplateRecur(node: Node): TNode | string | null {
         Array.from(node.attributes, (attr) => [attr.name, attr.value]),
       ),
       c: Array.from(node.childNodes, (cNode) =>
-        parseTemplateRecur(cNode),
+        parseTemplateRecur(cNode, options),
       ).filter((cNode): cNode is TNode | string => cNode != null),
     };
   }
@@ -32,7 +48,8 @@ function parseTemplateRecur(node: Node): TNode | string | null {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? '';
     // Exclude text nodes that are completely empty or contain only line breaks (keep single spaces, etc.)
-    const isEmpty = !text.trim() && text.includes('\n');
+    const isEmpty =
+      !options.preserveWhitespace && !text.trim() && text.includes('\n');
     return isEmpty ? null : text;
   }
 
@@ -43,10 +60,11 @@ function parseTemplateRecur(node: Node): TNode | string | null {
  * Parses an HTML template string into a `TNode` tree.
  *
  * @param html - The HTML string to parse.
+ * @param options - The parse options.
  * @returns The parsed `TNode` representation of the root element.
  * @throws {Error} If the template does not have exactly one root element.
  */
-export function parseTemplate(html: string): TNode {
+export function parseTemplate(html: string, options: ParseOptions = {}): TNode {
   const template = document.createElement('template');
   template.innerHTML = html.trim();
 
@@ -56,7 +74,10 @@ export function parseTemplate(html: string): TNode {
     );
   }
   /* eslint-disable @typescript-eslint/no-non-null-assertion */
-  return parseTemplateRecur(template.content.firstElementChild!) as TNode;
+  return parseTemplateRecur(
+    template.content.firstElementChild!,
+    options,
+  ) as TNode;
   /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }
 
