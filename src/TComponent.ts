@@ -129,22 +129,6 @@ export abstract class AbstractComponent {
 }
 
 /**
- * Context object used during the recursive build process.
- */
-interface BuildContext {
-  /** Map of original IDs to newly generated unique elements. */
-  idMap: Record<string, Element | AbstractComponent>;
-  /** List of elements that reference other elements by ID, needing resolution. */
-  idReferenceMap: { attrName: string; refId: string; element: Element }[];
-  /** The component instance that owns the template being built. */
-  component: AbstractComponent;
-  /** A dictionary of custom components to be used within the template. */
-  uses: Record<string, typeof AbstractComponent>;
-  /** An `AbortSignal` to attach to event listeners. */
-  signal?: AbortSignal;
-}
-
-/**
  * List of attributes that reference elements by their ID.
  */
 const ID_REF_ATTRIBUTES = new Set([
@@ -210,130 +194,137 @@ function generateId(): string {
 }
 
 /**
- * Recursively builds a DOM tree from a `TNode`.
- *
- * @param tNode - The current `TNode` to build.
- * @param context - The context containing maps and component references.
- * @param ns - Namespace URI used when creating an element.
- * @returns The constructed DOM Element.
+ * Context object used during the recursive build process.
  */
-function buildRecur(tNode: TNode, context: BuildContext, ns?: string): Element {
-  const { idMap, idReferenceMap, component, uses, signal } = context;
+class BuildContext {
+  /** Map of original IDs to newly generated unique elements. */
+  idMap: Record<string, Element | AbstractComponent> = {};
+  /** List of elements that reference other elements by ID, needing resolution. */
+  idReferenceMap: { attrName: string; refId: string; element: Element }[] = [];
+  /** The component instance that owns the template being built. */
+  component: AbstractComponent;
+  /** A dictionary of custom components to be used within the template. */
+  uses: Record<string, typeof AbstractComponent>;
+  /** An `AbortSignal` to attach to event listeners. */
+  signal?: AbortSignal;
 
-  if (tNode.t in uses) {
-    const Component = uses[tNode.t] as new (
-      params: ComponentParams,
-    ) => AbstractComponent;
-    const cComponent = new Component({
-      parent: component,
-      attributes: tNode.a,
-      childNodes: tNode.c,
-      signal,
-    });
-    if (tNode.a.id) {
-      idMap[tNode.a.id] = cComponent;
-    }
-    return cComponent.element;
+  /**
+   * Builds a DOM tree from a parsed template (`TNode`) and resolves ID references.
+   *
+   * @param tNode - The root `TNode` to build from.
+   * @param component - The component instance that owns this template.
+   * @param uses - A map of custom component classes to be used within the template.
+   * @param signal - An AbortSignal to clean up event listeners.
+   * @returns An object containing the built root element and a map of original IDs to uniquely generated elements.
+   */
+  constructor(
+    component: AbstractComponent,
+    uses: Record<string, typeof AbstractComponent>,
+    signal?: AbortSignal,
+  ) {
+    this.component = component;
+    this.uses = uses;
+    this.signal = signal;
   }
 
-  const tagName = tNode.t;
-  if (!isSafeTagName(tagName)) {
-    throw new Error(`Invalid tag name: ${tagName}`);
-  }
+  /**
+   * Recursively builds a DOM tree from a `TNode` and stores the states in `idMap` and `idReferenceMap`.
+   *
+   * @param tNode - The current `TNode` to build.
+   * @param ns - Namespace URI used when creating an element.
+   * @returns The constructed DOM Element.
+   */
+  build(tNode: TNode, ns?: string): Element {
+    const { idMap, idReferenceMap, component, uses, signal } = this;
 
-  let elementNs = ns;
-  if (tNode.t === 'svg') {
-    elementNs = 'http://www.w3.org/2000/svg';
-  } else if (tNode.t === 'math') {
-    elementNs = 'http://www.w3.org/1998/Math/MathML';
-  }
-
-  const element: Element = elementNs
-    ? document.createElementNS(elementNs, tagName)
-    : document.createElement(tagName);
-
-  for (const [name, value] of Object.entries(tNode.a)) {
-    if (name === 'id') {
-      element.id = generateId();
-      idMap[value] = element;
-    } else if (ID_REF_ATTRIBUTES.has(name)) {
-      idReferenceMap.push({ attrName: name, refId: value, element });
-    } else if (name.startsWith('on')) {
-      const fn = (component as unknown as Record<string, unknown>)[value];
-
-      if (typeof fn !== 'function') {
-        console.warn(
-          `Method "${value}" not found on component for event "${name}"`,
-        );
-        continue;
+    if (tNode.t in uses) {
+      const Component = uses[tNode.t] as new (
+        params: ComponentParams,
+      ) => AbstractComponent;
+      const cComponent = new Component({
+        parent: component,
+        attributes: tNode.a,
+        childNodes: tNode.c,
+        signal,
+      });
+      if (tNode.a.id) {
+        idMap[tNode.a.id] = cComponent;
       }
-
-      const eventType = name.slice(2).toLowerCase();
-      const wrappedFn = createEventHandler(component, fn);
-      element.addEventListener(eventType, wrappedFn, { signal });
-    } else {
-      element.setAttribute(name, value);
+      return cComponent.element;
     }
-  }
 
-  for (const cNode of tNode.c) {
-    if (typeof cNode === 'string') {
-      element.appendChild(document.createTextNode(cNode));
-    } else {
-      const childNs = tNode.t === 'foreignobject' ? undefined : elementNs;
-      element.appendChild(buildRecur(cNode, context, childNs));
+    const tagName = tNode.t;
+    if (!isSafeTagName(tagName)) {
+      throw new Error(`Invalid tag name: ${tagName}`);
     }
+
+    let elementNs = ns;
+    if (tNode.t === 'svg') {
+      elementNs = 'http://www.w3.org/2000/svg';
+    } else if (tNode.t === 'math') {
+      elementNs = 'http://www.w3.org/1998/Math/MathML';
+    }
+
+    const element: Element = elementNs
+      ? document.createElementNS(elementNs, tagName)
+      : document.createElement(tagName);
+
+    for (const [name, value] of Object.entries(tNode.a)) {
+      if (name === 'id') {
+        element.id = generateId();
+        idMap[value] = element;
+      } else if (ID_REF_ATTRIBUTES.has(name)) {
+        idReferenceMap.push({ attrName: name, refId: value, element });
+      } else if (name.startsWith('on')) {
+        const fn = (component as unknown as Record<string, unknown>)[value];
+
+        if (typeof fn !== 'function') {
+          console.warn(
+            `Method "${value}" not found on component for event "${name}"`,
+          );
+          continue;
+        }
+
+        const eventType = name.slice(2).toLowerCase();
+        const wrappedFn = createEventHandler(component, fn);
+        element.addEventListener(eventType, wrappedFn, { signal });
+      } else {
+        element.setAttribute(name, value);
+      }
+    }
+
+    for (const cNode of tNode.c) {
+      if (typeof cNode === 'string') {
+        element.appendChild(document.createTextNode(cNode));
+      } else {
+        const childNs = tNode.t === 'foreignobject' ? undefined : elementNs;
+        element.appendChild(this.build(cNode, childNs));
+      }
+    }
+
+    return element;
   }
 
-  return element;
-}
+  /**
+   * Resolve stored ID references to their actual UUIDs
+   */
+  resolveIdReferences(): void {
+    for (const { attrName, refId, element } of this.idReferenceMap) {
+      const resolvedIds = refId
+        .trim()
+        .split(/\s+/u)
+        .map((id) => {
+          const target = this.idMap[id];
+          // For custom components (AbstractComponent) or unresolvable IDs,
+          // leave the original string as-is and defer handling to the child component.
+          return target instanceof Element ? target.id : id;
+        })
+        .join(' ');
 
-/**
- * Builds a DOM tree from a parsed template (`TNode`) and resolves ID references.
- *
- * @param tNode - The root `TNode` to build from.
- * @param component - The component instance that owns this template.
- * @param uses - A map of custom component classes to be used within the template.
- * @param signal - An AbortSignal to clean up event listeners. To skip cleanup, you must explicitly pass false to prevent accidental omission.
- * @returns An object containing the built root element and a map of original IDs to uniquely generated elements.
- */
-export function build(
-  tNode: TNode,
-  component: AbstractComponent,
-  uses: Record<string, typeof AbstractComponent>,
-  signal: AbortSignal | false,
-): { element: Element; idMap: Record<string, Element | AbstractComponent> } {
-  const idMap: Record<string, Element | AbstractComponent> = {};
-  const idReferenceMap: {
-    attrName: string;
-    refId: string;
-    element: Element;
-  }[] = [];
-
-  const context: BuildContext = {
-    idMap,
-    idReferenceMap,
-    component,
-    uses,
-    signal: signal || undefined,
-  };
-  const element = buildRecur(tNode, context);
-
-  for (const { attrName, refId, element: refElement } of idReferenceMap) {
-    const resolvedIds = refId
-      .trim()
-      .split(/\s+/u)
-      .map((id) => {
-        const target = idMap[id];
-        // For custom components (AbstractComponent) or unresolvable IDs,
-        // leave the original string as-is and defer handling to the child component.
-        return target instanceof Element ? target.id : id;
-      })
-      .join(' ');
-
-    refElement.setAttribute(attrName, resolvedIds);
+      element.setAttribute(attrName, resolvedIds);
+    }
+    this.idReferenceMap = [];
   }
-  return { element, idMap };
 }
 
 /**
@@ -360,10 +351,15 @@ export class TComponent<
 
   private static warnedNoSignal = false;
 
+  /** The context object for the build process. */
+  readonly context: BuildContext;
   /** The root DOM Element of the component. */
   readonly element: T;
+
   /** A map of original template IDs to uniquely generated DOM elements. */
-  readonly idMap: IDMap = {} as IDMap;
+  get idMap(): IDMap {
+    return this.context.idMap as IDMap;
+  }
 
   /**
    * Creates an instance of `TComponent`.
@@ -407,15 +403,9 @@ export class TComponent<
       );
     }
 
-    const { element, idMap } = build(
-      Component.parsedTemplate,
-      this,
-      Component.parsedUses,
-      params.signal ?? false,
-    );
-
-    this.element = element as T;
-    this.idMap = { ...this.idMap, ...idMap };
+    this.context = new BuildContext(this, Component.parsedUses, params.signal);
+    this.element = this.context.build(Component.parsedTemplate) as T;
+    this.context.resolveIdReferences();
   }
 }
 

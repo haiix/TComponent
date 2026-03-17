@@ -1,4 +1,4 @@
-import { type ComponentParams, TComponent, build } from './TComponent';
+import { type ComponentParams, TComponent } from './TComponent';
 
 /**
  * Converts a string to kebab-case.
@@ -99,18 +99,13 @@ export function applyParams(
     // if a parent exists, the context (event handlers and `uses`) should be directed to the parent.
     const contextComponent =
       component.parent instanceof TComponent ? component.parent : component;
-    const uses =
-      (contextComponent.constructor as typeof TComponent).parsedUses ?? {};
-    const signal = params.signal ?? false;
 
     for (const child of params.childNodes) {
-      if (typeof child === 'string') {
-        target.appendChild(document.createTextNode(child));
-      } else {
-        const { element, idMap } = build(child, contextComponent, uses, signal);
-        target.appendChild(element);
-        Object.assign(contextComponent.idMap, idMap);
-      }
+      target.appendChild(
+        typeof child === 'string'
+          ? document.createTextNode(child)
+          : contextComponent.context.build(child),
+      );
     }
   }
 }
