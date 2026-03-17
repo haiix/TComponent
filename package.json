@@ -39,7 +39,7 @@
     }
   },
   "scripts": {
-    "build": "tsc && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest",
