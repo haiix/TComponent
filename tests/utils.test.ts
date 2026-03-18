@@ -103,4 +103,48 @@ describe('applyParams utility', () => {
     slotSpan.click();
     expect(app.slotClicked).toBe(true);
   });
+
+  it('resolves ID references correctly between Parent directly and inside Slots', () => {
+    class ChildComponent extends TComponent<HTMLDivElement> {
+      static template = /* HTML */ `
+        <div>
+          <span id="target"></span>
+        </div>
+      `;
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.idMap.target as Element, params);
+      }
+    }
+
+    class ParentComponent extends TComponent<HTMLDivElement> {
+      static uses = { ChildComponent };
+      static template = /* HTML */ `
+        <div>
+          <label id="label1" for="my-input1">Label 1</label>
+          <childcomponent>
+            <input id="my-input1" />
+          </childcomponent>
+
+          <childcomponent>
+            <label id="label2" for="my-input2">Label 2</label>
+          </childcomponent>
+          <input id="my-input2" />
+        </div>
+      `;
+    }
+
+    const parent = new ParentComponent();
+
+    const input1 = parent.idMap['my-input1'] as HTMLInputElement;
+    const input2 = parent.idMap['my-input2'] as HTMLInputElement;
+    const label1 = parent.idMap.label1 as HTMLLabelElement;
+    const label2 = parent.idMap.label2 as HTMLLabelElement;
+
+    expect(input1.id).toMatch(/^tcomp-|^[0-9a-f-]{36}$/); // UUID or tcomp- fallback
+    expect(input2.id).toBeTruthy();
+
+    expect(label1.getAttribute('for')).toBe(input1.id);
+    expect(label2.getAttribute('for')).toBe(input2.id);
+  });
 });
