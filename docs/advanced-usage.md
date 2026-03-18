@@ -142,10 +142,10 @@ In this advanced example, a `DynamicList` component captures its first child as 
 
 ```typescript
 import TComponent, {
+  type TNode,
+  type ComponentParams,
   AbstractComponent,
-  ComponentParams,
-  TNode,
-  build,
+  BuildContext,
   kebabKeys,
 } from '@haiix/tcomponent';
 
@@ -153,13 +153,11 @@ import TComponent, {
  * A generic dynamic list component that uses its child AST as a template.
  */
 class DynamicList extends AbstractComponent {
-  parent: AbstractComponent;
   element: Element;
+  private context: BuildContext;
   private templateNode: TNode;
-  private parentUses: Record<string, typeof AbstractComponent>;
-  private signal: AbortSignal;
 
-  constructor(params: ComponentParams & { signal: AbortSignal }) {
+  constructor(params: ComponentParams) {
     super(params);
 
     if (!params.parent || !params.childNodes?.length) {
@@ -167,7 +165,6 @@ class DynamicList extends AbstractComponent {
         'DynamicList requires a parent component and exactly one child template.',
       );
     }
-    this.parent = params.parent;
 
     // 1. Dynamically create the root element's AST (defaulting to <ul>) and build it.
     const tagName = params.attributes?.tagname || 'ul';
@@ -175,16 +172,11 @@ class DynamicList extends AbstractComponent {
     delete rootAst.a.tagname; // Clean up custom props
 
     // Safely retrieve custom components registered in the parent
-    this.parentUses =
+    const parentUses =
       (params.parent.constructor as typeof TComponent).parsedUses ?? {};
 
-    const { element } = build(
-      rootAst,
-      params.parent,
-      this.parentUses,
-      params.signal,
-    );
-    this.element = element;
+    this.context = new BuildContext(params.parent, parentUses, params.signal);
+    this.element = this.context.build(rootAst);
 
     // 2. Save the child element (Slot) as a reusable list-item template
     const childTNode = params.childNodes[0];
@@ -194,8 +186,6 @@ class DynamicList extends AbstractComponent {
       );
     }
     this.templateNode = childTNode;
-
-    this.signal = params.signal;
   }
 
   /**
@@ -203,12 +193,7 @@ class DynamicList extends AbstractComponent {
    */
   append(childContent: string | Node) {
     // Generate new DOM elements from the saved AST template
-    const { element: li } = build(
-      this.templateNode,
-      this.parent,
-      this.parentUses,
-      this.signal,
-    );
+    const li = this.context.build(this.templateNode);
 
     // Insert content and append to the list
     li.append(childContent);

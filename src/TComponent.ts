@@ -196,7 +196,7 @@ function generateId(): string {
 /**
  * Context object used during the recursive build process.
  */
-class BuildContext {
+export class BuildContext {
   /** Map of original IDs to newly generated unique elements. */
   idMap: Record<string, Element | AbstractComponent> = {};
   /** List of elements that reference other elements by ID, needing resolution. */
