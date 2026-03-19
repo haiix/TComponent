@@ -61,7 +61,8 @@ class ChildComponent extends TComponent<HTMLDivElement> {
 }
 
 class ParentComponent extends TComponent<HTMLDivElement> {
-  // kebabKeys automatically transforms { ChildComponent } into { 'child-component': ChildComponent }
+  // kebabKeys automatically transforms { ChildComponent }
+  // into { 'child-component': ChildComponent }
   static uses = kebabKeys({ ChildComponent });
 
   static template = /* HTML */ `
@@ -237,6 +238,8 @@ class App extends TComponent {
 `TComponent` automatically generates UUIDs for elements with an `id` attribute. It also intelligently updates attributes that reference IDs (such as `for`, `aria-labelledby`, `aria-controls`, etc.) so that your accessibility tree remains intact without worrying about global ID collisions across multiple component instances.
 
 ```typescript
+import TComponent from '@haiix/tcomponent';
+
 class AccessibleForm extends TComponent<HTMLFormElement> {
   static template = /* HTML */ `
     <form>
@@ -252,6 +255,59 @@ class AccessibleForm extends TComponent<HTMLFormElement> {
 
 _Note: If an ID reference contains multiple space-separated IDs, `TComponent` resolves all of them correctly._
 
+### Component Boundaries and ID Resolution
+
+In `TComponent`, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.
+
+If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), `TComponent` deliberately **does not** implicitly apply this ID to the child component's root HTML element.
+
+This strict encapsulation is highly intentional. It prevents unexpected DOM behaviors, such as a parent's `<label>` accidentally pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden deep inside the child component.
+
+### The Best Practice: Using Slots for Accessibility
+
+If you need to link a `<label>` in a parent component to an `<input>` managed by a child component, the most robust and explicit approach is to use **Slots**.
+
+Because `applyParams` evaluates slot elements within the **parent's scope**, both the `<label>` and the `<input>` will share the same `idMap`. This allows their UUIDs to resolve perfectly, even though the input is visually wrapped by the child component.
+
+```typescript
+import TComponent { ComponentParams, kebabKeys, applyParams } from '@haiix/tcomponent';
+
+class InputWrapper extends TComponent<HTMLDivElement> {
+  static template = /* HTML */ `
+    <div class="input-group">
+      <!-- The slot content (e.g., the input) will be visually injected here -->
+      <div id="inner-container" class="styled-box"></div>
+    </div>
+  `;
+
+  constructor(params: ComponentParams) {
+    super(params);
+    // Safely route child nodes (slots) into the internal container
+    applyParams(this, this.idMap['inner-container'] as Element, params);
+  }
+}
+
+class ParentForm extends TComponent<HTMLFormElement> {
+  static uses = kebabKeys({ InputWrapper });
+
+  static template = /* HTML */ `
+    <form>
+      <!-- Both the label and the input exist in the Parent's scope, -->
+      <!-- so the 'for' attribute successfully finds 'username-input'. -->
+      <label for="username-input">Username:</label>
+
+      <input-wrapper>
+        <!-- The input is passed as a slot -->
+        <input id="username-input" type="text" placeholder="Enter name..." />
+      </input-wrapper>
+    </form>
+  `;
+}
+```
+
+**Why this pattern is powerful (Inversion of Control):**
+Instead of the child component (`InputWrapper`) having to accept dozens of props (`type`, `placeholder`, `required`, `onchange`) just to manually pass them down to an internal `<input>`, the parent retains full, explicit control over the actual input element. The `InputWrapper` focuses solely on what it does best: providing layout, styling, and structural encapsulation.
+
 ---
 
 ## 5. Error Boundaries and Bubbling
@@ -262,9 +318,9 @@ This allows you to create top-level "Error Boundary" components to handle UI fai
 
 ```typescript
 class Child extends TComponent {
-  static template = /* HTML */ `<button onclick="doAction">
-    Throw Error
-  </button>`;
+  static template = /* HTML */ `
+    <button onclick="doAction">Throw Error</button>
+  `;
 
   async doAction() {
     // Both synchronous errors and unhandled Promise rejections are caught
@@ -274,7 +330,7 @@ class Child extends TComponent {
 
 class Parent extends TComponent {
   static uses = { Child };
-  static template = /* HTML */ `<div><child></child></div>`;
+  static template = /* HTML */ ` <div><child></child></div> `;
 
   onerror(error: unknown) {
     // This will catch the error thrown by the Child component
@@ -314,28 +370,35 @@ class GoodComponent extends TComponent {
 
 ### Whitespace Handling in Templates
 
-When parsing the HTML template, `TComponent` automatically strips out pure whitespace text nodes that are used only for code indentation.
-
-Specifically, any text node that **is completely empty when trimmed AND contains a newline (`\n`)** is ignored.
+By default, when parsing the HTML template, `TComponent` automatically strips out pure whitespace text nodes that are used only for code indentation. Specifically, any text node that **is completely empty when trimmed AND contains a newline (`\n`)** is ignored.
 
 - **Ignored**: `"\n  "` (e.g., line breaks with indentation spaces between HTML tags).
 - **Kept**: `" "` (e.g., a single space between two `<span>` elements).
 
-This ensures that meaningful inline spaces are preserved, while your compiled AST (`TNode`) remains as lightweight as possible without unnecessary DOM nodes.
+This ensures that meaningful inline spaces are preserved, while your compiled AST (`TNode`) remains as lightweight as possible.
 
-### The Importance of `AbortSignal`
-
-When instantiating a component, it is highly recommended to pass an `AbortSignal`. `TComponent` uses this signal to attach event listeners (`{ signal }`).
-
-Without it, if you remove a component from the DOM, its event listeners will remain in memory, potentially causing memory leaks.
+**When to use `preserveWhitespace: true`**
+If your layout relies on the browser rendering whitespace between HTML tags (for example, spaces between inline elements like `<span>` or `<button>`), or if you have a `<textarea>` that intentionally starts with empty newlines, you can override this behavior by defining `static parseOptions`.
 
 ```typescript
-const controller = new AbortController();
-const app = new App({ signal: controller.signal });
+class PreservedWhitespaceComponent extends TComponent {
+  // Instructs the parser to keep all newline-only text nodes
+  static parseOptions = { preserveWhitespace: true };
 
-// Later, when destroying the app:
-controller.abort(); // Automatically removes all 'on*' event listeners!
-app.element.remove();
+  // Without preserveWhitespace: true, the newlines between these spans
+  // would be removed, causing them to render right next to each other ("Item 1Item 2").
+  // With it enabled, the browser will render a natural space between them.
+  static template = /* HTML */ `
+    <div>
+      <span class="tag">Item 1</span>
+      <span class="tag">Item 2</span>
+      <span class="tag">Item 3</span>
+
+      <!-- An empty textarea with intentionally preserved initial newlines -->
+      <textarea id="my-input"> </textarea>
+    </div>
+  `;
+}
 ```
 
 ### SVG & MathML CamelCase Tags Limitation
@@ -414,3 +477,54 @@ class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
 - **Zero runtime cost:** It's purely for TypeScript DX.
 - **Refactoring safety:** If you change an ID string in the interface, TypeScript will flag any outdated strings used inside `this.idMap['...']`.
 - **Intellisense:** Immediate auto-completion of all available IDs and public methods of custom components.
+
+## 8. Component Communication
+
+`TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
+
+Here are a few standard patterns you can use:
+
+### Approach A: Native DOM Events (CustomEvents)
+
+For child-to-parent communication, you can dispatch standard HTML `CustomEvent`s from the child's root element. The parent can listen to these natively.
+
+```typescript
+class Child extends TComponent {
+  static template = /* HTML */ `
+    <button onclick="notifyParent">Click</button>
+  `;
+
+  notifyParent() {
+    // Dispatch a standard CustomEvent bubbling up the DOM tree
+    this.element.dispatchEvent(
+      new CustomEvent('child-clicked', {
+        detail: { value: 123 },
+        bubbles: true,
+      }),
+    );
+  }
+}
+```
+
+### Approach B: Explicit Callback Props
+
+You can pass callback functions down to children using manual assignment or by calling public methods on the child component instance.
+
+```typescript
+class Parent extends TComponent {
+  static uses = { Child };
+  static template = /* HTML */ `<child id="my-child"></child>`;
+
+  constructor(params: ComponentParams) {
+    super(params);
+    const child = this.idMap['my-child'] as Child;
+
+    // Explicitly assign a callback to the child instance
+    child.onAction = (data) => console.log('Data from child:', data);
+  }
+}
+```
+
+### Approach C: External State / PubSub
+
+Because `TComponent` components are just standard ES6 classes managing DOM nodes, they play perfectly with external state managers (like Redux, Zustand, or simple Observables/EventEmitters). You can subscribe to external state within your component's constructor and explicitly update the DOM when state changes.

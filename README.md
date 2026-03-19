@@ -26,26 +26,29 @@ npm install @haiix/tcomponent
 ```typescript
 import TComponent from '@haiix/tcomponent';
 
-class App extends TComponent<HTMLElement> {
+class CounterApp extends TComponent<HTMLElement> {
   static template = /* HTML */ `
-    <section>
-      <!-- The original "id" is replaced with a UUID, accessible via this.idMap -->
-      <h1 id="myOutput">Hello,</h1>
+    <section class="counter-app">
+      <h1 id="count-display">0</h1>
 
       <!-- Attributes beginning with "on" bind events to component methods -->
-      <button onclick="handleMyButton">Click here</button>
+      <button onclick="handleIncrement">Increment</button>
     </section>
   `;
 
-  // Bind the uniquely generated DOM element to a class property
-  myOutput = this.idMap['myOutput'] as HTMLHeadingElement;
+  // The original "id" is replaced with a UUID, accessible via this.idMap
+  countDisplay = this.idMap['count-display'] as HTMLHeadingElement;
 
-  handleMyButton(event: MouseEvent) {
+  // State is managed explicitly by you, not the framework
+  count = 0;
+
+  handleIncrement(event: MouseEvent) {
+    this.count++;
     // Explicit, non-reactive DOM manipulation
-    this.myOutput.textContent += 'World!';
+    this.countDisplay.textContent = this.count.toString();
   }
 
-  // Errors thrown in events (sync or async) are caught here
+  // Errors thrown in events (sync or async) bubble up and are caught here
   onerror(error: unknown) {
     console.error('An error occurred:', error);
   }
@@ -55,7 +58,7 @@ class App extends TComponent<HTMLElement> {
 const controller = new AbortController();
 
 // 2. Instantiate the component and pass the signal
-const app = new App({ signal: controller.signal });
+const app = new CounterApp({ signal: controller.signal });
 
 // 3. Mount to the DOM
 document.body.appendChild(app.element);
