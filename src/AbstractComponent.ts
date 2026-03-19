@@ -1,0 +1,34 @@
+import type { ComponentParams } from './types';
+
+/**
+ * The base abstract class for all components.
+ * Provides basic properties to manage the component hierarchy, attributes, and children.
+ */
+export abstract class AbstractComponent {
+  /** The root DOM Element of the component. */
+  abstract element: Element;
+  /** The parent component instance, if any. */
+  parent?: AbstractComponent;
+
+  /**
+   * Creates an instance of `AbstractComponent`.
+   *
+   * @param params - The initialization parameters.
+   */
+  constructor(params?: ComponentParams) {
+    this.parent = params?.parent;
+  }
+
+  /**
+   * Handles errors by delegating them to the parent component, or throws if there is no parent.
+   *
+   * @param error - The error to be handled.
+   */
+  onerror(error: unknown): void {
+    if (this.parent) {
+      this.parent.onerror(error);
+    } else {
+      throw error;
+    }
+  }
+}

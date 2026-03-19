@@ -1,4 +1,10 @@
+export * from './types';
+export * from './AbstractComponent';
+export * from './BuildContext';
+export * from './parse';
 export * from './TComponent';
-export * from './utils';
+export * from './utils/string';
+export * from './utils/component';
 
-export { default } from './TComponent';
+import { TComponent } from './TComponent';
+export default TComponent;
