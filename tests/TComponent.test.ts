@@ -118,6 +118,38 @@ describe('TComponent & build', () => {
       'mock-uuid-1 mock-uuid-2 unknown-id',
     );
   });
+
+  it('handles duplicate ids by keeping the first instance (first-wins) and logs a warning', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    class DuplicateIdComp extends TComponent<HTMLDivElement> {
+      static template = `
+        <div>
+          <span id="dup">First</span>
+          <p id="dup">Second</p>
+
+          <label for="dup">Label</label>
+        </div>
+      `;
+    }
+
+    const controller = new AbortController();
+    const comp = new DuplicateIdComp({ signal: controller.signal });
+
+    const span = comp.element.querySelector('span')!;
+    const p = comp.element.querySelector('p')!;
+    const label = comp.element.querySelector('label')!;
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[TComponent] Duplicate id "dup" found in template. Only the first instance will be mapped.',
+    );
+
+    expect(span.id).toBe('mock-uuid-1');
+    expect(p.id).toBe('mock-uuid-2');
+
+    expect(comp.idMap.dup).toBe(span);
+    expect(label.getAttribute('for')).toBe('mock-uuid-1');
+  });
 });
 
 describe('parseOptions inside TComponent', () => {
@@ -192,7 +224,7 @@ describe('Event Binding & Error Handling', () => {
     new BadEventComponent({ signal: controller.signal });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      'Method "nonExistent" not found on component for event "onclick"',
+      '[TComponent] Method "nonExistent" not found on component for event "onclick"',
     );
   });
 

@@ -194,6 +194,29 @@ function generateId(): string {
 }
 
 /**
+ * Registers an element or component to the `idMap` using its original template ID.
+ * Implements a "first-wins" strategy: if the ID already exists, it logs a warning
+ * and ignores the subsequent registration, mirroring standard DOM behavior.
+ *
+ * @param idMap - The dictionary mapping original IDs to elements or components.
+ * @param id - The original ID string defined in the template.
+ * @param target - The DOM Element or AbstractComponent instance to be registered.
+ */
+function registerId(
+  idMap: Record<string, AbstractComponent | Element>,
+  id: string,
+  target: Element | AbstractComponent,
+): void {
+  if (id in idMap) {
+    console.warn(
+      `[TComponent] Duplicate id "${id}" found in template. Only the first instance will be mapped.`,
+    );
+  } else {
+    idMap[id] = target;
+  }
+}
+
+/**
  * Context object used during the recursive build process.
  */
 export class BuildContext {
@@ -248,7 +271,7 @@ export class BuildContext {
         signal,
       });
       if (tNode.a.id) {
-        idMap[tNode.a.id] = cComponent;
+        registerId(idMap, tNode.a.id, cComponent);
       }
       return cComponent.element;
     }
@@ -272,7 +295,7 @@ export class BuildContext {
     for (const [name, value] of Object.entries(tNode.a)) {
       if (name === 'id') {
         element.id = generateId();
-        idMap[value] = element;
+        registerId(idMap, value, element);
       } else if (ID_REF_ATTRIBUTES.has(name)) {
         idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
@@ -280,7 +303,7 @@ export class BuildContext {
 
         if (typeof fn !== 'function') {
           console.warn(
-            `Method "${value}" not found on component for event "${name}"`,
+            `[TComponent] Method "${value}" not found on component for event "${name}"`,
           );
           continue;
         }
