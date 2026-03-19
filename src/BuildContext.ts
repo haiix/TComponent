@@ -1,4 +1,4 @@
-import type { TNode, ComponentParams } from './types';
+import type { ComponentParams, TNode } from './types';
 import type { AbstractComponent } from './AbstractComponent';
 
 /**
@@ -36,10 +36,7 @@ function isSafeTagName(tagName: string): boolean {
  * @returns A new event handler function that wraps `fn` with error handling.
  */
 /* eslint-disable @typescript-eslint/no-unsafe-function-type */
-function createEventHandler(
-  component: { onerror(error: unknown): unknown },
-  fn: Function,
-) {
+function createEventHandler(component: AbstractComponent, fn: Function) {
   /* eslint-enable @typescript-eslint/no-unsafe-function-type */
   return (event: Event): void => {
     try {
@@ -65,7 +62,7 @@ function generateId(): string {
   /* eslint-disable @typescript-eslint/no-unnecessary-condition */
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
-    : 'tcomp-' + Math.random().toString(36).slice(2, 11);
+    : `tcomp-${Math.random().toString(36).slice(2, 11)}`;
   /* eslint-enable @typescript-eslint/no-unnecessary-condition */
 }
 
@@ -133,7 +130,7 @@ export class BuildContext {
    * @param ns - Namespace URI used when creating an element.
    * @returns The constructed DOM Element.
    */
-  build(tNode: TNode, ns?: string): Element {
+  build(tNode: TNode, ns?: string | null): Element {
     const { idMap, idReferenceMap, component, uses, signal } = this;
 
     if (tNode.t in uses) {
@@ -176,17 +173,15 @@ export class BuildContext {
         idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
         const fn = (component as unknown as Record<string, unknown>)[value];
-
-        if (typeof fn !== 'function') {
+        if (typeof fn === 'function') {
+          const eventType = name.slice(2).toLowerCase();
+          const wrappedFn = createEventHandler(component, fn);
+          element.addEventListener(eventType, wrappedFn, { signal });
+        } else {
           console.warn(
             `[TComponent] Method "${value}" not found on component for event "${name}"`,
           );
-          continue;
         }
-
-        const eventType = name.slice(2).toLowerCase();
-        const wrappedFn = createEventHandler(component, fn);
-        element.addEventListener(eventType, wrappedFn, { signal });
       } else {
         element.setAttribute(name, value);
       }
@@ -196,7 +191,7 @@ export class BuildContext {
       if (typeof cNode === 'string') {
         element.appendChild(document.createTextNode(cNode));
       } else {
-        const childNs = tNode.t === 'foreignobject' ? undefined : elementNs;
+        const childNs = tNode.t === 'foreignobject' ? null : elementNs;
         element.appendChild(this.build(cNode, childNs));
       }
     }
@@ -215,7 +210,7 @@ export class BuildContext {
         .map((id) => {
           const target = this.idMap[id];
           // For custom components (AbstractComponent) or unresolvable IDs,
-          // leave the original string as-is and defer handling to the child component.
+          // Leave the original string as-is and defer handling to the child component.
           return target instanceof Element ? target.id : id;
         })
         .join(' ');

@@ -32,10 +32,8 @@ export function applyParams(
   if (params.attributes) {
     for (const [name, value] of Object.entries(params.attributes)) {
       if (name === 'id' || name.startsWith('on')) {
-        continue; // Skip 'id' and 'on*' attributes.
-      }
-
-      if (name === 'class') {
+        // Skip 'id' and 'on*' attributes.
+      } else if (name === 'class') {
         const classes = value.trim().split(/\s+/u).filter(Boolean);
         if (classes.length) target.classList.add(...classes);
       } else if (name === 'style') {
@@ -57,7 +55,7 @@ export function applyParams(
   // 2. Append Child Nodes (Slots)
   if (params.childNodes && params.childNodes.length > 0) {
     // Since slots are defined in the parent component's template,
-    // if a parent exists, the context (event handlers and `uses`) should be directed to the parent.
+    // If a parent exists, the context (event handlers and `uses`) should be directed to the parent.
     const contextComponent =
       component.parent instanceof TComponent ? component.parent : component;
 

@@ -1,4 +1,4 @@
-import type { ParseOptions, TNode, ComponentParams } from './types';
+import type { ComponentParams, ParseOptions, TNode } from './types';
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './parse';
@@ -31,11 +31,6 @@ export class TComponent<
   readonly context: BuildContext;
   /** The root DOM Element of the component. */
   readonly element: T;
-
-  /** A map of original template IDs to uniquely generated DOM elements. */
-  get idMap(): IDMap {
-    return this.context.idMap as IDMap;
-  }
 
   /**
    * Creates an instance of `TComponent`.
@@ -82,6 +77,11 @@ export class TComponent<
     this.context = new BuildContext(this, Component.parsedUses, params.signal);
     this.element = this.context.build(Component.parsedTemplate) as T;
     this.context.resolveIdReferences();
+  }
+
+  /** A map of original template IDs to uniquely generated DOM elements. */
+  get idMap(): IDMap {
+    return this.context.idMap as IDMap;
   }
 }
 

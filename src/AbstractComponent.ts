@@ -5,10 +5,10 @@ import type { ComponentParams } from './types';
  * Provides basic properties to manage the component hierarchy, attributes, and children.
  */
 export abstract class AbstractComponent {
-  /** The root DOM Element of the component. */
-  abstract element: Element;
   /** The parent component instance, if any. */
   parent?: AbstractComponent;
+  /** The root DOM Element of the component. */
+  abstract element: Element;
 
   /**
    * Creates an instance of `AbstractComponent`.
