@@ -347,8 +347,7 @@ describe('Component Composition (uses) & Props/Slots', () => {
     expect(parent1.idMap['child-1']).toBeInstanceOf(MockChild);
     expect(parent2.idMap['child-1']).toBeInstanceOf(MockChild);
 
-    const parsedUses = CachedParent.parsedUses;
-    expect(parsedUses).toBeDefined();
+    const parsedUses = CachedParent.getParsed().uses;
     expect(parsedUses).toHaveProperty('mycustomchild');
   });
 });

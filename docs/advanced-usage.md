@@ -173,8 +173,11 @@ class DynamicList extends AbstractComponent {
     delete rootAst.a.tagname; // Clean up custom props
 
     // Safely retrieve custom components registered in the parent
-    const parentUses =
-      (params.parent.constructor as typeof TComponent).parsedUses ?? {};
+    let parentUses: Record<string, typeof AbstractComponent> = {};
+    if (params.parent instanceof TComponent) {
+      const ParentClass = params.parent.constructor as typeof TComponent;
+      parentUses = ParentClass.getParsed().uses;
+    }
 
     this.context = new BuildContext(params.parent, parentUses, params.signal);
     this.element = this.context.build(rootAst);

@@ -1,4 +1,4 @@
-import type { ComponentParams, ParseOptions, TNode } from './types';
+import type { ComponentParams, ParseOptions, ParsedComponent } from './types';
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './parse';
@@ -21,10 +21,8 @@ export class TComponent<
   /** The options passed when parsing the template. */
   static parseOptions?: ParseOptions;
 
-  /** Lowercased uses cache */
-  static parsedUses?: Record<string, typeof AbstractComponent>;
-  /** The parsed AST (`TNode`) of the HTML template. Cached across instances. */
-  static parsedTemplate?: TNode;
+  /** The parsed AST (`TNode`) of the HTML template and Lowercased uses. Cached across instances. */
+  private static _parsed?: ParsedComponent;
 
   /** The context object for the build process. */
   readonly context: BuildContext;
@@ -48,36 +46,39 @@ export class TComponent<
       );
     }
 
-    if (
-      !Object.hasOwn(Component, 'parsedTemplate') ||
-      !Component.parsedTemplate
-    ) {
-      const parseOptions = Object.hasOwn(Component, 'parseOptions')
-        ? Component.parseOptions
-        : {};
-      Component.parsedTemplate = parseTemplate(
-        Component.template,
-        parseOptions,
-      );
-    }
+    const parsed = Component.getParsed();
 
-    if (!Object.hasOwn(Component, 'parsedUses') || !Component.parsedUses) {
-      Component.parsedUses = Object.fromEntries(
-        Object.entries(Component.uses).map(([name, Comp]) => [
-          name.toLowerCase(),
-          Comp,
-        ]),
-      );
-    }
-
-    this.context = new BuildContext(this, Component.parsedUses, params.signal);
-    this.element = this.context.build(Component.parsedTemplate) as T;
+    this.context = new BuildContext(this, parsed.uses, params.signal);
+    this.element = this.context.build(parsed.template) as T;
     this.context.resolveIdReferences();
   }
 
   /** A map of original template IDs to uniquely generated DOM elements. */
   get idMap(): IDMap {
     return this.context.idMap as IDMap;
+  }
+
+  /**
+   * Retrieves the class-specific parsed templates and dependent components (uses).
+   * If they have not been parsed, parses them and saves them to the cache.
+   */
+  static getParsed(): ParsedComponent {
+    if (!Object.hasOwn(this, '_parsed') || !this._parsed) {
+      const parseOptions = Object.hasOwn(this, 'parseOptions')
+        ? this.parseOptions
+        : {};
+
+      this._parsed = {
+        template: parseTemplate(this.template, parseOptions),
+        uses: Object.fromEntries(
+          Object.entries(this.uses).map(([name, Component]) => [
+            name.toLowerCase(),
+            Component,
+          ]),
+        ),
+      };
+    }
+    return this._parsed;
   }
 }
 

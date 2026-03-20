@@ -37,3 +37,11 @@ export interface ComponentParams {
   /** An `AbortSignal` used to manage event listeners and component teardown. */
   signal?: AbortSignal;
 }
+
+/**
+ * The interface that aggregates the parsing results of templates and subcomponents.
+ */
+export interface ParsedComponent {
+  template: TNode;
+  uses: Record<string, typeof AbstractComponent>;
+}
