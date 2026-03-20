@@ -21,6 +21,7 @@ export default defineConfig(
       globals: globals.browser,
     },
     rules: {
+      'no-console': 'error',
       '@typescript-eslint/explicit-function-return-type': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-floating-promises': 'error',

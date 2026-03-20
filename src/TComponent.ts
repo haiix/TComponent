@@ -2,6 +2,7 @@ import type { ComponentParams, ParseOptions, TNode } from './types';
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './parse';
+import { warnOnce } from './utils/console';
 
 /**
  * A practical base component class that automatically parses its template,
@@ -25,8 +26,6 @@ export class TComponent<
   /** The parsed AST (`TNode`) of the HTML template. Cached across instances. */
   static parsedTemplate?: TNode;
 
-  private static warnedNoSignal = false;
-
   /** The context object for the build process. */
   readonly context: BuildContext;
   /** The root DOM Element of the component. */
@@ -42,13 +41,10 @@ export class TComponent<
 
     const Component = this.constructor as typeof TComponent;
 
-    if (
-      !params.signal &&
-      (!Object.hasOwn(Component, 'warnedNoSignal') || !Component.warnedNoSignal)
-    ) {
-      Component.warnedNoSignal = true;
-      console.warn(
-        `[TComponent] ${Component.name}: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via "new ${Component.name}({ signal: controller.signal })" to enable cleanup.`,
+    if (!params.signal) {
+      warnOnce(
+        `no-signal:${Component.name}`,
+        `${Component.name}: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via "new ${Component.name}({ signal: controller.signal })" to enable cleanup.`,
       );
     }
 

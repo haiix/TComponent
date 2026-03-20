@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ParseOptions, ComponentParams } from '../src/types';
 import { TComponent } from '../src/TComponent';
+import { resetWarnings } from '../src/utils/console';
 
 let uuidCounter = 0;
 
 beforeEach(() => {
   uuidCounter = 0;
   vi.stubGlobal('crypto', { randomUUID: () => `mock-uuid-${++uuidCounter}` });
+  resetWarnings();
 });
 
 afterEach(() => {

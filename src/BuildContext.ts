@@ -1,5 +1,6 @@
 import type { ComponentParams, TNode } from './types';
 import type { AbstractComponent } from './AbstractComponent';
+import { warnOnce } from './utils/console';
 
 /**
  * List of attributes that reference elements by their ID.
@@ -81,8 +82,9 @@ function registerId(
   target: Element | AbstractComponent,
 ): void {
   if (id in idMap) {
-    console.warn(
-      `[TComponent] Duplicate id "${id}" found in template. Only the first instance will be mapped.`,
+    warnOnce(
+      `duplicate-id:${id}`,
+      `Duplicate id "${id}" found in template. Only the first instance will be mapped.`,
     );
   } else {
     idMap[id] = target;
@@ -178,8 +180,9 @@ export class BuildContext {
           const wrappedFn = createEventHandler(component, fn);
           element.addEventListener(eventType, wrappedFn, { signal });
         } else {
-          console.warn(
-            `[TComponent] Method "${value}" not found on component for event "${name}"`,
+          warnOnce(
+            `missing-method:${component.constructor.name}:${value}`,
+            `Method "${value}" not found on component for event "${name}"`,
           );
         }
       } else {
