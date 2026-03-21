@@ -36,18 +36,20 @@ export function applyParams(
       } else if (name === 'class') {
         const classes = value.trim().split(/\s+/u).filter(Boolean);
         if (classes.length) target.classList.add(...classes);
-      } else if (name === 'style') {
-        const existingStyle = target.getAttribute('style')?.trim() ?? '';
-        const appendStyle = value.trim();
-
-        if (existingStyle && appendStyle) {
-          const separator = existingStyle.endsWith(';') ? ' ' : '; ';
-          target.setAttribute('style', existingStyle + separator + appendStyle);
-        } else {
-          target.setAttribute('style', existingStyle || appendStyle);
-        }
       } else {
-        target.setAttribute(name, value);
+        let formattedValue = value;
+        if (name === 'style') {
+          const existingStyle = target.getAttribute('style')?.trim() ?? '';
+          const appendStyle = value.trim();
+
+          if (existingStyle && appendStyle) {
+            const separator = existingStyle.endsWith(';') ? ' ' : '; ';
+            formattedValue = existingStyle + separator + appendStyle;
+          } else {
+            formattedValue = existingStyle || appendStyle;
+          }
+        }
+        target.setAttribute(name, formattedValue);
       }
     }
   }
