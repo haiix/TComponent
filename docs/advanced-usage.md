@@ -1,6 +1,6 @@
 # TComponent: Advanced Usage & Documentation
 
-While `TComponent` is designed to be incredibly simple and non-reactive, its architecture—based on parsing HTML into an Abstract Syntax Tree (AST) called `TNode`—allows for highly advanced, flexible, and explicit UI patterns.
+While `TComponent` is designed to be incredibly simple and non-reactive, its architecture allows for highly advanced, flexible, and explicit UI patterns.
 
 This document covers detailed usage, composition strategies, and edge cases.
 
@@ -22,11 +22,9 @@ This is a deliberate design choice: a component might need to apply certain attr
 
 While you can manually parse `params.attributes` and `params.childNodes` in the constructor, `TComponent` provides a powerful `applyParams` utility to seamlessly route props and slots to any target element.
 
-`applyParams` intelligently handles:
+`applyParams` handles attribute merging, security filtering (`id`, `on*`), and evaluates slot content in the **parent's scope**, ensuring correct event binding and `idMap` integration.
 
-- **Merging**: Safely merges `class` and `style` attributes without overwriting existing ones on the target element.
-- **Security**: Automatically skips `id` and `on*` (event) attributes, preventing global ID collisions and invalid inline event handlers on the component's internal DOM.
-- **Slot Scope Isolation**: Automatically builds child AST nodes (`TNode`) within the **parent component's context**. This means event listeners inside slots correctly bind to the parent's methods, and any new IDs inside the slot are merged directly into the **parent's `idMap`**.
+See also Section 4 for accessibility patterns.
 
 ### Example: Composing Components with Utilities
 
@@ -79,11 +77,10 @@ class ParentComponent extends TComponent<HTMLDivElement> {
     </div>
   `;
 
-  constructor(params: ComponentParams) {
+  constructor(params?: ComponentParams) {
     super(params);
 
-    // Because applyParams merges slot IDs into the parent's scope,
-    // you can access elements inside the slot directly from the parent!
+    // You can access elements inside the slot directly from the parent!
     const btn = this.idMap['slot-btn'] as HTMLButtonElement;
   }
 
@@ -97,12 +94,348 @@ class ParentComponent extends TComponent<HTMLDivElement> {
 
 ---
 
-## 2. AbstractComponent vs. TComponent
+## 2. Dynamic Component Creation
+
+Instead of defining components statically in the template using `uses`, you will often need to create child components dynamically—such as when rendering a list of items fetched from an API, or opening a modal dialog.
+
+When manually instantiating a child component, it is highly recommended to pass down the `parent` and `signal` from the parent component's `context`.
+
+- Passing `parent: this`: Links the child to the parent's Error Boundary (so if the child throws an error, the parent's `onerror` catches it).
+- Passing `signal: this.context.signal`: Links the child's lifecycle to the parent. **If the parent is destroyed, the dynamically created child will automatically clean up its own event listeners.**
+
+### Example: Rendering a Dynamic List
+
+```typescript
+import TComponent, { ComponentParams } from '@haiix/tcomponent';
+
+class UserCard extends TComponent<HTMLDivElement> {
+  static template = /* HTML */ `
+    <div class="card">
+      <h3 id="name"></h3>
+      <button onclick="handleDelete">Delete</button>
+    </div>
+  `;
+
+  constructor(params: ComponentParams & { userName: string }) {
+    super(params);
+    const nameEl = this.idMap['name'] as HTMLHeadingElement;
+    nameEl.textContent = params.userName;
+  }
+
+  handleDelete() {
+    // Manually destroy this specific instance and remove it from the DOM
+    this.destroy();
+  }
+}
+
+class UserListApp extends TComponent<HTMLDivElement> {
+  static template = /* HTML */ `
+    <div>
+      <h2>Users</h2>
+      <!-- We will inject dynamically created components here -->
+      <div id="list-container"></div>
+      
+      <button onclick="loadUsers">Load Users</button>
+    </div>
+  `;
+
+  async loadUsers() {
+    const container = this.idMap['list-container'] as HTMLDivElement;
+    
+    // Clear existing children
+    container.innerHTML = '';
+    
+    const users = ['Alice', 'Bob', 'Charlie'];
+
+    for (const name of users) {
+      // 1. Manually instantiate the child component.
+      // 2. Pass the parent and the parent's signal so lifecycles and error boundaries are linked.
+      const card = new UserCard({
+        userName: name,
+        parent: this,
+        signal: this.context.signal, 
+      });
+
+      // 3. Manually append the child's element to the DOM
+      container.appendChild(card.element);
+    }
+  }
+}
+```
+
+---
+
+## 3. Component Lifecycle & Teardown
+
+Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully via internal `AbortController`s.
+
+### The `destroy()` Method
+
+Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method will:
+1. Remove the component's root element from the DOM (`this.element.remove()`).
+2. Instantly unbind all event listeners defined via `on*` attributes.
+3. Automatically cascade the teardown process to all nested sub-components (both static and dynamically linked via `signal`).
+
+```typescript
+const app = new UserListApp();
+document.body.appendChild(app.element);
+
+// Later, when the app needs to be entirely removed:
+// This will recursively destroy the app and all dynamically created UserCards inside it!
+app.destroy(); 
+```
+
+### Passing External AbortSignals
+
+If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the top-level component's constructor. 
+
+```typescript
+const routerController = new AbortController();
+
+// Pass the router's signal to the top-level page component
+const page = new UserListApp({ signal: routerController.signal });
+
+// When the user navigates away, aborting the router automatically destroys the entire page tree
+routerController.abort();
+```
+
+*Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal.*
+
+---
+
+## 4. Accessibility and ID References
+
+`TComponent` automatically generates UUIDs for elements with an `id` attribute and updates reference attributes (`for`, `aria-labelledby`, etc.) accordingly.
+
+```typescript
+import TComponent from '@haiix/tcomponent';
+
+class AccessibleForm extends TComponent<HTMLFormElement> {
+  static template = /* HTML */ `
+    <form>
+      <!-- "my-input" becomes a UUID (e.g., '123e4567-...'). -->
+      <!-- The label's "for" attribute automatically updates to match it. -->
+      <label for="my-input">Username:</label>
+      <input id="my-input" aria-describedby="desc" type="text" />
+      <span id="desc">Please enter your full name.</span>
+    </form>
+  `;
+}
+```
+
+_Note: If an ID reference contains multiple space-separated IDs, `TComponent` resolves all of them correctly._
+
+### Component Boundaries and ID Resolution
+
+In `TComponent`, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.
+
+If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), `TComponent` deliberately **does not** implicitly apply this ID to the child component's root HTML element.
+
+This strict encapsulation is highly intentional. It prevents unexpected DOM behaviors, such as a parent's `<label>` accidentally pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden deep inside the child component.
+
+### The Best Practice: Using Slots for Accessibility
+
+If you need to link a `<label>` in a parent component to an `<input>` managed by a child component, the most robust and explicit approach is to use **Slots**.
+
+Because slot content is evaluated in the **parent's scope** (see Section 1), both the `<label>` and `<input>` share the same `idMap`, allowing their UUIDs to resolve correctly.
+
+```typescript
+import TComponent { ComponentParams, kebabKeys, applyParams } from '@haiix/tcomponent';
+
+class InputWrapper extends TComponent<HTMLDivElement> {
+  static template = /* HTML */ `
+    <div class="input-group">
+      <!-- The slot content (e.g., the input) will be visually injected here -->
+      <div id="inner-container" class="styled-box"></div>
+    </div>
+  `;
+
+  constructor(params: ComponentParams) {
+    super(params);
+    // Safely route child nodes (slots) into the internal container
+    applyParams(this, this.idMap['inner-container'] as Element, params);
+  }
+}
+
+class ParentForm extends TComponent<HTMLFormElement> {
+  static uses = kebabKeys({ InputWrapper });
+
+  static template = /* HTML */ `
+    <form>
+      <!-- Both the label and the input exist in the Parent's scope, -->
+      <!-- so the 'for' attribute successfully finds 'username-input'. -->
+      <label for="username-input">Username:</label>
+
+      <input-wrapper>
+        <!-- The input is passed as a slot -->
+        <input id="username-input" type="text" placeholder="Enter name..." />
+      </input-wrapper>
+    </form>
+  `;
+}
+```
+
+**Why this pattern is powerful (Inversion of Control):**
+Instead of the child component (`InputWrapper`) having to accept dozens of props (`type`, `placeholder`, `required`, `onchange`) just to manually pass them down to an internal `<input>`, the parent retains full, explicit control over the actual input element. The `InputWrapper` focuses solely on what it does best: providing layout, styling, and structural encapsulation.
+
+---
+
+## 5. Error Boundaries and Bubbling
+
+If an event listener throws an error (or a Promise rejects), `TComponent` catches it and calls the `onerror` method. If the current component does not override `onerror` or explicitly throws the error again, the error bubbles up to the `parent` component.
+
+This allows you to create top-level "Error Boundary" components to handle UI failures gracefully.
+
+```typescript
+class Child extends TComponent {
+  static template = /* HTML */ `<button onclick="doAction">Throw</button>`;
+
+  async doAction() {
+    throw new Error('Something went wrong in the child!');
+  }
+}
+
+class Parent extends TComponent {
+  static uses = { Child };
+  static template = /* HTML */ `<div><child></child></div>`;
+
+  onerror(error: unknown) {
+    console.error('Caught in Parent Error Boundary:', error);
+  }
+}
+```
+
+---
+
+## 6. Strict TypeScript Typing for `idMap`
+
+By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.
+
+While this keeps the component definition simple, you might prefer strict, automatic type inference for your mapped IDs. `TComponent` supports a second generic type parameter that allows you to define the exact shape of your `idMap`.
+
+### Example: Strongly Typed ID Map and Encapsulation
+
+By defining an interface for your IDs and passing it to `TComponent`, your editor will provide full auto-completion for ID strings, and automatically infer the correct DOM element or Component types—eliminating the need for repetitive `as` assertions.
+
+```typescript
+import TComponent, { ComponentParams, kebabKeys } from '@haiix/tcomponent';
+
+class CustomAvatar extends TComponent<HTMLImageElement> {
+  static template = /* HTML */ `<img class="avatar" />`;
+
+  // Best Practice: Expose explicit methods to update internal state,
+  // rather than letting external components mutate `this.element` directly.
+  setSrc(url: string) {
+    this.element.src = url;
+  }
+}
+
+// 1. Define an interface mapping your exact IDs to their expected types
+interface ProfileIdMap {
+  'profile-title': HTMLHeadingElement;
+  'username-input': HTMLInputElement;
+  'submit-btn': HTMLButtonElement;
+  'user-avatar': CustomAvatar; // Works perfectly with custom sub-components!
+}
+
+// 2. Pass the interface as the second generic parameter
+class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
+  static uses = kebabKeys({ CustomAvatar });
+
+  static template = /* HTML */ `
+    <form>
+      <h2 id="profile-title">Edit Profile</h2>
+      <custom-avatar id="user-avatar"></custom-avatar>
+      <input id="username-input" type="text" />
+      <button id="submit-btn" type="submit">Save</button>
+    </form>
+  `;
+
+  constructor(params?: ComponentParams) {
+    super(params);
+
+    // Fully typed! No `as HTMLInputElement` required.
+    // Your IDE will auto-complete 'username-input' and know it's an HTMLInputElement.
+    const input = this.idMap['username-input'];
+    input.value = 'JohnDoe';
+
+    const btn = this.idMap['submit-btn'];
+    btn.disabled = false;
+
+    // Custom component methods are strongly typed and auto-completed
+    const avatar = this.idMap['user-avatar'];
+    avatar.setSrc('/path/to/image.png');
+  }
+}
+```
+
+**Benefits of this approach:**
+
+- **Zero runtime cost:** It's purely for TypeScript DX.
+- **Refactoring safety:** If you change an ID string in the interface, TypeScript will flag any outdated strings used inside `this.idMap['...']`.
+- **Intellisense:** Immediate auto-completion of all available IDs and public methods of custom components.
+
+---
+
+## 7. Component Communication
+
+`TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
+
+Here are a few standard patterns you can use:
+
+### Approach A: Native DOM Events (CustomEvents)
+
+For child-to-parent communication, you can dispatch standard HTML `CustomEvent`s from the child's root element. The parent can listen to these natively.
+
+```typescript
+class Child extends TComponent {
+  static template = /* HTML */ `
+    <button onclick="notifyParent">Click</button>
+  `;
+
+  notifyParent() {
+    // Dispatch a standard CustomEvent bubbling up the DOM tree
+    this.element.dispatchEvent(
+      new CustomEvent('child-clicked', {
+        detail: { value: 123 },
+        bubbles: true,
+      }),
+    );
+  }
+}
+```
+
+### Approach B: Explicit Callback Props
+
+You can pass callback functions down to children using manual assignment or by calling public methods on the child component instance.
+
+```typescript
+class Parent extends TComponent {
+  static uses = { Child };
+  static template = /* HTML */ `<child id="my-child"></child>`;
+
+  constructor(params: ComponentParams) {
+    super(params);
+    const child = this.idMap['my-child'] as Child;
+
+    // Explicitly assign a callback to the child instance
+    child.onAction = (data) => console.log('Data from child:', data);
+  }
+}
+```
+
+### Approach C: External State / PubSub
+
+Because `TComponent` components are just standard ES6 classes managing DOM nodes, they play perfectly with external state managers (like Redux, Zustand, or simple Observables/EventEmitters). You can subscribe to external state within your component's constructor and explicitly update the DOM when state changes.
+
+---
+
+## 8. AbstractComponent vs. TComponent
 
 `TComponent` is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
 
-- **`TComponent`**: Provides the high-level API you use most of the time. It automatically parses the `static template` into an AST, builds the DOM, resolves ID references (`idMap`), binds events, and provides the `destroy()` method.
-- **`AbstractComponent`**: The minimal, bare-bones foundation. It only provides the component tree structure (the `parent` reference) and the error bubbling mechanism (`onerror`). It does **not** handle HTML templates, event binding, or automatic teardown. It requires you to explicitly define and construct the `element` property yourself.
+- **`TComponent`**: Provides the high-level API you use most of the time. It automatically parses the `static template` into an AST, builds the DOM, resolves ID references (`idMap`), and binds events.
+- **`AbstractComponent`**: The minimal, bare-bones foundation. It only provides the component tree structure (the `parent` reference) and the error bubbling mechanism (`onerror`). It does **not** handle HTML templates or event binding automatically. It requires you to explicitly define and construct the `element` property yourself.
 
 ### When should you use `AbstractComponent` directly?
 
@@ -133,13 +466,13 @@ export class ManualComponent extends AbstractComponent {
 
 ---
 
-## 3. Advanced AST Manipulation (Dynamic Templates)
+## 9. Advanced AST Manipulation (Dynamic Templates)
 
 Because `TComponent` compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
 
 ### Example: A Generic Dynamic List
 
-In this advanced example, a `DynamicList` component captures its first child as a template (e.g., an `<li>`), and re-evaluates that AST whenever a new item is added.
+In this advanced example, a `DynamicList` component captures its first child as an AST template (e.g., an `<li>`), and re-evaluates that AST whenever a new item is added.
 
 ```typescript
 import TComponent, {
@@ -236,115 +569,7 @@ class App extends TComponent {
 
 ---
 
-## 4. Accessibility and ID References
-
-`TComponent` automatically generates UUIDs for elements with an `id` attribute. It also intelligently updates attributes that reference IDs (such as `for`, `aria-labelledby`, `aria-controls`, etc.) so that your accessibility tree remains intact without worrying about global ID collisions across multiple component instances.
-
-```typescript
-import TComponent from '@haiix/tcomponent';
-
-class AccessibleForm extends TComponent<HTMLFormElement> {
-  static template = /* HTML */ `
-    <form>
-      <!-- "my-input" becomes a UUID (e.g., '123e4567-...'). -->
-      <!-- The label's "for" attribute automatically updates to match it. -->
-      <label for="my-input">Username:</label>
-      <input id="my-input" aria-describedby="desc" type="text" />
-      <span id="desc">Please enter your full name.</span>
-    </form>
-  `;
-}
-```
-
-_Note: If an ID reference contains multiple space-separated IDs, `TComponent` resolves all of them correctly._
-
-### Component Boundaries and ID Resolution
-
-In `TComponent`, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.
-
-If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), `TComponent` deliberately **does not** implicitly apply this ID to the child component's root HTML element.
-
-This strict encapsulation is highly intentional. It prevents unexpected DOM behaviors, such as a parent's `<label>` accidentally pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden deep inside the child component.
-
-### The Best Practice: Using Slots for Accessibility
-
-If you need to link a `<label>` in a parent component to an `<input>` managed by a child component, the most robust and explicit approach is to use **Slots**.
-
-Because `applyParams` evaluates slot elements within the **parent's scope**, both the `<label>` and the `<input>` will share the same `idMap`. This allows their UUIDs to resolve perfectly, even though the input is visually wrapped by the child component.
-
-```typescript
-import TComponent { ComponentParams, kebabKeys, applyParams } from '@haiix/tcomponent';
-
-class InputWrapper extends TComponent<HTMLDivElement> {
-  static template = /* HTML */ `
-    <div class="input-group">
-      <!-- The slot content (e.g., the input) will be visually injected here -->
-      <div id="inner-container" class="styled-box"></div>
-    </div>
-  `;
-
-  constructor(params: ComponentParams) {
-    super(params);
-    // Safely route child nodes (slots) into the internal container
-    applyParams(this, this.idMap['inner-container'] as Element, params);
-  }
-}
-
-class ParentForm extends TComponent<HTMLFormElement> {
-  static uses = kebabKeys({ InputWrapper });
-
-  static template = /* HTML */ `
-    <form>
-      <!-- Both the label and the input exist in the Parent's scope, -->
-      <!-- so the 'for' attribute successfully finds 'username-input'. -->
-      <label for="username-input">Username:</label>
-
-      <input-wrapper>
-        <!-- The input is passed as a slot -->
-        <input id="username-input" type="text" placeholder="Enter name..." />
-      </input-wrapper>
-    </form>
-  `;
-}
-```
-
-**Why this pattern is powerful (Inversion of Control):**
-Instead of the child component (`InputWrapper`) having to accept dozens of props (`type`, `placeholder`, `required`, `onchange`) just to manually pass them down to an internal `<input>`, the parent retains full, explicit control over the actual input element. The `InputWrapper` focuses solely on what it does best: providing layout, styling, and structural encapsulation.
-
----
-
-## 5. Error Boundaries and Bubbling
-
-If an event listener throws an error (or a Promise rejects), `TComponent` catches it and calls the `onerror` method. If the current component does not override `onerror` or explicitly throws the error again, the error bubbles up to the parent component.
-
-This allows you to create top-level "Error Boundary" components to handle UI failures gracefully.
-
-```typescript
-class Child extends TComponent {
-  static template = /* HTML */ `
-    <button onclick="doAction">Throw Error</button>
-  `;
-
-  async doAction() {
-    // Both synchronous errors and unhandled Promise rejections are caught
-    throw new Error('Something went wrong in the child!');
-  }
-}
-
-class Parent extends TComponent {
-  static uses = { Child };
-  static template = /* HTML */ ` <div><child></child></div> `;
-
-  onerror(error: unknown) {
-    // This will catch the error thrown by the Child component
-    console.error('Caught in Parent Error Boundary:', error);
-  }
-}
-```
-
----
-
-## 6. Caveats & Best Practices
+## 10. Caveats & Best Practices
 
 ### Security & XSS Prevention
 
@@ -412,164 +637,3 @@ However, the browser's HTML parser **forces all tags to lowercase**. While `TCom
 
 Because of this browser limitation, **complex SVGs with camelCase tags might not render correctly when written directly inside `static template`**.
 For complex SVGs, it is recommended to insert them manually via DOM manipulation in the constructor, or load them externally.
-
----
-
-## 7. Strict TypeScript Typing for `idMap`
-
-By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.
-
-While this keeps the component definition simple, you might prefer strict, automatic type inference for your mapped IDs. `TComponent` supports a second generic type parameter that allows you to define the exact shape of your `idMap`.
-
-### Example: Strongly Typed ID Map and Encapsulation
-
-By defining an interface for your IDs and passing it to `TComponent`, your editor will provide full auto-completion for ID strings, and automatically infer the correct DOM element or Component types—eliminating the need for repetitive `as` assertions.
-
-```typescript
-import TComponent, { ComponentParams, kebabKeys } from '@haiix/tcomponent';
-
-class CustomAvatar extends TComponent<HTMLImageElement> {
-  static template = /* HTML */ `<img class="avatar" />`;
-
-  // Best Practice: Expose explicit methods to update internal state,
-  // rather than letting external components mutate `this.element` directly.
-  setSrc(url: string) {
-    this.element.src = url;
-  }
-}
-
-// 1. Define an interface mapping your exact IDs to their expected types
-interface ProfileIdMap {
-  'profile-title': HTMLHeadingElement;
-  'username-input': HTMLInputElement;
-  'submit-btn': HTMLButtonElement;
-  'user-avatar': CustomAvatar; // Works perfectly with custom sub-components!
-}
-
-// 2. Pass the interface as the second generic parameter
-class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
-  static uses = kebabKeys({ CustomAvatar });
-
-  static template = /* HTML */ `
-    <form>
-      <h2 id="profile-title">Edit Profile</h2>
-      <custom-avatar id="user-avatar"></custom-avatar>
-      <input id="username-input" type="text" />
-      <button id="submit-btn" type="submit">Save</button>
-    </form>
-  `;
-
-  constructor(params: ComponentParams) {
-    super(params);
-
-    // Fully typed! No `as HTMLInputElement` required.
-    // Your IDE will auto-complete 'username-input' and know it's an HTMLInputElement.
-    const input = this.idMap['username-input'];
-    input.value = 'JohnDoe';
-
-    const btn = this.idMap['submit-btn'];
-    btn.disabled = false;
-
-    // Custom component methods are strongly typed and auto-completed
-    const avatar = this.idMap['user-avatar'];
-    avatar.setSrc('/path/to/image.png');
-  }
-}
-```
-
-**Benefits of this approach:**
-
-- **Zero runtime cost:** It's purely for TypeScript DX.
-- **Refactoring safety:** If you change an ID string in the interface, TypeScript will flag any outdated strings used inside `this.idMap['...']`.
-- **Intellisense:** Immediate auto-completion of all available IDs and public methods of custom components.
-
-
----
-
-## 8. Component Lifecycle & Teardown
-
-Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully via internal `AbortController`s.
-
-### The `destroy()` Method
-
-Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method will:
-1. Remove the component's root element from the DOM (`this.element.remove()`).
-2. Instantly unbind all event listeners defined via `on*` attributes.
-3. Automatically cascade the teardown process to all nested sub-components.
-
-```typescript
-const app = new CounterApp();
-document.body.appendChild(app.element);
-
-// Later, when the app needs to be removed:
-app.destroy(); // DOM is cleared, and all events are unlinked!
-```
-
-### Passing External AbortSignals
-
-If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the component's constructor. When the external signal aborts, it will automatically trigger the component's internal teardown.
-
-```typescript
-const routerController = new AbortController();
-
-// Pass the router's signal to the component
-const page = new UserProfile({ signal: routerController.signal });
-
-// When the user navigates away, aborting the router automatically destroys the page
-routerController.abort();
-```
-
-*Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal.*
-
----
-
-## 9. Component Communication
-
-`TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
-
-Here are a few standard patterns you can use:
-
-### Approach A: Native DOM Events (CustomEvents)
-
-For child-to-parent communication, you can dispatch standard HTML `CustomEvent`s from the child's root element. The parent can listen to these natively.
-
-```typescript
-class Child extends TComponent {
-  static template = /* HTML */ `
-    <button onclick="notifyParent">Click</button>
-  `;
-
-  notifyParent() {
-    // Dispatch a standard CustomEvent bubbling up the DOM tree
-    this.element.dispatchEvent(
-      new CustomEvent('child-clicked', {
-        detail: { value: 123 },
-        bubbles: true,
-      }),
-    );
-  }
-}
-```
-
-### Approach B: Explicit Callback Props
-
-You can pass callback functions down to children using manual assignment or by calling public methods on the child component instance.
-
-```typescript
-class Parent extends TComponent {
-  static uses = { Child };
-  static template = /* HTML */ `<child id="my-child"></child>`;
-
-  constructor(params: ComponentParams) {
-    super(params);
-    const child = this.idMap['my-child'] as Child;
-
-    // Explicitly assign a callback to the child instance
-    child.onAction = (data) => console.log('Data from child:', data);
-  }
-}
-```
-
-### Approach C: External State / PubSub
-
-Because `TComponent` components are just standard ES6 classes managing DOM nodes, they play perfectly with external state managers (like Redux, Zustand, or simple Observables/EventEmitters). You can subscribe to external state within your component's constructor and explicitly update the DOM when state changes.
