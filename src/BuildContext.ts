@@ -96,15 +96,23 @@ function registerId(
  */
 export class BuildContext {
   /** Map of original IDs to newly generated unique elements. */
-  idMap: Record<string, Element | AbstractComponent> = {};
+  readonly idMap: Record<string, Element | AbstractComponent> = {};
   /** List of elements that reference other elements by ID, needing resolution. */
-  idReferenceMap: { attrName: string; refId: string; element: Element }[] = [];
+  readonly idReferenceMap: {
+    attrName: string;
+    refId: string;
+    element: Element;
+  }[] = [];
+
   /** The component instance that owns the template being built. */
-  component: AbstractComponent;
+  readonly component: AbstractComponent;
   /** A dictionary of custom components to be used within the template. */
-  uses: Record<string, typeof AbstractComponent>;
-  /** An `AbortSignal` to attach to event listeners. */
-  signal?: AbortSignal;
+  readonly uses: Record<string, typeof AbstractComponent>;
+
+  /** Controller to manage the component's own teardown. */
+  readonly controller: AbortController;
+  /** Signal to pass to event listeners (linked to the component's teardown). */
+  readonly signal: AbortSignal;
 
   /**
    * Builds a DOM tree from a parsed template (`TNode`) and resolves ID references.
@@ -112,17 +120,45 @@ export class BuildContext {
    * @param tNode - The root `TNode` to build from.
    * @param component - The component instance that owns this template.
    * @param uses - A map of custom component classes to be used within the template.
-   * @param signal - An AbortSignal to clean up event listeners.
+   * @param parentSignal - An AbortSignal to clean up event listeners.
    * @returns An object containing the built root element and a map of original IDs to uniquely generated elements.
    */
   constructor(
     component: AbstractComponent,
     uses: Record<string, typeof AbstractComponent>,
-    signal?: AbortSignal,
+    parentSignal?: AbortSignal,
   ) {
     this.component = component;
     this.uses = uses;
-    this.signal = signal;
+
+    this.controller = new AbortController();
+    this.signal = this.controller.signal;
+
+    if (parentSignal) {
+      if (parentSignal.aborted) {
+        this.controller.abort(parentSignal.reason);
+      } else {
+        const onParentAbort = (): void => {
+          this.controller.abort(parentSignal.reason);
+        };
+
+        // [WARNING] We intentionally do NOT use `AbortSignal.any([parentSignal, this.signal])` here.
+        // If the parent component is long-lived and child components are frequently created and destroyed,
+        // using `AbortSignal.any()` would leave a reference to the child's signal inside the parent's signal.
+        // This prevents the child from being garbage collected, causing a memory leak.
+        parentSignal.addEventListener('abort', onParentAbort, { once: true });
+
+        // If the child component is explicitly destroyed before the parent,
+        // we must remove the listener from the parent's signal to ensure proper Garbage Collection (GC).
+        this.signal.addEventListener(
+          'abort',
+          (): void => {
+            parentSignal.removeEventListener('abort', onParentAbort);
+          },
+          { once: true },
+        );
+      }
+    }
   }
 
   /**
@@ -220,6 +256,6 @@ export class BuildContext {
 
       element.setAttribute(attrName, resolvedIds);
     }
-    this.idReferenceMap = [];
+    this.idReferenceMap.length = 0;
   }
 }

@@ -101,8 +101,8 @@ class ParentComponent extends TComponent<HTMLDivElement> {
 
 `TComponent` is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
 
-- **`TComponent`**: Provides the high-level API you use most of the time. It automatically parses the `static template` into an AST, builds the DOM, resolves ID references (`idMap`), and binds events.
-- **`AbstractComponent`**: The minimal, bare-bones foundation. It only provides the component tree structure (the `parent` reference) and the error bubbling mechanism (`onerror`). It does **not** handle HTML templates or event binding automatically. It requires you to explicitly define and construct the `element` property yourself.
+- **`TComponent`**: Provides the high-level API you use most of the time. It automatically parses the `static template` into an AST, builds the DOM, resolves ID references (`idMap`), binds events, and provides the `destroy()` method.
+- **`AbstractComponent`**: The minimal, bare-bones foundation. It only provides the component tree structure (the `parent` reference) and the error bubbling mechanism (`onerror`). It does **not** handle HTML templates, event binding, or automatic teardown. It requires you to explicitly define and construct the `element` property yourself.
 
 ### When should you use `AbstractComponent` directly?
 
@@ -413,6 +413,8 @@ However, the browser's HTML parser **forces all tags to lowercase**. While `TCom
 Because of this browser limitation, **complex SVGs with camelCase tags might not render correctly when written directly inside `static template`**.
 For complex SVGs, it is recommended to insert them manually via DOM manipulation in the constructor, or load them externally.
 
+---
+
 ## 7. Strict TypeScript Typing for `idMap`
 
 By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.
@@ -481,7 +483,47 @@ class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
 - **Refactoring safety:** If you change an ID string in the interface, TypeScript will flag any outdated strings used inside `this.idMap['...']`.
 - **Intellisense:** Immediate auto-completion of all available IDs and public methods of custom components.
 
-## 8. Component Communication
+
+---
+
+## 8. Component Lifecycle & Teardown
+
+Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully via internal `AbortController`s.
+
+### The `destroy()` Method
+
+Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method will:
+1. Remove the component's root element from the DOM (`this.element.remove()`).
+2. Instantly unbind all event listeners defined via `on*` attributes.
+3. Automatically cascade the teardown process to all nested sub-components.
+
+```typescript
+const app = new CounterApp();
+document.body.appendChild(app.element);
+
+// Later, when the app needs to be removed:
+app.destroy(); // DOM is cleared, and all events are unlinked!
+```
+
+### Passing External AbortSignals
+
+If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the component's constructor. When the external signal aborts, it will automatically trigger the component's internal teardown.
+
+```typescript
+const routerController = new AbortController();
+
+// Pass the router's signal to the component
+const page = new UserProfile({ signal: routerController.signal });
+
+// When the user navigates away, aborting the router automatically destroys the page
+routerController.abort();
+```
+
+*Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal.*
+
+---
+
+## 9. Component Communication
 
 `TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
 

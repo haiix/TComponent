@@ -13,7 +13,7 @@ Designed for developers who prefer explicit DOM manipulation without the overhea
 - **Unique ID Generation**: Element `id`s are automatically converted to UUIDs to prevent global DOM collisions, while remaining easily accessible via `this.idMap`.
 - **Automatic ID Reference Resolution**: Attributes like `for`, `aria-labelledby`, and `aria-controls` automatically resolve to the newly generated UUIDs, maintaining accessibility.
 - **Component Composition**: Nest reusable sub-components easily using the `static uses` property.
-- **Easy Cleanup**: Pass an `AbortSignal` upon instantiation to seamlessly clean up all event listeners when the component is destroyed.
+- **Easy Cleanup**: Simply call `.destroy()` to safely remove the component from the DOM and automatically unbind all event listeners. Cleanup automatically cascades down to all nested child components to prevent memory leaks.
 
 ## Installation
 
@@ -54,18 +54,14 @@ class CounterApp extends TComponent<HTMLElement> {
   }
 }
 
-// 1. Create an AbortController to manage component teardown
-const controller = new AbortController();
+// 1. Instantiate the component
+const app = new CounterApp();
 
-// 2. Instantiate the component and pass the signal
-const app = new CounterApp({ signal: controller.signal });
-
-// 3. Mount to the DOM
+// 2. Mount to the DOM
 document.body.appendChild(app.element);
 
-// To destroy the component and remove all event listeners:
-// controller.abort();
-// app.element.remove();
+// To safely destroy the component (removes from DOM and clears event listeners):
+// app.destroy();
 ```
 
 ## Tips: Editor Support & Formatting

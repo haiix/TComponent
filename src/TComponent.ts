@@ -2,7 +2,6 @@ import type { ComponentParams, ParseOptions, ParsedComponent } from './types';
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './parse';
-import { warnOnce } from './utils/console';
 
 /**
  * A practical base component class that automatically parses its template,
@@ -38,19 +37,20 @@ export class TComponent<
     super(params);
 
     const Component = this.constructor as typeof TComponent;
-
-    if (!params.signal) {
-      warnOnce(
-        `no-signal:${Component.name}`,
-        `${Component.name}: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via "new ${Component.name}({ signal: controller.signal })" to enable cleanup.`,
-      );
-    }
-
     const parsed = Component.getParsed();
 
     this.context = new BuildContext(this, parsed.uses, params.signal);
     this.element = this.context.build(parsed.template) as T;
     this.context.resolveIdReferences();
+  }
+
+  /**
+   * Destroys the component.
+   * Automatically removes the element from the DOM and cleans up all associated event listeners.
+   */
+  destroy(): void {
+    this.context.controller.abort();
+    this.element.remove();
   }
 
   /** A map of original template IDs to uniquely generated DOM elements. */

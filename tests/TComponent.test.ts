@@ -230,32 +230,81 @@ describe('Event Binding & Error Handling', () => {
       comp.onerror(new Error('Fatal Error'));
     }).toThrow('Fatal Error');
   });
+});
 
-  it('works without AbortSignal and warns only once per component class', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    class NoSignalComponent extends TComponent<HTMLButtonElement> {
-      static template = `<button onclick="handleClick">No Signal</button>`;
+describe('Lifecycle & Teardown (destroy / AbortSignal)', () => {
+  class LifecycleComp extends TComponent<HTMLButtonElement> {
+    static template = `<button onclick="handleClick">Click Me</button>`;
+    public clickCount = 0;
+
+    handleClick() {
+      this.clickCount++;
+    }
+  }
+
+  it('automatically creates an internal AbortController and cleans up events on destroy()', () => {
+    const comp = new LifecycleComp();
+    document.body.appendChild(comp.element);
+
+    comp.element.click();
+    expect(comp.clickCount).toBe(1);
+
+    comp.destroy();
+    expect(comp.element.isConnected).toBe(false);
+
+    comp.element.click();
+    expect(comp.clickCount).toBe(1);
+  });
+
+  it('cascades abort from parent signal to internal signal', () => {
+    const parentController = new AbortController();
+    const comp = new LifecycleComp({ signal: parentController.signal });
+
+    parentController.abort();
+
+    comp.element.click();
+    expect(comp.clickCount).toBe(0);
+  });
+
+  it('prevents memory leaks by removing the abort listener from parent signal when child is destroyed first', () => {
+    const parentController = new AbortController();
+    const removeEventListenerSpy = vi.spyOn(
+      parentController.signal,
+      'removeEventListener',
+    );
+
+    const comp = new LifecycleComp({ signal: parentController.signal });
+
+    comp.destroy();
+
+    expect(removeEventListenerSpy).toHaveBeenCalledTimes(1);
+    expect(removeEventListenerSpy).toHaveBeenCalledWith(
+      'abort',
+      expect.any(Function),
+    );
+  });
+
+  it('cascades destroy() automatically from Parent to Child components', () => {
+    class Child extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="handleClick">Child</button>`;
       public clickCount = 0;
-
       handleClick() {
         this.clickCount++;
       }
     }
 
-    const comp1 = new NoSignalComponent();
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[TComponent] NoSignalComponent: No AbortSignal provided. Event listeners will not be automatically removed. Pass a signal via "new NoSignalComponent({ signal: controller.signal })" to enable cleanup.',
-    );
+    class Parent extends TComponent<HTMLDivElement> {
+      static uses = { Child };
+      static template = `<div><child id="my-child"></child></div>`;
+    }
 
-    comp1.element.click();
-    expect(comp1.clickCount).toBe(1);
+    const parent = new Parent();
+    const child = parent.idMap['my-child'] as Child;
 
-    const comp2 = new NoSignalComponent();
-    expect(warnSpy).toHaveBeenCalledTimes(1);
+    parent.destroy();
 
-    comp2.element.click();
-    expect(comp2.clickCount).toBe(1);
+    child.element.click();
+    expect(child.clickCount).toBe(0);
   });
 });
 
