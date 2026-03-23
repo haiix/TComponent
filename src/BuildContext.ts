@@ -3,6 +3,14 @@ import type { AbstractComponent } from './AbstractComponent';
 import { warnOnce } from './utils/console';
 
 /**
+ * Syntax of supported event handlers
+ * Matches "method", "this.method", "method(event)", "return method()", " this . method ( event ) ; ", etc.,
+ * and extracts the method name into Group 1.
+ */
+const EVENT_HANDLER_REGEX =
+  /^\s*(?:return\s+)?(?:this\s*\.\s*)?([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?:\(\s*(?:event)?\s*\))?\s*;?\s*$/u;
+
+/**
  * List of attributes that reference elements by their ID.
  */
 const ID_REF_ATTRIBUTES = new Set([
@@ -46,6 +54,8 @@ function createEventHandler(component: AbstractComponent, fn: Function) {
         result.catch((error: unknown) => {
           component.onerror(error);
         });
+      } else if (result === false) {
+        event.preventDefault();
       }
     } catch (error) {
       component.onerror(error);
@@ -210,15 +220,31 @@ export class BuildContext {
       } else if (ID_REF_ATTRIBUTES.has(name)) {
         idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
-        const fn = (component as unknown as Record<string, unknown>)[value];
+        const match = EVENT_HANDLER_REGEX.exec(value);
+
+        const methodName = match?.[1];
+        if (!methodName) {
+          throw new Error(
+            `SecurityError: Invalid event handler signature in attribute "${name}": "${value}"`,
+          );
+        }
+        if (methodName === 'constructor' || methodName === '__proto__') {
+          throw new Error(
+            `SecurityError: Access to "${methodName}" is forbidden.`,
+          );
+        }
+
+        const fn = (component as unknown as Record<string, unknown>)[
+          methodName
+        ];
         if (typeof fn === 'function') {
           const eventType = name.slice(2).toLowerCase();
           const wrappedFn = createEventHandler(component, fn);
           element.addEventListener(eventType, wrappedFn, { signal });
         } else {
           warnOnce(
-            `missing-method:${component.constructor.name}:${value}`,
-            `Method "${value}" not found on component for event "${name}"`,
+            `missing-method:${component.constructor.name}:${methodName}`,
+            `Method "${methodName}" not found on component for event "${name}"`,
           );
         }
       } else {

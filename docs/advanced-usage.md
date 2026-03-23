@@ -134,17 +134,17 @@ class UserListApp extends TComponent<HTMLDivElement> {
       <h2>Users</h2>
       <!-- We will inject dynamically created components here -->
       <div id="list-container"></div>
-      
+
       <button onclick="loadUsers">Load Users</button>
     </div>
   `;
 
   async loadUsers() {
     const container = this.idMap['list-container'] as HTMLDivElement;
-    
+
     // Clear existing children
     container.innerHTML = '';
-    
+
     const users = ['Alice', 'Bob', 'Charlie'];
 
     for (const name of users) {
@@ -153,7 +153,7 @@ class UserListApp extends TComponent<HTMLDivElement> {
       const card = new UserCard({
         userName: name,
         parent: this,
-        signal: this.context.signal, 
+        signal: this.context.signal,
       });
 
       // 3. Manually append the child's element to the DOM
@@ -172,6 +172,7 @@ Managing event listeners in vanilla JavaScript can often lead to memory leaks if
 ### The `destroy()` Method
 
 Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method will:
+
 1. Remove the component's root element from the DOM (`this.element.remove()`).
 2. Instantly unbind all event listeners defined via `on*` attributes.
 3. Automatically cascade the teardown process to all nested sub-components (both static and dynamically linked via `signal`).
@@ -182,12 +183,12 @@ document.body.appendChild(app.element);
 
 // Later, when the app needs to be entirely removed:
 // This will recursively destroy the app and all dynamically created UserCards inside it!
-app.destroy(); 
+app.destroy();
 ```
 
 ### Passing External AbortSignals
 
-If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the top-level component's constructor. 
+If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the top-level component's constructor.
 
 ```typescript
 const routerController = new AbortController();
@@ -199,7 +200,7 @@ const page = new UserListApp({ signal: routerController.signal });
 routerController.abort();
 ```
 
-*Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal.*
+_Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal._
 
 ---
 
@@ -280,7 +281,55 @@ Instead of the child component (`InputWrapper`) having to accept dozens of props
 
 ---
 
-## 5. Error Boundaries and Bubbling
+## 5. Event Binding Syntax & Default Actions
+
+`TComponent` binds events by parsing the `on*` attributes in your template. To keep your templates clean and modern, the recommended syntax is to simply provide the method name:
+
+```html
+<button onclick="handleSubmit">Submit</button>
+```
+
+### Native HTML Compatibility
+
+To make migrating existing Vanilla HTML templates seamless, `TComponent` securely parses and allows native-like event handler syntaxes.
+
+It is important to understand that **all of the following examples are semantically identical**. They do not change how the event is executed; `TComponent` simply extracts the target method name (`handleSubmit`) and binds it via `addEventListener`.
+
+- `onclick="handleSubmit"`
+- `onclick="this.handleSubmit"`
+- `onclick="handleSubmit(event)"`
+- `onclick="this.handleSubmit(event);"`
+- `onclick="return handleSubmit()"`
+
+_Note: Behind the scenes, `TComponent` uses a strict regex to safely extract just the method name. It does not use `eval()`, meaning the presence of `return` or `(event)` in the attribute has no effect on the actual execution. The method will always receive the `Event` object as its first argument._
+
+### Security Validation
+
+For security reasons, event handlers must strictly match a valid JavaScript identifier (method name). If you attempt to write raw JavaScript logic (e.g., `onclick="console.log(event)"` or `onclick="alert('XSS')"`), `TComponent` will throw a `SecurityError` during initialization, preventing arbitrary inline execution.
+
+### Preventing Default Actions
+
+In native HTML, returning `false` from an inline event handler cancels the browser's default action. `TComponent` perfectly emulates this behavior.
+
+If your bound method explicitly returns exactly `false`, `TComponent` will automatically call `event.preventDefault()` for you. (Note: This depends entirely on what your method returns in TypeScript/JavaScript, not on whether you wrote `return` in the HTML attribute).
+
+```typescript
+class LinkComponent extends TComponent {
+  static template = /* HTML */ `
+    <a href="https://example.com" onclick="handleLinkClick">Click Me</a>
+  `;
+
+  handleLinkClick(event: MouseEvent) {
+    // Returning exactly 'false' automatically calls event.preventDefault(),
+    // preventing the browser from navigating to example.com.
+    return false;
+  }
+}
+```
+
+---
+
+## 6. Error Boundaries and Bubbling
 
 If an event listener throws an error (or a Promise rejects), `TComponent` catches it and calls the `onerror` method. If the current component does not override `onerror` or explicitly throws the error again, the error bubbles up to the `parent` component.
 
@@ -307,7 +356,7 @@ class Parent extends TComponent {
 
 ---
 
-## 6. Strict TypeScript Typing for `idMap`
+## 7. Strict TypeScript Typing for `idMap`
 
 By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.
 
@@ -377,7 +426,7 @@ class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
 
 ---
 
-## 7. Component Communication
+## 8. Component Communication
 
 `TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
 
@@ -430,7 +479,7 @@ Because `TComponent` components are just standard ES6 classes managing DOM nodes
 
 ---
 
-## 8. AbstractComponent vs. TComponent
+## 9. AbstractComponent vs. TComponent
 
 `TComponent` is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
 
@@ -466,7 +515,7 @@ export class ManualComponent extends AbstractComponent {
 
 ---
 
-## 9. Advanced AST Manipulation (Dynamic Templates)
+## 10. Advanced AST Manipulation (Dynamic Templates)
 
 Because `TComponent` compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
 
@@ -569,7 +618,7 @@ class App extends TComponent {
 
 ---
 
-## 10. Caveats & Best Practices
+## 11. Caveats & Best Practices
 
 ### Security & XSS Prevention
 

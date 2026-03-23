@@ -19,7 +19,7 @@ afterEach(() => {
 describe('TComponent & build', () => {
   it('builds base elements and resolves id and reference attributes (for, aria-*) with UUIDs', () => {
     class MyComponent extends TComponent<HTMLDivElement> {
-      static template = `
+      static template = /* HTML */ `
         <div>
           <label for="input-1" id="label-1">Name</label>
           <input id="input-1" aria-labelledby="label-1" type="text" />
@@ -47,12 +47,16 @@ describe('TComponent & build', () => {
 
   it('resolves multiple space-separated IDs with irregular whitespaces and preserves unresolvable/custom component IDs', () => {
     class MultiIdComponent extends TComponent<HTMLDivElement> {
-      static template = `
+      static template = /* HTML */ `
         <div>
           <h1 id="title-1">Title</h1>
           <p id="desc-1">Description</p>
-          <div aria-labelledby="  title-1    desc-1
-             unknown-id  ">Content</div>
+          <div
+            aria-labelledby="  title-1    desc-1
+             unknown-id  "
+          >
+            Content
+          </div>
         </div>
       `;
     }
@@ -76,7 +80,7 @@ describe('TComponent & build', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     class DuplicateIdComp extends TComponent<HTMLDivElement> {
-      static template = `
+      static template = /* HTML */ `
         <div>
           <span id="dup">First</span>
           <p id="dup">Second</p>
@@ -109,7 +113,7 @@ describe('parseOptions inside TComponent', () => {
   it('applies parseOptions.preserveWhitespace when explicitly set, and does not implicitly inherit to subclasses', () => {
     class PreservedComp extends TComponent<HTMLDivElement> {
       static parseOptions: ParseOptions = { preserveWhitespace: true };
-      static template = `
+      static template = /* HTML */ `
         <div>
           <span>A</span>
           <span>B</span>
@@ -118,7 +122,7 @@ describe('parseOptions inside TComponent', () => {
     }
 
     class DefaultComp extends PreservedComp {
-      static template = `
+      static template = /* HTML */ `
         <div>
           <span>A</span>
           <span>B</span>
@@ -232,6 +236,120 @@ describe('Event Binding & Error Handling', () => {
   });
 });
 
+describe('Event Handler Syntax & Security Validation', () => {
+  it('parses and binds various valid event handler syntaxes', () => {
+    class ValidSyntaxComponent extends TComponent<HTMLDivElement> {
+      static template = /* HTML */ `
+        <div>
+          <button id="btn1" onclick="handleClick">1</button>
+          <button id="btn2" onclick="this.handleClick">2</button>
+          <button id="btn3" onclick="handleClick()">3</button>
+          <button id="btn4" onclick="handleClick(event)">4</button>
+          <button id="btn5" onclick="return handleClick()">5</button>
+          <button id="btn6" onclick="return this.handleClick(event);">6</button>
+          <button id="btn7" onclick="  this . handleClick ( event ) ; ">
+            7
+          </button>
+        </div>
+      `;
+
+      public callCount = 0;
+
+      handleClick() {
+        this.callCount++;
+      }
+    }
+
+    const controller = new AbortController();
+    const comp = new ValidSyntaxComponent({ signal: controller.signal });
+
+    for (let i = 1; i <= 7; i++) {
+      const btn = comp.idMap[`btn${i}`] as HTMLButtonElement;
+      btn.click();
+    }
+
+    expect(comp.callCount).toBe(7);
+  });
+
+  it('throws SecurityError for invalid event handler syntaxes', () => {
+    class XssComponent extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="alert('XSS')">Invalid</button>`;
+    }
+    expect(() => new XssComponent()).toThrow(
+      /SecurityError: Invalid event handler signature/,
+    );
+
+    class ConsoleComponent extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="console.log(event)">Invalid</button>`;
+    }
+    expect(() => new ConsoleComponent()).toThrow(
+      /SecurityError: Invalid event handler signature/,
+    );
+
+    class BadIdentifierComponent extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="123invalid">Invalid</button>`;
+    }
+    expect(() => new BadIdentifierComponent()).toThrow(
+      /SecurityError: Invalid event handler signature/,
+    );
+  });
+
+  it('throws SecurityError for forbidden method names', () => {
+    class ConstructorComponent extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="constructor">Forbidden</button>`;
+    }
+    expect(() => new ConstructorComponent()).toThrow(
+      /SecurityError: Access to "constructor" is forbidden/,
+    );
+
+    class ProtoComponent extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="this.__proto__">Forbidden</button>`;
+    }
+    expect(() => new ProtoComponent()).toThrow(
+      /SecurityError: Access to "__proto__" is forbidden/,
+    );
+  });
+
+  it('calls event.preventDefault() when the handler returns exactly false', () => {
+    class PreventDefaultComponent extends TComponent<HTMLDivElement> {
+      static template = /* HTML */ `
+        <div>
+          <a href="#" id="link-prevent" onclick="return handlePrevent()"
+            >Prevent</a
+          >
+          <a href="#" id="link-allow" onclick="handleAllow">Allow</a>
+        </div>
+      `;
+
+      handlePrevent() {
+        return false;
+      }
+
+      handleAllow() {
+        // Returns a value other than false (such as undefined)
+      }
+    }
+
+    const comp = new PreventDefaultComponent();
+    const linkPrevent = comp.idMap['link-prevent'] as HTMLAnchorElement;
+    const linkAllow = comp.idMap['link-allow'] as HTMLAnchorElement;
+
+    const eventPrevent = new MouseEvent('click', {
+      cancelable: true,
+      bubbles: true,
+    });
+    linkPrevent.dispatchEvent(eventPrevent);
+    expect(eventPrevent.defaultPrevented).toBe(true);
+
+    const eventAllow = new MouseEvent('click', {
+      cancelable: true,
+      bubbles: true,
+    });
+    linkAllow.dispatchEvent(eventAllow);
+    expect(eventAllow.defaultPrevented).toBe(false);
+  });
+});
+
 describe('Lifecycle & Teardown (destroy / AbortSignal)', () => {
   class LifecycleComp extends TComponent<HTMLButtonElement> {
     static template = `<button onclick="handleClick">Click Me</button>`;
@@ -329,7 +447,7 @@ describe('Component Composition (uses) & Props/Slots', () => {
 
   class ParentComponent extends TComponent<HTMLDivElement> {
     static uses = { Child: ChildComponent };
-    static template = `
+    static template = /* HTML */ `
       <div class="parent">
         <child data-text="Props Data" id="my-child">Slot Text</child>
       </div>
@@ -382,7 +500,7 @@ describe('Component Composition (uses) & Props/Slots', () => {
 
     class CachedParent extends TComponent<HTMLDivElement> {
       static uses = { MyCustomChild: MockChild };
-      static template = `
+      static template = /* HTML */ `
         <div>
           <mycustomchild id="child-1"></mycustomchild>
         </div>
@@ -404,7 +522,7 @@ describe('Component Composition (uses) & Props/Slots', () => {
 describe('Namespaces (SVG & MathML)', () => {
   it('creates elements with correct namespace URIs and handles foreignObject correctly', () => {
     class NamespaceComponent extends TComponent<HTMLDivElement> {
-      static template = `
+      static template = /* HTML */ `
         <div>
           <!-- SVG Scope -->
           <svg viewBox="0 0 100 100">
