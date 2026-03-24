@@ -317,7 +317,11 @@ If you need to link a `<label>` in a parent component to an `<input>` managed by
 Because slot content is evaluated in the **parent's scope** (see Section 1), both the `<label>` and `<input>` share the same `idMap`, allowing their UUIDs to resolve correctly.
 
 ```typescript
-import TComponent { ComponentParams, kebabKeys, applyParams } from '@haiix/tcomponent';
+import TComponent, {
+  ComponentParams,
+  kebabKeys,
+  applyParams,
+} from '@haiix/tcomponent';
 
 class InputWrapper extends TComponent<HTMLDivElement> {
   static template = /* HTML */ `
