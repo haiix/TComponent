@@ -127,11 +127,9 @@ export class BuildContext {
   /**
    * Builds a DOM tree from a parsed template (`TNode`) and resolves ID references.
    *
-   * @param tNode - The root `TNode` to build from.
    * @param component - The component instance that owns this template.
    * @param uses - A map of custom component classes to be used within the template.
    * @param parentSignal - An AbortSignal to clean up event listeners.
-   * @returns An object containing the built root element and a map of original IDs to uniquely generated elements.
    */
   constructor(
     component: AbstractComponent,
