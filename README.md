@@ -81,7 +81,7 @@ static template = /* HTML */ `
 
 TComponent is designed to be simple, but it packs powerful features for complex applications. Check out the detailed documentation below:
 
-https://github.com/haiix/TComponent/wiki
+https://haiix.github.io/TComponent/
 
 ## License
 
