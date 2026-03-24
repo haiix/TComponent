@@ -1,5 +1,11 @@
 import type { AbstractComponent } from './AbstractComponent';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export type AbstractConstructor<T = object> = abstract new (
+  ...args: any[]
+) => T;
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 /**
  * Options required for template parsing.
  */

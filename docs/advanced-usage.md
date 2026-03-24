@@ -94,7 +94,75 @@ class ParentComponent extends TComponent<HTMLDivElement> {
 
 ---
 
-## 2. Dynamic Component Creation
+## 2. Event Delegation & Component Retrieval
+
+In vanilla JavaScript, **Event Delegation** is a powerful pattern where you attach a single event listener to a parent element to handle events triggered by its children.
+
+Because `TComponent` embraces the DOM as the single source of truth, it provides a built-in `static from(element)` method. This method allows you to instantly retrieve the component instance associated with a specific DOM node, making event delegation highly intuitive and type-safe.
+
+### Example: Using `from()` with Event Delegation
+
+Instead of attaching an `onclick` listener to every single `<li>` component, you can attach one listener to the parent `<ul>` and use `event.target` to find the associated child component.
+
+```typescript
+import TComponent, { kebabKeys } from '@haiix/tcomponent';
+
+class TaskItem extends TComponent<HTMLLIElement> {
+  static template = /* HTML */ `<li class="task-item">Task</li>`;
+
+  // Best Practice: State is derived directly from the DOM (Single Source of Truth)
+  // This prevents the class property and the DOM from ever going out of sync.
+  get isCompleted(): boolean {
+    return this.element.style.textDecoration === 'line-through';
+  }
+
+  set isCompleted(value: boolean) {
+    this.element.style.textDecoration = value ? 'line-through' : 'none';
+  }
+
+  toggle() {
+    this.isCompleted = !this.isCompleted;
+  }
+}
+
+class TaskList extends TComponent<HTMLUListElement> {
+  static uses = kebabKeys({ TaskItem });
+
+  // Attach a single event listener to the parent <ul>
+  static template = /* HTML */ `
+    <ul class="task-list" onclick="handleListClick">
+      <task-item></task-item>
+      <task-item></task-item>
+      <task-item></task-item>
+    </ul>
+  `;
+
+  handleListClick(event: MouseEvent) {
+    // 1. Find the closest <li> element that was clicked
+    const target = event.target as Element;
+    const liElement = target.closest('li.task-item');
+
+    // 2. Retrieve the component instance from the DOM element
+    // This is strictly typed: 'task' is inferred as TaskItem | undefined
+    const task = TaskItem.from(liElement);
+
+    if (task) {
+      // 3. Explicitly call the component's method
+      task.toggle();
+    }
+  }
+}
+```
+
+**How it works under the hood:**
+`TComponent` maintains a single, global `WeakMap` that maps root DOM elements to their component instances.
+
+- **Type-safe:** `TaskItem.from()` automatically checks `instanceof TaskItem` before returning, ensuring you never accidentally invoke methods on the wrong component type.
+- **Memory-safe:** Because it uses a `WeakMap`, when a DOM element is permanently removed and garbage-collected, its component reference is automatically cleared without causing memory leaks.
+
+---
+
+## 3. Dynamic Component Creation
 
 Instead of defining components statically in the template using `uses`, you will often need to create child components dynamically—such as when rendering a list of items fetched from an API, or opening a modal dialog.
 
@@ -142,8 +210,16 @@ class UserListApp extends TComponent<HTMLDivElement> {
   async loadUsers() {
     const container = this.idMap['list-container'] as HTMLDivElement;
 
-    // Clear existing children
-    container.innerHTML = '';
+    // [CRITICAL] Memory Leak Prevention
+    // Before rendering new children, you MUST destroy existing child components.
+    // Simply calling `container.innerHTML = ''` removes elements from the DOM,
+    // but leaves their event listeners active and references alive in the parent's AbortSignal!
+    for (const childElement of Array.from(container.children)) {
+      const card = UserCard.from(childElement);
+      if (card) {
+        card.destroy();
+      }
+    }
 
     const users = ['Alice', 'Bob', 'Charlie'];
 
@@ -165,7 +241,7 @@ class UserListApp extends TComponent<HTMLDivElement> {
 
 ---
 
-## 3. Component Lifecycle & Teardown
+## 4. Component Lifecycle & Teardown
 
 Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully via internal `AbortController`s.
 
@@ -204,7 +280,7 @@ _Note: `TComponent` intelligently manages event listeners to ensure that if a ch
 
 ---
 
-## 4. Accessibility and ID References
+## 5. Accessibility and ID References
 
 `TComponent` automatically generates UUIDs for elements with an `id` attribute and updates reference attributes (`for`, `aria-labelledby`, etc.) accordingly.
 
@@ -281,7 +357,7 @@ Instead of the child component (`InputWrapper`) having to accept dozens of props
 
 ---
 
-## 5. Event Binding Syntax & Default Actions
+## 6. Event Binding Syntax & Default Actions
 
 `TComponent` binds events by parsing the `on*` attributes in your template. To keep your templates clean and modern, the recommended syntax is to simply provide the method name:
 
@@ -329,7 +405,7 @@ class LinkComponent extends TComponent {
 
 ---
 
-## 6. Error Boundaries and Bubbling
+## 7. Error Boundaries and Bubbling
 
 If an event listener throws an error (or a Promise rejects), `TComponent` catches it and calls the `onerror` method. If the current component does not override `onerror` or explicitly throws the error again, the error bubbles up to the `parent` component.
 
@@ -356,7 +432,7 @@ class Parent extends TComponent {
 
 ---
 
-## 7. Strict TypeScript Typing for `idMap`
+## 8. Strict TypeScript Typing for `idMap`
 
 By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.
 
@@ -426,7 +502,7 @@ class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
 
 ---
 
-## 8. Component Communication
+## 9. Component Communication
 
 `TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
 
@@ -479,7 +555,7 @@ Because `TComponent` components are just standard ES6 classes managing DOM nodes
 
 ---
 
-## 9. AbstractComponent vs. TComponent
+## 10. AbstractComponent vs. TComponent
 
 `TComponent` is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
 
@@ -515,7 +591,7 @@ export class ManualComponent extends AbstractComponent {
 
 ---
 
-## 10. Advanced AST Manipulation (Dynamic Templates)
+## 11. Advanced AST Manipulation (Dynamic Templates)
 
 Because `TComponent` compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
 
@@ -618,7 +694,7 @@ class App extends TComponent {
 
 ---
 
-## 11. Caveats & Best Practices
+## 12. Caveats & Best Practices
 
 ### Security & XSS Prevention
 

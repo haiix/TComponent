@@ -1,7 +1,18 @@
-import type { ComponentParams, ParseOptions, ParsedComponent } from './types';
+import type {
+  AbstractConstructor,
+  ComponentParams,
+  ParseOptions,
+  ParsedComponent,
+} from './types';
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './parse';
+
+/**
+ * Global registry mapping root DOM elements to their respective TComponent instances.
+ * Using a WeakMap ensures that components are garbage-collected when their DOM elements are removed.
+ */
+const componentRegistry = new WeakMap<Element, TComponent>();
 
 /**
  * A practical base component class that automatically parses its template,
@@ -42,6 +53,8 @@ export class TComponent<
     this.context = new BuildContext(this, parsed.uses, params.signal);
     this.element = this.context.build(parsed.template) as T;
     this.context.resolveIdReferences();
+
+    componentRegistry.set(this.element, this as TComponent);
   }
 
   /**
@@ -51,6 +64,27 @@ export class TComponent<
   destroy(): void {
     this.context.controller.abort();
     this.element.remove();
+  }
+
+  /**
+   * Retrieves the component instance associated with the given DOM element.
+   * Only returns the instance if it matches the calling class type.
+   *
+   * @param element - The root DOM element of the component.
+   * @returns The component instance, or undefined if not found or type mismatch.
+   */
+  static from<C extends TComponent>(
+    this: AbstractConstructor<C>,
+    element: Element | null | undefined,
+  ): C | undefined {
+    if (element) {
+      const component = componentRegistry.get(element);
+
+      // Ensure the retrieved component is an instance of the class that called `.from()`
+      if (component instanceof this) {
+        return component;
+      }
+    }
   }
 
   /** A map of original template IDs to uniquely generated DOM elements. */

@@ -576,3 +576,104 @@ describe('Namespaces (SVG & MathML)', () => {
     expect(comp.svgClickCount).toBe(1);
   });
 });
+
+describe('TComponent.from', () => {
+  class ListItem extends TComponent<HTMLLIElement> {
+    static template = /* HTML */ `<li class="list-item">Item</li>`;
+    public isSelected = false;
+
+    select() {
+      this.isSelected = true;
+    }
+  }
+
+  class AnotherComponent extends TComponent<HTMLDivElement> {
+    static template = /* HTML */ `<div>Another</div>`;
+  }
+
+  it('retrieves the component instance from its root element', () => {
+    const item = new ListItem();
+
+    // Explicitly retrieve the instance from the element
+    const retrieved = ListItem.from(item.element);
+
+    expect(retrieved).toBe(item);
+    expect(retrieved).toBeInstanceOf(ListItem);
+  });
+
+  it('returns undefined for null, undefined, or unassociated elements', () => {
+    const unassociatedElement = document.createElement('li');
+
+    expect(ListItem.from(null)).toBeUndefined();
+    expect(ListItem.from(undefined)).toBeUndefined();
+    expect(ListItem.from(unassociatedElement)).toBeUndefined();
+  });
+
+  it('returns undefined if the element belongs to a different component class', () => {
+    const another = new AnotherComponent();
+
+    // The element exists in the registry, but it's NOT a ListItem.
+    // It should safely return undefined instead of casting incorrectly.
+    const retrieved = ListItem.from(another.element);
+
+    expect(retrieved).toBeUndefined();
+  });
+
+  it('supports retrieving instances of subclasses', () => {
+    class SpecializedItem extends ListItem {
+      static template = /* HTML */ `<li class="special">Special</li>`;
+    }
+
+    const specialItem = new SpecializedItem();
+
+    // Since SpecializedItem extends ListItem, fetching via the base class should work.
+    const retrieved = ListItem.from(specialItem.element);
+
+    expect(retrieved).toBe(specialItem);
+    expect(retrieved).toBeInstanceOf(SpecializedItem);
+  });
+
+  it('can be used effectively for event delegation and array mapping', () => {
+    class ListApp extends TComponent<HTMLUListElement> {
+      static uses = { ListItem };
+      static template = /* HTML */ `
+        <ul onclick="handleListClick">
+          <listitem></listitem>
+          <listitem></listitem>
+        </ul>
+      `;
+
+      public lastClickedItem?: ListItem;
+
+      handleListClick(event: MouseEvent) {
+        const target = event.target as Element;
+        const liElement = target.closest('li');
+
+        // Retrieve the child component instance using the DOM element
+        const item = ListItem.from(liElement);
+        if (item) {
+          item.select();
+          this.lastClickedItem = item;
+        }
+      }
+    }
+
+    const app = new ListApp();
+    const firstLi = app.element.querySelector('li')!;
+
+    // 1. Array mapping scenario
+    const allItems = Array.from(app.element.children).map((el) =>
+      ListItem.from(el),
+    );
+    expect(allItems.length).toBe(2);
+    expect(allItems[0]).toBeInstanceOf(ListItem);
+    expect(allItems[1]).toBeInstanceOf(ListItem);
+
+    // 2. Event delegation scenario
+    firstLi.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(app.lastClickedItem).toBe(allItems[0]);
+    expect(allItems[0]!.isSelected).toBe(true);
+    expect(allItems[1]!.isSelected).toBe(false); // Second item remains unaffected
+  });
+});
