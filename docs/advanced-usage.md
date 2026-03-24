@@ -24,7 +24,7 @@ While you can manually parse `params.attributes` and `params.childNodes` in the 
 
 `applyParams` handles attribute merging, security filtering (`id`, `on*`), and evaluates slot content in the **parent's scope**, ensuring correct event binding and `idMap` integration.
 
-See also Section 4 for accessibility patterns.
+See also Section 5 for accessibility patterns.
 
 ### Example: Composing Components with Utilities
 
@@ -94,7 +94,46 @@ class ParentComponent extends TComponent<HTMLDivElement> {
 
 ---
 
-## 2. Event Delegation & Component Retrieval
+## 2. Component Lifecycle & Teardown
+
+Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully via internal `AbortController`s.
+
+### The `destroy()` Method
+
+Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method will:
+
+1. Remove the component's root element from the DOM (`this.element.remove()`).
+2. Instantly unbind all event listeners defined via `on*` attributes.
+3. Automatically cascade the teardown process to all nested sub-components (both static and dynamically linked via `signal`).
+
+```typescript
+const app = new UserListApp();
+document.body.appendChild(app.element);
+
+// Later, when the app needs to be entirely removed:
+// This will recursively destroy the app and all dynamically created UserCards inside it!
+app.destroy();
+```
+
+### Passing External AbortSignals
+
+If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the top-level component's constructor.
+
+```typescript
+const routerController = new AbortController();
+
+// Pass the router's signal to the top-level page component
+const page = new UserListApp({ signal: routerController.signal });
+
+// When the user navigates away, aborting the router automatically destroys the entire page tree
+routerController.abort();
+```
+
+_Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal._
+
+---
+
+## 3. Event Delegation & Component Retrieval
 
 In vanilla JavaScript, **Event Delegation** is a powerful pattern where you attach a single event listener to a parent element to handle events triggered by its children.
 
@@ -162,7 +201,7 @@ class TaskList extends TComponent<HTMLUListElement> {
 
 ---
 
-## 3. Dynamic Component Creation
+## 4. Dynamic Component Creation
 
 Instead of defining components statically in the template using `uses`, you will often need to create child components dynamically—such as when rendering a list of items fetched from an API, or opening a modal dialog.
 
@@ -238,45 +277,6 @@ class UserListApp extends TComponent<HTMLDivElement> {
   }
 }
 ```
-
----
-
-## 4. Component Lifecycle & Teardown
-
-Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully via internal `AbortController`s.
-
-### The `destroy()` Method
-
-Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method will:
-
-1. Remove the component's root element from the DOM (`this.element.remove()`).
-2. Instantly unbind all event listeners defined via `on*` attributes.
-3. Automatically cascade the teardown process to all nested sub-components (both static and dynamically linked via `signal`).
-
-```typescript
-const app = new UserListApp();
-document.body.appendChild(app.element);
-
-// Later, when the app needs to be entirely removed:
-// This will recursively destroy the app and all dynamically created UserCards inside it!
-app.destroy();
-```
-
-### Passing External AbortSignals
-
-If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the top-level component's constructor.
-
-```typescript
-const routerController = new AbortController();
-
-// Pass the router's signal to the top-level page component
-const page = new UserListApp({ signal: routerController.signal });
-
-// When the user navigates away, aborting the router automatically destroys the entire page tree
-routerController.abort();
-```
-
-_Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal._
 
 ---
 
@@ -578,7 +578,7 @@ import { AbstractComponent, ComponentParams } from '@haiix/tcomponent';
 export class ManualComponent extends AbstractComponent {
   element: HTMLDivElement;
 
-  constructor(params: ComponentParams) {
+  constructor(params?: ComponentParams) {
     super(params); // Sets up 'this.parent' and error bubbling
 
     // Completely manual DOM construction
