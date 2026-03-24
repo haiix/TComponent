@@ -1,4 +1,4 @@
-# TComponent: Advanced Usage & Documentation
+# TComponent: Guide & Core Concepts
 
 While `TComponent` is designed to be incredibly simple and non-reactive, its architecture allows for highly advanced, flexible, and explicit UI patterns.
 

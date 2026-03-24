@@ -6,7 +6,9 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 import vitest from '@vitest/eslint-plugin';
 
 export default defineConfig(
-  { ignores: ['dist', 'coverage', 'eslint.config.js', 'vite.config.ts'] },
+  {
+    ignores: ['dist', 'coverage', 'docs', 'eslint.config.js', 'vite.config.ts'],
+  },
 
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
