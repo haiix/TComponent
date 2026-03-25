@@ -6,27 +6,66 @@ This document covers detailed usage, composition strategies, and edge cases.
 
 ---
 
-## 1. Component Composition
+## 1. Registering Components
 
-You can compose complex UIs by registering child components using the `static uses` property. The key in this object determines the HTML tag name you will use in your template (case-insensitive).
+You can compose complex UIs by nesting reusable child components. To use a custom component inside a template, you must explicitly register it using the `static uses` property.
 
-To make your templates look like standard HTML Web Components (using hyphenated tags), you can use the `kebabKeys` utility.
+To make your templates look like standard HTML Web Components (using hyphenated tags), use the `kebabKeys` utility. It automatically converts `PascalCase` class names into `kebab-case` tag names.
 
-### Important Note on Props and Slots
+### Example: Basic Composition
 
-In `TComponent`, attributes (props) and child nodes (slots) passed to a sub-component are **not** automatically applied to its root element.
+```typescript
+import TComponent, { kebabKeys } from '@haiix/tcomponent';
 
-This is a deliberate design choice: a component might need to apply certain attributes to a specific internal element rather than the root, ensuring you have complete, explicit control over the DOM.
+// 1. Define a child component
+class AppHeader extends TComponent<HTMLElement> {
+  static template = /* HTML */ `
+    <header class="app-header">
+      <h1>My Application</h1>
+    </header>
+  `;
+}
+
+// 2. Define the parent component
+class App extends TComponent<HTMLDivElement> {
+  // kebabKeys transforms { AppHeader } into { 'app-header': AppHeader }
+  static uses = kebabKeys({ AppHeader });
+
+  static template = /* HTML */ `
+    <main>
+      <!-- The component is now accessible via standard kebab-case -->
+      <app-header></app-header>
+
+      <p>Welcome to the dashboard!</p>
+    </main>
+  `;
+}
+
+/*
+ * Instantiate and mount to the DOM
+ * Note: For brevity, the instantiation and mounting steps
+ * (new Component() and appendChild) will be omitted in subsequent examples
+ * unless they are specifically part of the topic being discussed.
+ */
+const app = new App();
+document.body.appendChild(app.element);
+```
+
+---
+
+## 2. Passing Props and Slots
+
+When you pass attributes (props) or child nodes (slots) to a custom component in your template, `TComponent` deliberately **does not** automatically apply them to the child component's root element.
+
+This is a strict design choice: a component might need to apply certain attributes or inject slot content into a specific internal element rather than the outer wrapper, ensuring you have complete, explicit control over the DOM.
 
 ### The `applyParams` Utility
 
-While you can manually parse `params.attributes` and `params.childNodes` in the constructor, `TComponent` provides a powerful `applyParams` utility to seamlessly route props and slots to any target element.
+To easily route passed attributes (like `class` or `style`) and child nodes to a specific target element inside your component, `TComponent` provides the `applyParams` utility.
 
-`applyParams` handles attribute merging, security filtering (`id`, `on*`), and evaluates slot content in the **parent's scope**, ensuring correct event binding and `idMap` integration.
+It smartly handles appending child nodes, merges `class` and `style` strings, and safely ignores internal attributes like `id` and `on*`.
 
-See also Section 5 for accessibility patterns.
-
-### Example: Composing Components with Utilities
+### Example: A Reusable Card Component
 
 ```typescript
 import TComponent, {
@@ -35,22 +74,19 @@ import TComponent, {
   applyParams,
 } from '@haiix/tcomponent';
 
-class ChildComponent extends TComponent<HTMLDivElement> {
+class UiCard extends TComponent<HTMLDivElement> {
   static template = /* HTML */ `
-    <div class="card-wrapper">
-      <!-- We want to inject props and slots directly into this inner element -->
-      <div
-        id="card-body"
-        class="base-card"
-        style="border: 1px solid #ccc;"
-      ></div>
+    <div class="card-wrapper" style="background: #eee; padding: 10px;">
+      <!-- We want to inject props and slots directly into this inner element, -->
+      <!-- rather than the wrapper. -->
+      <div id="card-body" class="base-card"></div>
     </div>
   `;
 
   constructor(params: ComponentParams) {
     super(params);
 
-    // 1. Get the target internal element
+    // 1. Get the target internal element using its ID
     const target = this.idMap['card-body'] as HTMLDivElement;
 
     // 2. Safely apply all passed attributes and child nodes (slots) to it
@@ -58,150 +94,94 @@ class ChildComponent extends TComponent<HTMLDivElement> {
   }
 }
 
-class ParentComponent extends TComponent<HTMLDivElement> {
-  // kebabKeys automatically transforms { ChildComponent }
-  // into { 'child-component': ChildComponent }
-  static uses = kebabKeys({ ChildComponent });
+class Dashboard extends TComponent<HTMLDivElement> {
+  static uses = kebabKeys({ UiCard });
 
   static template = /* HTML */ `
-    <div>
-      <h2>Parent Dashboard</h2>
+    <section>
+      <h2>Dashboard</h2>
 
-      <!-- The component is now accessible via standard kebab-case -->
-      <child-component class="extra-padding" style="background: #f9f9f9;">
-        <!-- This slot element belongs to the Parent's scope -->
-        <button id="slot-btn" onclick="handleSlotClick">
-          Dynamic Slot Button
-        </button>
-      </child-component>
-    </div>
+      <!-- Passing a custom class, inline style, and text content (slot) -->
+      <!-- applyParams will inject these into the inner "card-body" div -->
+      <ui-card class="highlight" style="color: blue;">
+        Hello, I am the slot content!
+      </ui-card>
+    </section>
   `;
-
-  constructor(params?: ComponentParams) {
-    super(params);
-
-    // You can access elements inside the slot directly from the parent!
-    const btn = this.idMap['slot-btn'] as HTMLButtonElement;
-  }
-
-  handleSlotClick() {
-    console.log(
-      'Slot button clicked! This correctly runs in the Parent scope.',
-    );
-  }
 }
 ```
 
 ---
 
-## 2. Component Lifecycle & Teardown
+## 3. Component Lifecycle & Teardown
 
-Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully via internal `AbortController`s.
+Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully behind the scenes.
 
-### The `destroy()` Method
+Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method is the standard and safest way to remove a component. It will automatically perform the following steps:
 
-Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method will:
-
-1. Remove the component's root element from the DOM (`this.element.remove()`).
-2. Instantly unbind all event listeners defined via `on*` attributes.
-3. Automatically cascade the teardown process to all nested sub-components (both static and dynamically linked via `signal`).
+1. **Remove from DOM:** The component's root element is detached from the document (`this.element.remove()`).
+2. **Unbind Events:** Instantly unbind all event listeners defined via `on*` attributes in your template.
+3. **Cascade Teardown:** Automatically cascade the teardown process to all nested child components, ensuring no memory leaks remain.
 
 ```typescript
 const app = new UserListApp();
 document.body.appendChild(app.element);
 
 // Later, when the app needs to be entirely removed:
-// This will recursively destroy the app and all dynamically created UserCards inside it!
+// This will safely remove the app from the DOM, unbind its listeners,
+// and recursively destroy all dynamically created UserCards inside it!
 app.destroy();
 ```
 
-### Passing External AbortSignals
+By simply calling `.destroy()`, you ensure that your application remains fast and memory-safe, without needing to manually call `removeEventListener` for every single element.
 
-If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into the top-level component's constructor.
-
-```typescript
-const routerController = new AbortController();
-
-// Pass the router's signal to the top-level page component
-const page = new UserListApp({ signal: routerController.signal });
-
-// When the user navigates away, aborting the router automatically destroys the entire page tree
-routerController.abort();
-```
-
-_Note: `TComponent` intelligently manages event listeners to ensure that if a child component is manually `.destroy()`ed before its parent, no memory leaks or hanging references remain attached to the parent's signal._
+_(For advanced lifecycle management involving SPA routers and external signals, see Section 10.)_
 
 ---
 
-## 3. Event Delegation & Component Retrieval
+## 4. Retrieving Components from the DOM
 
-In vanilla JavaScript, **Event Delegation** is a powerful pattern where you attach a single event listener to a parent element to handle events triggered by its children.
+`TComponent` embraces the DOM as the "Single Source of Truth." Instead of maintaining a complex virtual component tree, it provides a built-in `static from(element)` method. This allows you to instantly retrieve the component instance associated with a specific DOM node.
 
-Because `TComponent` embraces the DOM as the single source of truth, it provides a built-in `static from(element)` method. This method allows you to instantly retrieve the component instance associated with a specific DOM node, making event delegation highly intuitive and type-safe.
+This is extremely useful when you need to interact with a component originating from an external script, or when identifying specific items in a dynamically generated list (covered in Section 5).
 
-### Example: Using `from()` with Event Delegation
+### How it works securely
 
-Instead of attaching an `onclick` listener to every single `<li>` component, you can attach one listener to the parent `<ul>` and use `event.target` to find the associated child component.
+Under the hood, `TComponent` maintains a single, global `WeakMap` that binds root DOM elements to their component instances.
+
+- **Type-safe:** Calling `ComponentClass.from()` automatically checks `instanceof` before returning. This ensures you never accidentally invoke methods on the wrong component type, and TypeScript perfectly infers the return type as `ComponentClass | undefined`.
+- **Memory-safe:** Because it relies on a `WeakMap`, when a DOM element is permanently removed and garbage-collected, its component reference is automatically cleared without causing memory leaks.
+
+### Basic Example
 
 ```typescript
-import TComponent, { kebabKeys } from '@haiix/tcomponent';
+import TComponent from '@haiix/tcomponent';
 
-class TaskItem extends TComponent<HTMLLIElement> {
-  static template = /* HTML */ `<li class="task-item">Task</li>`;
+class AlertBox extends TComponent<HTMLDivElement> {
+  static template = /* HTML */ `<div class="alert">Warning!</div>`;
 
-  // Best Practice: State is derived directly from the DOM (Single Source of Truth)
-  // This prevents the class property and the DOM from ever going out of sync.
-  get isCompleted(): boolean {
-    return this.element.style.textDecoration === 'line-through';
-  }
-
-  set isCompleted(value: boolean) {
-    this.element.style.textDecoration = value ? 'line-through' : 'none';
-  }
-
-  toggle() {
-    this.isCompleted = !this.isCompleted;
+  dismiss() {
+    this.destroy();
   }
 }
 
-class TaskList extends TComponent<HTMLUListElement> {
-  static uses = kebabKeys({ TaskItem });
+// Somewhere else in your application...
+// 1. You query an element from the DOM
+const el = document.querySelector('.alert');
 
-  // Attach a single event listener to the parent <ul>
-  static template = /* HTML */ `
-    <ul class="task-list" onclick="handleListClick">
-      <task-item></task-item>
-      <task-item></task-item>
-      <task-item></task-item>
-    </ul>
-  `;
+// 2. Retrieve the component instance directly from the DOM element
+// 'alert' is strictly typed as AlertBox | undefined
+const alert = AlertBox.from(el);
 
-  handleListClick(event: MouseEvent) {
-    // 1. Find the closest <li> element that was clicked
-    const target = event.target as Element;
-    const liElement = target.closest('li.task-item');
-
-    // 2. Retrieve the component instance from the DOM element
-    // This is strictly typed: 'task' is inferred as TaskItem | undefined
-    const task = TaskItem.from(liElement);
-
-    if (task) {
-      // 3. Explicitly call the component's method
-      task.toggle();
-    }
-  }
+if (alert) {
+  // 3. Safely call component methods
+  alert.dismiss();
 }
 ```
 
-**How it works under the hood:**
-`TComponent` maintains a single, global `WeakMap` that maps root DOM elements to their component instances.
-
-- **Type-safe:** `TaskItem.from()` automatically checks `instanceof TaskItem` before returning, ensuring you never accidentally invoke methods on the wrong component type.
-- **Memory-safe:** Because it uses a `WeakMap`, when a DOM element is permanently removed and garbage-collected, its component reference is automatically cleared without causing memory leaks.
-
 ---
 
-## 4. Dynamic Component Creation
+## 5. Dynamic Component Creation
 
 Instead of defining components statically in the template using `uses`, you will often need to create child components dynamically—such as when rendering a list of items fetched from an API, or opening a modal dialog.
 
@@ -280,9 +260,11 @@ class UserListApp extends TComponent<HTMLDivElement> {
 
 ---
 
-## 5. Accessibility and ID References
+## 6. Accessibility and ID References
 
-`TComponent` automatically generates UUIDs for elements with an `id` attribute and updates reference attributes (`for`, `aria-labelledby`, etc.) accordingly.
+When writing reusable components, managing HTML `id` attributes can be tricky because duplicating IDs across a page breaks accessibility and DOM queries.
+
+`TComponent` solves this automatically. Any element with an `id` attribute is assigned a **randomly generated UUID**. Furthermore, `TComponent` automatically updates reference attributes—such as `for`, `aria-labelledby`, and `aria-controls`—to match the new UUIDs.
 
 ```typescript
 import TComponent from '@haiix/tcomponent';
@@ -294,27 +276,26 @@ class AccessibleForm extends TComponent<HTMLFormElement> {
       <!-- The label's "for" attribute automatically updates to match it. -->
       <label for="my-input">Username:</label>
       <input id="my-input" aria-describedby="desc" type="text" />
+      <br />
       <span id="desc">Please enter your full name.</span>
     </form>
   `;
 }
 ```
 
-_Note: If an ID reference contains multiple space-separated IDs, `TComponent` resolves all of them correctly._
+_Note: If an ID reference contains multiple space-separated IDs, `TComponent` correctly resolves all of them._
 
-### Component Boundaries and ID Resolution
+### Component Boundaries and the Power of Slots
 
 In `TComponent`, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.
 
-If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), `TComponent` deliberately **does not** implicitly apply this ID to the child component's root HTML element.
+If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), `TComponent` deliberately **does not** apply this ID to the child's root HTML element. This prevents unexpected DOM behaviors, such as a parent's `<label>` pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden inside the child component.
 
-This strict encapsulation is highly intentional. It prevents unexpected DOM behaviors, such as a parent's `<label>` accidentally pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden deep inside the child component.
+### Best Practice: Inversion of Control with Slots
 
-### The Best Practice: Using Slots for Accessibility
+If you need to link a `<label>` in a parent component to an `<input>` managed by a child component, the most robust approach is to use **Slots**.
 
-If you need to link a `<label>` in a parent component to an `<input>` managed by a child component, the most robust and explicit approach is to use **Slots**.
-
-Because slot content is evaluated in the **parent's scope** (see Section 1), both the `<label>` and `<input>` share the same `idMap`, allowing their UUIDs to resolve correctly.
+Because slot content is evaluated in the **parent's scope**, elements passed via slots share the same `idMap` as the parent. This ensures that their UUIDs resolve perfectly.
 
 ```typescript
 import TComponent, {
@@ -333,7 +314,7 @@ class InputWrapper extends TComponent<HTMLDivElement> {
 
   constructor(params: ComponentParams) {
     super(params);
-    // Safely route child nodes (slots) into the internal container
+    // Route child nodes (slots) into the internal container
     applyParams(this, this.idMap['inner-container'] as Element, params);
   }
 }
@@ -344,11 +325,12 @@ class ParentForm extends TComponent<HTMLFormElement> {
   static template = /* HTML */ `
     <form>
       <!-- Both the label and the input exist in the Parent's scope, -->
-      <!-- so the 'for' attribute successfully finds 'username-input'. -->
+      <!-- so the 'for' attribute successfully resolves 'username-input'. -->
       <label for="username-input">Username:</label>
 
       <input-wrapper>
         <!-- The input is passed as a slot -->
+        <!-- You can safely add events or IDs here, acting as the parent -->
         <input id="username-input" type="text" placeholder="Enter name..." />
       </input-wrapper>
     </form>
@@ -357,11 +339,11 @@ class ParentForm extends TComponent<HTMLFormElement> {
 ```
 
 **Why this pattern is powerful (Inversion of Control):**
-Instead of the child component (`InputWrapper`) having to accept dozens of props (`type`, `placeholder`, `required`, `onchange`) just to manually pass them down to an internal `<input>`, the parent retains full, explicit control over the actual input element. The `InputWrapper` focuses solely on what it does best: providing layout, styling, and structural encapsulation.
+Instead of the child component (`InputWrapper`) having to accept dozens of props (`type`, `placeholder`, `required`, `onchange`) just to manually pass them down to an internal `<input>`, the parent retains full, explicit control over the actual input element. The `InputWrapper` focuses solely on what it does best: layout, styling, and structural encapsulation.
 
 ---
 
-## 6. Event Binding Syntax & Default Actions
+## 7. Event Binding Syntax
 
 `TComponent` binds events by parsing the `on*` attributes in your template. To keep your templates clean and modern, the recommended syntax is to simply provide the method name:
 
@@ -387,7 +369,9 @@ _Note: Behind the scenes, `TComponent` uses a strict regex to safely extract jus
 
 For security reasons, event handlers must strictly match a valid JavaScript identifier (method name). If you attempt to write raw JavaScript logic (e.g., `onclick="console.log(event)"` or `onclick="alert('XSS')"`), `TComponent` will throw a `SecurityError` during initialization, preventing arbitrary inline execution.
 
-### Preventing Default Actions
+---
+
+## 8. Preventing Default Actions
 
 In native HTML, returning `false` from an inline event handler cancels the browser's default action. `TComponent` perfectly emulates this behavior.
 
@@ -409,7 +393,7 @@ class LinkComponent extends TComponent {
 
 ---
 
-## 7. Error Boundaries and Bubbling
+## 9. Error Boundaries and Bubbling
 
 If an event listener throws an error (or a Promise rejects), `TComponent` catches it and calls the `onerror` method. If the current component does not override `onerror` or explicitly throws the error again, the error bubbles up to the `parent` component.
 
@@ -436,7 +420,104 @@ class Parent extends TComponent {
 
 ---
 
-## 8. Strict TypeScript Typing for `idMap`
+## 10. Advanced Memory Management: External AbortSignals
+
+As explained in Section 3, calling `.destroy()` automatically cleans up a component and its children via internal `AbortController`s.
+
+However, if you are building a larger application (like an SPA router) where multiple components share the exact same lifecycle, manually calling `.destroy()` on every root component when a route changes can become tedious. To solve this, you can pass an external `AbortSignal` into the top-level component's constructor.
+
+### Passing an External Signal
+
+By passing a signal, you link the component's lifecycle to an external controller. When the controller aborts, the component is automatically destroyed.
+
+```typescript
+const routerController = new AbortController();
+
+// Pass the router's signal to the top-level page component
+const page = new UserListApp({ signal: routerController.signal });
+
+// When the user navigates away, aborting the router
+// automatically destroys the entire page tree and unbinds all events.
+routerController.abort();
+```
+
+### Intelligent Garbage Collection (GC)
+
+When linking lifecycles via external signals, a common trap in vanilla JavaScript is accidentally creating memory leaks by leaving references to destroyed child components inside a long-lived parent's `AbortSignal`.
+
+`TComponent` is intelligently designed to prevent this. If a child component is manually `.destroy()`ed before its parent (for example, a user deletes a single item from a list), `TComponent` automatically removes the child's abort listener from the parent's signal.
+
+This ensures proper Garbage Collection (GC) and guarantees that no memory leaks or hanging references remain attached to the parent, even in highly dynamic, long-lived applications.
+
+---
+
+## 11. Performance Optimization: Event Delegation
+
+In vanilla JavaScript, **Event Delegation** is a powerful pattern where you attach a single event listener to a parent element to handle events triggered by its many children. This drastically reduces memory usage compared to attaching individual `onclick` listeners to hundreds of child components.
+
+Because `TComponent` provides the `static from(element)` method (as seen in Section 3), implementing type-safe event delegation is highly intuitive.
+
+### Example: Using `from()` with Event Delegation
+
+Instead of attaching an `onclick` listener to every single `<task-item>`, you can attach one listener to the parent `<ul class="task-list">` and use `event.target` to find the associated child component.
+
+```typescript
+import TComponent, { kebabKeys } from '@haiix/tcomponent';
+
+class TaskItem extends TComponent<HTMLLIElement> {
+  static template = /* HTML */ `<li class="task-item"></li>`;
+
+  constructor(params: ComponentParams) {
+    super(params);
+    applyParams(this, this.element, params);
+  }
+
+  // Best Practice: State is derived directly from the DOM (Single Source of Truth)
+  get isCompleted(): boolean {
+    return this.element.style.textDecoration === 'line-through';
+  }
+
+  set isCompleted(value: boolean) {
+    this.element.style.textDecoration = value ? 'line-through' : 'none';
+  }
+
+  toggle() {
+    this.isCompleted = !this.isCompleted;
+  }
+}
+
+class TaskList extends TComponent<HTMLUListElement> {
+  static uses = kebabKeys({ TaskItem });
+
+  // Attach a single event listener to the parent <ul>
+  static template = /* HTML */ `
+    <ul class="task-list" onclick="handleListClick">
+      <task-item>Task1</task-item>
+      <task-item>Task2</task-item>
+      <task-item>Task3</task-item>
+    </ul>
+  `;
+
+  handleListClick(event: MouseEvent) {
+    // 1. Find the closest <li> element that was clicked
+    const target = event.target as Element;
+    const liElement = target.closest('li.task-item');
+
+    // 2. Retrieve the component instance from the DOM element
+    // 'task' is inferred as TaskItem | undefined
+    const task = TaskItem.from(liElement);
+
+    if (task) {
+      // 3. Explicitly call the component's method
+      task.toggle();
+    }
+  }
+}
+```
+
+---
+
+## 12. Strict TypeScript Typing for `idMap`
 
 By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.
 
@@ -506,7 +587,7 @@ class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
 
 ---
 
-## 9. Component Communication
+## 13. Component Communication
 
 `TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
 
@@ -559,7 +640,7 @@ Because `TComponent` components are just standard ES6 classes managing DOM nodes
 
 ---
 
-## 10. AbstractComponent vs. TComponent
+## 14. AbstractComponent vs. TComponent
 
 `TComponent` is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
 
@@ -579,7 +660,7 @@ You should extend `AbstractComponent` instead of `TComponent` when:
 ```typescript
 import { AbstractComponent, ComponentParams } from '@haiix/tcomponent';
 
-export class ManualComponent extends AbstractComponent {
+class ManualComponent extends AbstractComponent {
   element: HTMLDivElement;
 
   constructor(params?: ComponentParams) {
@@ -595,7 +676,7 @@ export class ManualComponent extends AbstractComponent {
 
 ---
 
-## 11. Advanced AST Manipulation (Dynamic Templates)
+## 15. Advanced AST Manipulation (Dynamic Templates)
 
 Because `TComponent` compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
 
@@ -698,7 +779,7 @@ class App extends TComponent {
 
 ---
 
-## 12. Caveats & Best Practices
+## 16. Caveats & Best Practices
 
 ### Security & XSS Prevention
 

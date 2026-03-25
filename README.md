@@ -75,13 +75,13 @@ static template = /* HTML */ `
 ```
 
 - **Prettier**: Automatically recognizes the `/* HTML */` comment and will format the inner string as HTML.
-- **VSCode**: By installing extensions like [es6-string-html](https://marketplace.visualstudio.com/items?itemName=Tobermory.es6-string-html) or [lit-html](https://marketplace.visualstudio.com/items?itemName=runem.lit-plugin), you get rich HTML syntax highlighting and auto-completion directly inside your TypeScript files.
+- **VSCode**: By installing extensions like [es6-string-html](https://marketplace.visualstudio.com/items?itemName=Tobermory.es6-string-html), you get rich HTML syntax highlighting directly inside your TypeScript files.
 
 ## Documentation / Advanced Usage
 
 TComponent is designed to be simple, but it packs powerful features for complex applications. Check out the detailed documentation below:
 
-https://haiix.github.io/TComponent/
+https://haiix.github.io/TComponent/documents/guide.html
 
 ## License
 
