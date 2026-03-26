@@ -6,6 +6,79 @@ This document covers the essentials of defining components, composing UIs, handl
 
 ---
 
+## Installation
+
+To get started with `TComponent`, install it via your preferred package manager:
+
+```bash
+npm install @user/tcomponent
+```
+
+---
+
+## Defining a Basic Component
+
+At its core, a `TComponent` is just a standard ES6 class that manages a specific piece of the DOM.
+
+Unlike modern reactive frameworks, `TComponent` **does not** use a virtual DOM, nor does it automatically re-render when variables change. Instead, you define a static HTML template once, and explicitly manipulate the DOM elements using standard Web APIs.
+
+When building a component, you will primarily work with these three core features:
+
+- **`static template`**: A standard HTML string defining your component's structure. It is parsed exactly once per component class and cached for maximum performance.
+- **`this.idMap`**: Any element assigned an `id` in your template is automatically converted to a unique UUID to prevent global DOM collisions. You can instantly and safely access these inner elements via the `this.idMap` dictionary.
+- **`this.element`**: Every component instance exposes its root DOM node via the `.element` property. Because it is a native `Element`, you mount it to the page using standard methods like `document.body.appendChild()`.
+
+### Example: A Simple Counter
+
+Here is how you define, instantiate, and mount a single component by putting these concepts together:
+
+```typescript
+import TComponent from '@user/tcomponent';
+
+// Extend TComponent and specify the root element type (e.g., HTMLElement, HTMLDivElement)
+class Counter extends TComponent<HTMLElement> {
+  // 1. Define your layout
+  static template = /* HTML */ `
+    <div class="counter-widget">
+      <!-- "count-display" is automatically replaced with a UUID in the DOM -->
+      <h2 id="count-display">0</h2>
+
+      <!-- Event bindings natively map to class methods -->
+      <button onclick="handleIncrement">Increment</button>
+    </div>
+  `;
+
+  // 2. Access internal elements instantly via this.idMap
+  countDisplay = this.idMap['count-display'] as HTMLHeadingElement;
+
+  // 3. Manage your own state explicitly
+  count = 0;
+
+  // 4. Handle events and mutate the DOM directly
+  handleIncrement(event: MouseEvent) {
+    this.count++;
+    // Explicit, vanilla-like DOM update
+    this.countDisplay.textContent = this.count.toString();
+  }
+}
+
+// --- Mounting to the DOM ---
+
+// Instantiate the component
+const counter = new Counter();
+
+// Append the component's root element (.element) directly to the document
+document.body.appendChild(counter.element);
+
+/*
+ * Note: For brevity, the instantiation and mounting steps
+ * (new Component() and appendChild) will be omitted in subsequent examples
+ * unless they are specifically part of the topic being discussed.
+ */
+```
+
+---
+
 ## Registering Components
 
 You can compose complex UIs by nesting reusable child components. To use a custom component inside a template, you must explicitly register it using the `static uses` property.
@@ -40,15 +113,6 @@ class App extends TComponent<HTMLElement> {
     </main>
   `;
 }
-
-/*
- * Instantiate and mount to the DOM
- * Note: For brevity, the instantiation and mounting steps
- * (new Component() and appendChild) will be omitted in subsequent examples
- * unless they are specifically part of the topic being discussed.
- */
-const app = new App();
-document.body.appendChild(app.element);
 ```
 
 ---
