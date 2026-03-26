@@ -98,9 +98,7 @@ export class TComponent<
    */
   static getParsed(): ParsedComponent {
     if (!Object.hasOwn(this, '_parsed') || !this._parsed) {
-      const parseOptions = Object.hasOwn(this, 'parseOptions')
-        ? this.parseOptions
-        : {};
+      const parseOptions = this.parseOptions ?? {};
 
       this._parsed = {
         template: parseTemplate(this.template, parseOptions),

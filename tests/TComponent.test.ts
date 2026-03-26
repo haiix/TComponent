@@ -110,7 +110,7 @@ describe('TComponent & build', () => {
 });
 
 describe('parseOptions inside TComponent', () => {
-  it('applies parseOptions.preserveWhitespace when explicitly set, and does not implicitly inherit to subclasses', () => {
+  it('applies parseOptions.preserveWhitespace regardless of explicit configuration, and implicitly inherits to subclasses', () => {
     class PreservedComp extends TComponent<HTMLDivElement> {
       static parseOptions: ParseOptions = { preserveWhitespace: true };
       static template = /* HTML */ `
@@ -140,7 +140,8 @@ describe('parseOptions inside TComponent', () => {
     expect(preservedChildNodes[0]!.nodeType).toBe(Node.TEXT_NODE);
 
     const defaultChildNodes = Array.from(defaultInstance.element.childNodes);
-    expect(defaultChildNodes).toHaveLength(2);
+    expect(defaultChildNodes).toHaveLength(5);
+    expect(defaultChildNodes[0]!.nodeType).toBe(Node.TEXT_NODE);
   });
 });
 
