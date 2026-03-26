@@ -1,1 +1,9 @@
-{ "entryPoints": ["src/index.ts"], "projectDocuments": ["documents/*.md"] }
+{
+  "entryPoints": ["src/index.ts"],
+  "projectDocuments": [
+    "documents/core-concepts.md",
+    "documents/architecture.md",
+    "documents/advanced.md",
+    "documents/best-practices.md"
+  ]
+}
