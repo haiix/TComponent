@@ -20,3 +20,7 @@ updates:
     schedule:
       interval: 'weekly'
     target-branch: 'develop'
+    groups:
+      actions-dependencies:
+        patterns:
+          - '*'
