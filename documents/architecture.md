@@ -1,3 +1,7 @@
+---
+title: Architecture
+---
+
 # Architecture & Component Communication
 
 Building scalable applications with `TComponent` requires a solid understanding of how components interact and manage their lifecycles. By embracing the DOM as the "Single Source of Truth," you can orchestrate complex UIs without the overhead of complex state management.

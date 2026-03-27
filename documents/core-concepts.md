@@ -1,4 +1,8 @@
-# Core Concepts & Templating
+---
+title: Core Concepts
+---
+
+# Core Concepts
 
 Welcome to the foundational guide for `TComponent`. While the system is designed to be incredibly simple and non-reactive, its string-based templates and explicit DOM manipulation allow you to build structured, component-based UIs with ease.
 
@@ -11,7 +15,7 @@ This document covers the essentials of defining components, composing UIs, handl
 To get started with `TComponent`, install it via your preferred package manager:
 
 ```bash
-npm install @user/tcomponent
+npm install @haiix/tcomponent
 ```
 
 ---
@@ -33,7 +37,7 @@ When building a component, you will primarily work with these three core feature
 Here is how you define, instantiate, and mount a single component by putting these concepts together:
 
 ```typescript
-import TComponent from '@user/tcomponent';
+import TComponent from '@haiix/tcomponent';
 
 // Extend TComponent and specify the root element type (e.g., HTMLElement, HTMLDivElement)
 class Counter extends TComponent<HTMLElement> {

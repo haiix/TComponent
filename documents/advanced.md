@@ -1,3 +1,7 @@
+---
+title: Advanced Usage
+---
+
 # Advanced Usage & Internals
 
 Underneath its simple API, `TComponent` packs powerful capabilities for complex applications, SPA routing, and extreme performance optimization. This guide is intended for developers looking to push the boundaries of explicit DOM manipulation.

@@ -1,3 +1,7 @@
+---
+title: Caveats & Best Practices
+---
+
 # Caveats & Best Practices
 
 When working close to the native DOM, understanding the underlying browser mechanics is crucial. `TComponent` aims to be transparent, meaning native HTML behaviors and limitations apply directly to your components.
