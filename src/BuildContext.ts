@@ -1,9 +1,9 @@
 import type { ComponentParams, TNode } from './types';
 import type { AbstractComponent } from './AbstractComponent';
-import { warnOnce } from './utils/console';
-import { EVENT_HANDLER_REGEX, createEventHandler } from './utils/event';
-import { ID_REF_ATTRIBUTES, generateId, registerId } from './utils/id';
-import { isSafeTagName } from './utils/dom';
+import { warnOnce } from './internal/console';
+import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
+import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
+import { isSafeTagName } from './internal/dom';
 
 /**
  * Context object used during the recursive build process.

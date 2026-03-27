@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ParseOptions, ComponentParams } from '../src/types';
 import { TComponent } from '../src/TComponent';
-import { resetWarnings } from '../src/utils/console';
+import { resetWarnings } from '../src/internal/console';
 
 let uuidCounter = 0;
 
