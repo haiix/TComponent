@@ -1,9 +1,10 @@
 import type { ComponentParams, TNode } from './types';
-import type { AbstractComponent } from './AbstractComponent';
-import { warnOnce } from './internal/console';
 import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
+import type { AbstractComponent } from './AbstractComponent';
+import { createLinkedController } from './internal/signal';
 import { createNativeElement } from './internal/dom';
+import { warnOnce } from './internal/console';
 
 /**
  * Context object used during the recursive build process.
@@ -43,34 +44,12 @@ export class BuildContext {
     this.component = component;
     this.uses = uses;
 
-    this.controller = new AbortController();
+    // [WARNING] We intentionally do NOT use `AbortSignal.any([parentSignal, this.signal])` here.
+    // If the parent component is long-lived and child components are frequently created and destroyed,
+    // using `AbortSignal.any()` would leave a reference to the child's signal inside the parent's signal.
+    // This prevents the child from being garbage collected, causing a memory leak.
+    this.controller = createLinkedController(parentSignal);
     this.signal = this.controller.signal;
-
-    if (parentSignal) {
-      if (parentSignal.aborted) {
-        this.controller.abort(parentSignal.reason);
-      } else {
-        const onParentAbort = (): void => {
-          this.controller.abort(parentSignal.reason);
-        };
-
-        // [WARNING] We intentionally do NOT use `AbortSignal.any([parentSignal, this.signal])` here.
-        // If the parent component is long-lived and child components are frequently created and destroyed,
-        // using `AbortSignal.any()` would leave a reference to the child's signal inside the parent's signal.
-        // This prevents the child from being garbage collected, causing a memory leak.
-        parentSignal.addEventListener('abort', onParentAbort, { once: true });
-
-        // If the child component is explicitly destroyed before the parent,
-        // we must remove the listener from the parent's signal to ensure proper Garbage Collection (GC).
-        this.signal.addEventListener(
-          'abort',
-          (): void => {
-            parentSignal.removeEventListener('abort', onParentAbort);
-          },
-          { once: true },
-        );
-      }
-    }
   }
 
   /**
