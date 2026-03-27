@@ -121,6 +121,16 @@ class App extends TComponent<HTMLElement> {
 
 ---
 
+## Styling Components (No Shadow DOM)
+
+By default, `TComponent` deliberately **does not** use Shadow DOM. All elements rendered by your components exist in the standard, global "Light DOM".
+
+This means you can easily style your application using global stylesheets, utility-first CSS frameworks (like Tailwind CSS), or CSS Modules without worrying about style encapsulation blocking your rules. To prevent styling conflicts, it is highly recommended to use a naming convention like BEM (Block Element Modifier).
+
+If you are building a highly reusable widget and absolutely need strict CSS encapsulation, you can explicitly opt into Shadow DOM. See [Advanced Usage: Shadow DOM Encapsulation](./advanced.md#shadow-dom-encapsulation) for details.
+
+---
+
 ## Passing Props and Slots
 
 When you pass attributes (props) or child nodes (slots) to a custom component in your template, `TComponent` deliberately **does not** automatically apply them to the child component's root element.

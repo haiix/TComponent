@@ -111,6 +111,69 @@ class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
 
 ---
 
+## Shadow DOM Encapsulation
+
+As mentioned in the Core Concepts, `TComponent` renders into the Light DOM by default. However, if you need strict CSS encapsulation (e.g., for a highly reusable, isolated widget), you can explicitly opt into Shadow DOM.
+
+Because `TComponent` embraces explicit, vanilla-like DOM manipulation, you don't need a special framework API to do this. You simply attach a Shadow Root inside your component's constructor and move the auto-generated parsed elements into it.
+
+### Example: Creating a Shadow DOM Component
+
+_Note: The `super()` call automatically builds the AST and appends the elements to `this.element` (the host). To encapsulate the template, we move those built nodes into the newly attached Shadow Root._
+
+```typescript
+import TComponent, { ComponentParams, applyParams } from '@haiix/tcomponent';
+
+class EncapsulatedCard extends TComponent<HTMLElement> {
+  static template = /* HTML */ `
+    <article class="card">
+      <style>
+        /* This style is strictly scoped to this component's Shadow DOM */
+        .card {
+          border: 1px solid #ccc;
+          padding: 16px;
+          border-radius: 8px;
+          background: white;
+        }
+        h2 {
+          color: royalblue;
+          margin-top: 0;
+        }
+      </style>
+
+      <h2 id="card-title">Default Title</h2>
+      <!-- The slot content will be injected here -->
+      <div id="card-body"></div>
+    </article>
+  `;
+
+  constructor(params: ComponentParams) {
+    super(params);
+
+    // 1. Explicitly attach a Shadow Root to the host element
+    const shadowRoot = this.element.attachShadow({ mode: 'open' });
+
+    // 2. Move all automatically generated child nodes from the Light DOM into the Shadow Root
+    while (this.element.firstChild) {
+      shadowRoot.appendChild(this.element.firstChild);
+    }
+
+    // 3. (Optional) Route props and slots to an internal element inside the Shadow DOM
+    const body = this.idMap['card-body'] as HTMLDivElement;
+    applyParams(this, body, params);
+  }
+}
+```
+
+### Caveats with Shadow DOM
+
+If you choose to use Shadow DOM, keep in mind standard browser behaviors:
+
+1. **Global Styles Ignored:** Your global `styles.css` or Tailwind classes will **not** apply to the HTML inside the Shadow Root. You must include a `<style>` tag inside your `static template`.
+2. **Event Retargeting:** Events bubbling out of the Shadow DOM are "retargeted". This means `event.target` will point to the host element (`EncapsulatedCard`), not the internal clicked element. `TComponent`'s automatic event binding (`onclick="..."`) inside the template still works perfectly, but external event delegation (e.g., calling `Component.from(event.target)` in a parent component) will behave differently.
+
+---
+
 ## AbstractComponent vs. TComponent
 
 `TComponent` is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
@@ -247,80 +310,3 @@ class App extends TComponent {
   }
 }
 ```
-
----
-
-## Styling and Shadow DOM Encapsulation
-
-By default, `TComponent` deliberately **does not** use Shadow DOM. All components render their HTML directly into the standard "Light DOM".
-
-This design choice allows you to easily style your application using global stylesheets, utility-first CSS frameworks (like Tailwind CSS), or CSS Modules, without worrying about style encapsulation blocking your rules.
-
-### Opting into Shadow DOM explicitly
-
-If you are building a highly reusable widget (like a date picker or a video player) and you absolutely need strict CSS encapsulation to prevent styles from leaking in or out, you can easily opt into Shadow DOM.
-
-Because `TComponent` embraces explicit, vanilla-like DOM manipulation, you simply attach a Shadow Root inside your component's constructor and append your parsed elements to it.
-
-#### Example: Creating a Shadow DOM Component
-
-In this advanced pattern, we override the default `this.element` creation by extending `AbstractComponent` directly, or by manipulating `this.element` inside a `TComponent` constructor before mounting it to the document.
-
-_Note: Since `TComponent` automatically builds the AST and appends it to `this.element`, if you want the template inside a Shadow Root, you must move the built nodes._
-
-```typescript
-import TComponent, { ComponentParams, applyParams } from '@user/tcomponent';
-
-class EncapsulatedCard extends TComponent<HTMLElement> {
-  // Define custom elements safely since they will be encapsulated
-  static template = /* HTML */ `
-    <article class="card">
-      <style>
-        /* This style is strictly scoped to this component's Shadow DOM */
-        .card {
-          border: 1px solid #ccc;
-          padding: 16px;
-          border-radius: 8px;
-          background: white;
-        }
-        h2 {
-          color: royalblue;
-          margin-top: 0;
-        }
-      </style>
-
-      <h2 id="card-title">Default Title</h2>
-      <!-- The slot content will be injected here -->
-      <div id="card-body"></div>
-    </article>
-  `;
-
-  constructor(params: ComponentParams) {
-    super(params);
-
-    // 1. Explicitly attach a Shadow Root to the host element
-    const shadowRoot = this.element.attachShadow({ mode: 'open' });
-
-    // 2. Move all automatically generated child nodes from the Light DOM into the Shadow Root
-    while (this.element.firstChild) {
-      shadowRoot.appendChild(this.element.firstChild);
-    }
-
-    // 3. (Optional) Route props and slots to an internal element inside the Shadow DOM
-    const body = this.idMap['card-body'] as HTMLDivElement;
-    applyParams(this, body, params);
-  }
-
-  setTitle(title: string) {
-    const titleEl = this.idMap['card-title'] as HTMLHeadingElement;
-    titleEl.textContent = title;
-  }
-}
-```
-
-#### Important Caveats with Shadow DOM
-
-If you choose to use Shadow DOM, keep in mind standard browser behaviors:
-
-1. **Global Styles Ignored:** Your global `styles.css` or Tailwind classes will **not** apply to the HTML inside the Shadow Root. You must include a `<style>` tag inside your `static template`.
-2. **Event Retargeting:** Events bubbling out of the Shadow DOM are "retargeted", meaning `event.target` will point to the host element (`EncapsulatedCard`), not the internal clicked button. `TComponent`'s automatic event binding (`onclick="handle"`) inside the template still works perfectly, but external event delegation (e.g., in a parent component) will behave differently.
