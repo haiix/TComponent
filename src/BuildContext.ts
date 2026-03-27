@@ -3,7 +3,7 @@ import type { AbstractComponent } from './AbstractComponent';
 import { warnOnce } from './internal/console';
 import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
-import { isSafeTagName } from './internal/dom';
+import { createNativeElement } from './internal/dom';
 
 /**
  * Context object used during the recursive build process.
@@ -85,9 +85,9 @@ export class BuildContext {
       return this._buildCustomComponent(tNode);
     }
 
-    const { element, elementNs } = this._createNativeElement(tNode.t, ns);
+    const { element, childNs } = createNativeElement(tNode.t, ns);
     this._applyAttributes(element, tNode.a);
-    this._appendChildren(element, tNode.t, tNode.c, elementNs);
+    this._appendChildren(element, tNode.c, childNs);
 
     return element;
   }
@@ -129,28 +129,6 @@ export class BuildContext {
     }
 
     return cComponent.element;
-  }
-
-  private _createNativeElement(
-    tagName: string,
-    ns?: string | null,
-  ): { element: Element; elementNs?: string | null } {
-    if (!isSafeTagName(tagName)) {
-      throw new Error(`Invalid tag name: ${tagName}`);
-    }
-
-    let elementNs = ns;
-    if (tagName === 'svg') {
-      elementNs = 'http://www.w3.org/2000/svg';
-    } else if (tagName === 'math') {
-      elementNs = 'http://www.w3.org/1998/Math/MathML';
-    }
-
-    const element = elementNs
-      ? document.createElementNS(elementNs, tagName)
-      : document.createElement(tagName);
-
-    return { element, elementNs };
   }
 
   private _applyAttributes(
@@ -205,12 +183,9 @@ export class BuildContext {
 
   private _appendChildren(
     element: Element,
-    parentTagName: string,
     children: (TNode | string)[],
-    elementNs?: string | null,
+    childNs?: string | null,
   ): void {
-    const childNs = parentTagName === 'foreignobject' ? null : elementNs;
-
     for (const cNode of children) {
       element.appendChild(
         typeof cNode === 'string'
