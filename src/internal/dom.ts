@@ -42,3 +42,64 @@ export function createNativeElement(
 
   return { element, childNs };
 }
+
+/**
+ * Safely merges a class string into the target element's classList.
+ *
+ * @param target - The DOM element to apply the classes to.
+ * @param classValue - A space-separated string of class names.
+ */
+export function mergeClass(target: Element, classValue: string): void {
+  const classes = classValue.trim().split(/\s+/u).filter(Boolean);
+  if (classes.length) {
+    target.classList.add(...classes);
+  }
+}
+
+/**
+ * Safely merges an inline style string into the target element's existing styles.
+ * Ensures proper semicolon separation.
+ *
+ * @param target - The DOM element to apply the styles to.
+ * @param styleValue - The CSS style string to append.
+ */
+export function mergeStyle(target: Element, styleValue: string): void {
+  const existingStyle = target.getAttribute('style')?.trim() ?? '';
+  const appendStyle = styleValue.trim();
+
+  if (!appendStyle) return;
+
+  if (existingStyle) {
+    const separator = existingStyle.endsWith(';') ? ' ' : '; ';
+    target.setAttribute('style', existingStyle + separator + appendStyle);
+  } else {
+    target.setAttribute('style', appendStyle);
+  }
+}
+
+/**
+ * Applies a dictionary of attributes to a target DOM element.
+ * Intentionally skips 'id' and 'on*' attributes to prevent DOM collisions
+ * and unsafe inline event handlers. Routes 'class' and 'style' to their respective merge functions.
+ *
+ * @param target - The DOM element to receive the attributes.
+ * @param attributes - A record of attribute names and values.
+ */
+export function applyAttributes(
+  target: Element,
+  attributes: Record<string, string>,
+): void {
+  for (const [name, value] of Object.entries(attributes)) {
+    if (name === 'id' || name.startsWith('on')) {
+      continue; // Skip specific attributes
+    }
+
+    if (name === 'class') {
+      mergeClass(target, value);
+    } else if (name === 'style') {
+      mergeStyle(target, value);
+    } else {
+      target.setAttribute(name, value);
+    }
+  }
+}
