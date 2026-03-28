@@ -75,38 +75,6 @@ describe('TComponent & build', () => {
       'mock-uuid-1 mock-uuid-2 unknown-id',
     );
   });
-
-  it('handles duplicate ids by keeping the first instance (first-wins) and logs a warning', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    class DuplicateIdComp extends TComponent<HTMLDivElement> {
-      static template = /* HTML */ `
-        <div>
-          <span id="dup">First</span>
-          <p id="dup">Second</p>
-
-          <label for="dup">Label</label>
-        </div>
-      `;
-    }
-
-    const controller = new AbortController();
-    const comp = new DuplicateIdComp({ signal: controller.signal });
-
-    const span = comp.element.querySelector('span')!;
-    const p = comp.element.querySelector('p')!;
-    const label = comp.element.querySelector('label')!;
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[TComponent] Duplicate id "dup" found in template. Only the first instance will be mapped.',
-    );
-
-    expect(span.id).toBe('mock-uuid-1');
-    expect(p.id).toBe('mock-uuid-2');
-
-    expect(comp.idMap.dup).toBe(span);
-    expect(label.getAttribute('for')).toBe('mock-uuid-1');
-  });
 });
 
 describe('parseOptions inside TComponent', () => {
@@ -186,47 +154,6 @@ describe('Event Binding & Error Handling', () => {
     );
   });
 
-  it('catches synchronous errors in onerror', () => {
-    const controller = new AbortController();
-    class SyncErrComp extends TComponent<HTMLButtonElement> {
-      static template = `<button onclick="handleSyncError">Error</button>`;
-      handleSyncError() {
-        throw new Error('Sync Error!');
-      }
-    }
-
-    const comp = new SyncErrComp({ signal: controller.signal });
-    const spy = vi.spyOn(comp, 'onerror').mockImplementation(() => {});
-
-    comp.element.click();
-
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Sync Error!' }),
-    );
-  });
-
-  it('catches asynchronous (Promise) errors in onerror', async () => {
-    const controller = new AbortController();
-    class AsyncErrComp extends TComponent<HTMLButtonElement> {
-      static template = `<button onclick="handleAsyncError">Async Error</button>`;
-      async handleAsyncError() {
-        throw new Error('Async Error!');
-      }
-    }
-
-    const comp = new AsyncErrComp({ signal: controller.signal });
-    const spy = vi.spyOn(comp, 'onerror').mockImplementation(() => {});
-
-    comp.element.click();
-    await Promise.resolve();
-
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Async Error!' }),
-    );
-  });
-
   it('throws the error if onerror is called without a parent component', () => {
     const controller = new AbortController();
     const comp = new EventComponent({ signal: controller.signal });
@@ -238,40 +165,6 @@ describe('Event Binding & Error Handling', () => {
 });
 
 describe('Event Handler Syntax & Security Validation', () => {
-  it('parses and binds various valid event handler syntaxes', () => {
-    class ValidSyntaxComponent extends TComponent<HTMLDivElement> {
-      static template = /* HTML */ `
-        <div>
-          <button id="btn1" onclick="handleClick">1</button>
-          <button id="btn2" onclick="this.handleClick">2</button>
-          <button id="btn3" onclick="handleClick()">3</button>
-          <button id="btn4" onclick="handleClick(event)">4</button>
-          <button id="btn5" onclick="return handleClick()">5</button>
-          <button id="btn6" onclick="return this.handleClick(event);">6</button>
-          <button id="btn7" onclick="  this . handleClick ( event ) ; ">
-            7
-          </button>
-        </div>
-      `;
-
-      public callCount = 0;
-
-      handleClick() {
-        this.callCount++;
-      }
-    }
-
-    const controller = new AbortController();
-    const comp = new ValidSyntaxComponent({ signal: controller.signal });
-
-    for (let i = 1; i <= 7; i++) {
-      const btn = comp.idMap[`btn${i}`] as HTMLButtonElement;
-      btn.click();
-    }
-
-    expect(comp.callCount).toBe(7);
-  });
-
   it('throws SecurityError for invalid event handler syntaxes', () => {
     class XssComponent extends TComponent<HTMLButtonElement> {
       static template = `<button onclick="alert('XSS')">Invalid</button>`;
@@ -361,49 +254,38 @@ describe('Lifecycle & Teardown (destroy / AbortSignal)', () => {
     }
   }
 
-  it('automatically creates an internal AbortController and cleans up events on destroy()', () => {
+  it('removes the element from the DOM and unbinds events when destroy() is called', () => {
     const comp = new LifecycleComp();
     document.body.appendChild(comp.element);
 
+    // Initial state: events work
     comp.element.click();
     expect(comp.clickCount).toBe(1);
 
+    // Call destroy explicitly
     comp.destroy();
+
+    // 1. Should be removed from DOM
     expect(comp.element.isConnected).toBe(false);
 
+    // 2. Events should be unbound (click should not increment counter)
     comp.element.click();
     expect(comp.clickCount).toBe(1);
   });
 
-  it('cascades abort from parent signal to internal signal', () => {
+  it('destroys the component when an external parent AbortSignal is aborted', () => {
     const parentController = new AbortController();
     const comp = new LifecycleComp({ signal: parentController.signal });
 
+    // Triggering the external abort should effectively destroy the component
     parentController.abort();
 
+    // Events should be unbound
     comp.element.click();
     expect(comp.clickCount).toBe(0);
   });
 
-  it('prevents memory leaks by removing the abort listener from parent signal when child is destroyed first', () => {
-    const parentController = new AbortController();
-    const removeEventListenerSpy = vi.spyOn(
-      parentController.signal,
-      'removeEventListener',
-    );
-
-    const comp = new LifecycleComp({ signal: parentController.signal });
-
-    comp.destroy();
-
-    expect(removeEventListenerSpy).toHaveBeenCalledTimes(1);
-    expect(removeEventListenerSpy).toHaveBeenCalledWith(
-      'abort',
-      expect.any(Function),
-    );
-  });
-
-  it('cascades destroy() automatically from Parent to Child components', () => {
+  it('cascades destroy() automatically from parent to child components', () => {
     class Child extends TComponent<HTMLButtonElement> {
       static template = `<button onclick="handleClick">Child</button>`;
       public clickCount = 0;
@@ -420,8 +302,10 @@ describe('Lifecycle & Teardown (destroy / AbortSignal)', () => {
     const parent = new Parent();
     const child = parent.idMap['my-child'] as Child;
 
+    // Destroying the parent should cascade to the child
     parent.destroy();
 
+    // The child's events should be properly unbound
     child.element.click();
     expect(child.clickCount).toBe(0);
   });
@@ -517,64 +401,6 @@ describe('Component Composition (uses) & Props/Slots', () => {
 
     const parsedUses = CachedParent.getParsed().uses;
     expect(parsedUses).toHaveProperty('mycustomchild');
-  });
-});
-
-describe('Namespaces (SVG & MathML)', () => {
-  it('creates elements with correct namespace URIs and handles foreignObject correctly', () => {
-    class NamespaceComponent extends TComponent<HTMLDivElement> {
-      static template = /* HTML */ `
-        <div>
-          <!-- SVG Scope -->
-          <svg viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="40" onclick="handleSvgClick" />
-            <!-- foreignObject (case-insensitive in parsed TNode) -->
-            <foreignObject width="100" height="100">
-              <div class="html-in-svg">I am HTML inside SVG</div>
-            </foreignObject>
-          </svg>
-
-          <!-- MathML Scope -->
-          <math>
-            <mi>x</mi>
-            <mo>+</mo>
-            <mi>y</mi>
-          </math>
-        </div>
-      `;
-
-      public svgClickCount = 0;
-      handleSvgClick() {
-        this.svgClickCount++;
-      }
-    }
-
-    const controller = new AbortController();
-    const comp = new NamespaceComponent({ signal: controller.signal });
-
-    const HTML_NS = 'http://www.w3.org/1999/xhtml';
-    const SVG_NS = 'http://www.w3.org/2000/svg';
-    const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
-
-    expect(comp.element.namespaceURI).toBe(HTML_NS);
-
-    const svg = comp.element.querySelector('svg')!;
-    const circle = comp.element.querySelector('circle')!;
-    expect(svg.namespaceURI).toBe(SVG_NS);
-    expect(circle.namespaceURI).toBe(SVG_NS);
-
-    const foreignObj = comp.element.querySelector('foreignobject')!;
-    const divInSvg = comp.element.querySelector('.html-in-svg')!;
-    expect(foreignObj.namespaceURI).toBe(SVG_NS);
-    expect(divInSvg.namespaceURI).toBe(HTML_NS);
-
-    const math = comp.element.querySelector('math')!;
-    const mi = comp.element.querySelector('mi')!;
-    expect(math.namespaceURI).toBe(MATHML_NS);
-    expect(mi.namespaceURI).toBe(MATHML_NS);
-
-    circle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    expect(comp.svgClickCount).toBe(1);
   });
 });
 

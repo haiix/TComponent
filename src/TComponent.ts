@@ -113,5 +113,3 @@ export class TComponent<
     return this._parsed;
   }
 }
-
-export default TComponent;
