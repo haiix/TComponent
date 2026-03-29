@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BuildContext } from '../src/BuildContext';
 import { AbstractComponent } from '../src/AbstractComponent';
-import { parseTemplate } from '../src/parse';
+import { parseTemplate } from '../src/utils/parse';
 import { resetWarnings } from '../src/internal/console';
 import type { ComponentParams } from '../src/types';
 

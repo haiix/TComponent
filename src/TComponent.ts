@@ -6,7 +6,7 @@ import type {
 } from './types';
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
-import { parseTemplate } from './parse';
+import { parseTemplate } from './utils/parse';
 
 /**
  * Global registry mapping root DOM elements to their respective TComponent instances.

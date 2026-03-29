@@ -1,4 +1,4 @@
-import type { ParseOptions, TNode } from './types';
+import type { ParseOptions, TNode } from '../types';
 
 /**
  * Recursively parses a DOM Node into a `TNode` or a text string.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseTemplate } from '../src/parse';
+import { parseTemplate } from '../../src/utils/parse';
 
 describe('parseTemplate', () => {
   it('converts HTML string to a valid TNode tree and lowercases tags', () => {

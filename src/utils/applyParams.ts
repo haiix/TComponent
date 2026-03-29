@@ -1,6 +1,6 @@
 import type { ComponentParams } from '../types';
 import type { TComponent } from '../TComponent';
-import { appendSlots } from '../internal/component';
+import { appendSlots } from '../internal/slots';
 import { applyAttributes } from '../internal/dom';
 
 /**

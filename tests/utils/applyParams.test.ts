@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ComponentParams } from '../../src/types';
 import { TComponent } from '../../src/TComponent';
-import { applyParams } from '../../src/utils/component';
+import { applyParams } from '../../src/utils/applyParams';
 
 describe('applyParams', () => {
   it('orchestrates applyAttributes and appendSlots when params are provided', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TComponent } from '../../src/TComponent';
-import { appendSlots } from '../../src/internal/component';
+import { appendSlots } from '../../src/internal/slots';
 
 describe('appendSlots', () => {
   it('builds child nodes using the parent component context if a parent exists', () => {
