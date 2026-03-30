@@ -7,7 +7,6 @@ export default defineConfig({
     sourcemap: true,
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
-      name: 'TComponent',
       fileName: 'index',
       formats: ['es'],
     },
