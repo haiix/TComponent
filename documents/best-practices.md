@@ -62,9 +62,6 @@ class PreservedWhitespaceComponent extends TComponent {
       <span class="tag">Item 1</span>
       <span class="tag">Item 2</span>
       <span class="tag">Item 3</span>
-
-      <!-- An empty textarea with intentionally preserved initial newlines -->
-      <textarea id="my-input"> </textarea>
     </div>
   `;
 }

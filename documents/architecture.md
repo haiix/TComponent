@@ -248,7 +248,11 @@ Because `TComponent` provides the [`static from(element)`](#retrieving-component
 Instead of attaching an `onclick` listener to every single `<task-item>`, you can attach one listener to the parent `<ul class="task-list">` and use `event.target` to find the associated child component.
 
 ```typescript
-import TComponent, { kebabKeys } from '@haiix/tcomponent';
+import TComponent, {
+  ComponentParams,
+  kebabKeys,
+  applyParams,
+} from '@haiix/tcomponent';
 
 class TaskItem extends TComponent<HTMLLIElement> {
   static template = /* HTML */ `<li class="task-item"></li>`;
