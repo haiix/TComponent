@@ -53,6 +53,7 @@
     "@vitest/eslint-plugin": "^1.6.11",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-tsdoc": "^0.5.2",
     "globals": "^17.4.0",
     "jsdom": "^29.0.0",
     "prettier": "3.8.1",

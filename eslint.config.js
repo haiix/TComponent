@@ -4,6 +4,7 @@ import tseslint from 'typescript-eslint';
 import { defineConfig } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import vitest from '@vitest/eslint-plugin';
+import tsdoc from 'eslint-plugin-tsdoc';
 
 export default defineConfig(
   {
@@ -22,8 +23,10 @@ export default defineConfig(
       },
       globals: globals.browser,
     },
+    plugins: { tsdoc },
     rules: {
       'no-console': 'error',
+      'tsdoc/syntax': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'error',
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-floating-promises': 'error',

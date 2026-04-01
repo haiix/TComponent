@@ -1,10 +1,15 @@
 import type { AbstractComponent } from './AbstractComponent';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Represents the constructor type of an abstract class.
+ *
+ * @typeParam T - The instance type created by the constructor. Defaults to `object`.
+ */
 export type AbstractConstructor<T = object> = abstract new (
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   ...args: any[]
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 ) => T;
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Options required for template parsing.
@@ -13,7 +18,7 @@ export interface ParseOptions {
   /**
    * Preserve text nodes that consist only of newline whitespace.
    * When false, newline-only whitespace between elements is removed.
-   * @default false
+   * @defaultValue false
    */
   preserveWhitespace?: boolean;
 }

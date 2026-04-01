@@ -22,10 +22,12 @@ export function toKebabCase(str: string): string {
  * using object shorthand notation, automatically generating standard HTML tag names.
  *
  * @example
+ * ```typescript
  * class App extends TComponent {
  *   static uses = kebabKeys({ DynamicList, UserProfile });
  *   // Results in: { 'dynamic-list': DynamicList, 'user-profile': UserProfile }
  * }
+ * ```
  *
  * @param obj - The object whose keys should be converted.
  * @returns A new object with kebab-cased keys.

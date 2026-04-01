@@ -28,9 +28,12 @@ export interface ErrorBoundary {
  * @param fn - The event handler function to wrap. It may return `void`, `boolean`, or a `Promise`.
  * @returns A new event handler function with error forwarding and default prevention handling.
  */
-/* eslint-disable @typescript-eslint/no-unsafe-function-type */
-export function createEventHandler(thisArg: ErrorBoundary, fn: Function) {
+export function createEventHandler(
+  thisArg: ErrorBoundary,
+  /* eslint-disable @typescript-eslint/no-unsafe-function-type */
+  fn: Function,
   /* eslint-enable @typescript-eslint/no-unsafe-function-type */
+) {
   return (event: Event): void => {
     try {
       const result = fn.call(thisArg, event) as unknown;

@@ -40,7 +40,7 @@ function parseTemplateRecur(
  * @param html - The HTML string to parse.
  * @param options - Options for parsing.
  * @returns The parsed `TNode` representation of the root element.
- * @throws {Error} If the template does not have exactly one root element.
+ * @throws `{Error}` If the template does not have exactly one root element.
  */
 export function parseTemplate(html: string, options: ParseOptions = {}): TNode {
   const template = document.createElement('template');
@@ -51,10 +51,10 @@ export function parseTemplate(html: string, options: ParseOptions = {}): TNode {
       'ParseError: The template must have exactly one root element.',
     );
   }
-  /* eslint-disable @typescript-eslint/no-non-null-assertion */
   return parseTemplateRecur(
+    /* eslint-disable @typescript-eslint/no-non-null-assertion */
     template.content.firstElementChild!,
+    /* eslint-enable @typescript-eslint/no-non-null-assertion */
     options,
   ) as TNode;
-  /* eslint-enable @typescript-eslint/no-non-null-assertion */
 }

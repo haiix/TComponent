@@ -18,7 +18,8 @@ const componentRegistry = new WeakMap<Element, TComponent>();
  * A practical base component class that automatically parses its template,
  * builds its DOM, binds events, and resolves sub-components.
  *
- * @template T - The type of the root DOM Element.
+ * @typeParam T - The type of the root DOM Element.
+ * @typeParam IDMap - Defines the exact shape of the idMap.
  */
 export class TComponent<
   T extends Element = Element,
@@ -87,14 +88,20 @@ export class TComponent<
     }
   }
 
-  /** A map of original template IDs to uniquely generated DOM elements. */
+  /**
+   * Maps original template IDs to unique DOM elements.
+   *
+   * @returns The map.
+   */
   get idMap(): IDMap {
     return this.context.idMap as IDMap;
   }
 
   /**
-   * Retrieves the class-specific parsed templates and dependent components (uses).
-   * If they have not been parsed, parses them and saves them to the cache.
+   * Retrieves the class-specific parsed templates and their dependent components (uses).
+   * If they have not been parsed yet, parses them and caches the results.
+   *
+   * @returns The parsed templates and their dependencies.
    */
   static getParsed(): ParsedComponent {
     if (!Object.hasOwn(this, '_parsed') || !this._parsed) {

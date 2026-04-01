@@ -12,6 +12,7 @@ import { applyAttributes } from '../internal/dom';
  * internal attributes like `id` and `on*`.
  *
  * @example
+ * ```typescript
  * class Card extends TComponent<HTMLDivElement> {
  *   static template = `<div class="card"><div id="body"></div></div>`;
  *   constructor(params: ComponentParams) {
@@ -20,6 +21,7 @@ import { applyAttributes } from '../internal/dom';
  *     applyParams(this, this.idMap['body'], params);
  *   }
  * }
+ * ```
  *
  * @param component - The current component instance.
  * @param target - The DOM element to receive the attributes and children.
