@@ -24,10 +24,10 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build TypeDoc
-        run: npx typedoc
+        run: npm run docs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

@@ -1,9 +1,11 @@
 {
   "entryPoints": ["src/index.ts"],
+  "out": "docs",
   "projectDocuments": [
     "documents/core-concepts.md",
     "documents/architecture.md",
     "documents/advanced.md",
     "documents/best-practices.md"
-  ]
+  ],
+  "treatWarningsAsErrors": true
 }
