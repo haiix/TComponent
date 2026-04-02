@@ -59,11 +59,7 @@ export class BuildContext {
    * @param ns - Namespace URI used when creating an element.
    * @returns The constructed DOM Element.
    */
-  build(tNode: TNode, ns?: string | null): Element | undefined {
-    if (tNode.t in this.uses) {
-      return this._buildCustomComponent(tNode);
-    }
-
+  build(tNode: TNode, ns?: string | null): Element {
     const { element, childNs } = createNativeElement(tNode.t, ns);
     this._applyAttributes(element, tNode.a);
     this._appendChildren(element, tNode.c, childNs);
@@ -169,7 +165,9 @@ export class BuildContext {
       const cElement =
         typeof cNode === 'string'
           ? document.createTextNode(cNode)
-          : this.build(cNode, childNs);
+          : this.uses[cNode.t]
+            ? this._buildCustomComponent(cNode)
+            : this.build(cNode, childNs);
       if (cElement) element.appendChild(cElement);
     }
   }
