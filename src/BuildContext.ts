@@ -59,7 +59,7 @@ export class BuildContext {
    * @param ns - Namespace URI used when creating an element.
    * @returns The constructed DOM Element.
    */
-  build(tNode: TNode, ns?: string | null): Element {
+  build(tNode: TNode, ns?: string | null): Element | undefined {
     if (tNode.t in this.uses) {
       return this._buildCustomComponent(tNode);
     }
@@ -92,7 +92,7 @@ export class BuildContext {
     this.idReferenceMap.length = 0;
   }
 
-  private _buildCustomComponent(tNode: TNode): Element {
+  private _buildCustomComponent(tNode: TNode): Element | undefined {
     const Component = this.uses[tNode.t] as new (
       params: ComponentParams,
     ) => AbstractComponent;
@@ -166,11 +166,11 @@ export class BuildContext {
     childNs?: string | null,
   ): void {
     for (const cNode of children) {
-      element.appendChild(
+      const cElement =
         typeof cNode === 'string'
           ? document.createTextNode(cNode)
-          : this.build(cNode, childNs),
-      );
+          : this.build(cNode, childNs);
+      if (cElement) element.appendChild(cElement);
     }
   }
 }
