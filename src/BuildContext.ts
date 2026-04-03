@@ -88,7 +88,7 @@ export class BuildContext {
     this.idReferenceMap.length = 0;
   }
 
-  private _buildCustomComponent(tNode: TNode): Element | undefined {
+  private _buildCustomComponent(tNode: TNode): Element {
     const Component = this.uses[tNode.t] as new (
       params: ComponentParams,
     ) => AbstractComponent;
@@ -162,13 +162,13 @@ export class BuildContext {
     childNs?: string | null,
   ): void {
     for (const cNode of children) {
-      const cElement =
+      element.appendChild(
         typeof cNode === 'string'
           ? document.createTextNode(cNode)
           : this.uses[cNode.t]
             ? this._buildCustomComponent(cNode)
-            : this.build(cNode, childNs);
-      if (cElement) element.appendChild(cElement);
+            : this.build(cNode, childNs),
+      );
     }
   }
 }
