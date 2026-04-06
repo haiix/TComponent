@@ -29,6 +29,8 @@ export class TComponent<
   static uses: Record<string, typeof AbstractComponent> = {};
   /** The HTML string template for the component. */
   static template = '<div></div>';
+  /** The namespace URI of this component's root element. */
+  static namespaceURI?: string;
   /** The options passed when parsing the template. */
   static parseOptions?: ParseOptions;
 
@@ -52,7 +54,7 @@ export class TComponent<
     const parsed = Component.getParsed();
 
     this.context = new BuildContext(this, parsed.uses, params.signal);
-    this.element = this.context.build(parsed.template) as T;
+    this.element = this.context.build(parsed.template, parsed.ns) as T;
     this.context.resolveIdReferences();
 
     componentRegistry.set(this.element, this as TComponent);
@@ -109,6 +111,7 @@ export class TComponent<
 
       this._parsed = {
         template: parseTemplate(this.template, parseOptions),
+        ns: this.namespaceURI,
         uses: Object.fromEntries(
           Object.entries(this.uses).map(([name, Component]) => [
             name.toLowerCase(),

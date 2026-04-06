@@ -41,6 +41,52 @@ This ensures proper Garbage Collection (GC) and guarantees that no memory leaks 
 
 ---
 
+## Custom Namespace URIs
+
+By default, `TComponent` automatically infers the correct namespace when the root element of your template is `<svg>` or `<math>`. However, if you want to create a sub-component where the root element is an **internal** SVG or MathML node (e.g., `<polyline>`, `<g>`, or `<path>`), the browser will default to generating a standard HTML element.
+
+To ensure these elements are created with the correct internal representation, you can explicitly define the `static namespaceURI` property on your component.
+
+### Example: Creating an interactive SVG Polyline
+
+```typescript
+import TComponent from '@haiix/tcomponent';
+
+class InteractivePolyline extends TComponent<SVGPolylineElement> {
+  // 1. Explicitly declare the SVG namespace
+  static namespaceURI = 'http://www.w3.org/2000/svg';
+
+  static template = /* HTML */ `
+    <polyline
+      points="0,0 50,50 100,0"
+      fill="none"
+      stroke="black"
+      stroke-width="5"
+      onmouseover="handleHover"
+    />
+  `;
+
+  handleHover() {
+    this.element.setAttribute('stroke', 'red');
+  }
+}
+
+class DrawingBoard extends TComponent<SVGSVGElement> {
+  static uses = { InteractivePolyline };
+
+  static template = /* HTML */ `
+    <!-- The <svg> tag automatically gets the SVG namespace -->
+    <svg width="200" height="200">
+      <interactivepolyline></interactivepolyline>
+    </svg>
+  `;
+}
+```
+
+_(Note: Keep in mind the browser parser limitation regarding camelCase SVG tags as mentioned in the [Best Practices & Caveats](./best-practices.md#svg-mathml-camelcase-tags-limitation) document. Standard lowercase tags like `polyline` or `path` work perfectly.)_
+
+---
+
 ## Strict TypeScript Typing for `idMap`
 
 By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.

@@ -203,6 +203,22 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
   });
 });
 
+describe('TComponent - Custom Namespace URI (SVG/MathML)', () => {
+  it('creates the root element with the specified custom namespace URI', () => {
+    class PolyLineComponent extends TComponent<SVGPolylineElement> {
+      // 1. Explicitly specify the SVG namespace
+      static namespaceURI = 'http://www.w3.org/2000/svg';
+      static template = /* HTML */ ` <polyline fill="none" stroke="black" /> `;
+    }
+
+    const polyline = new PolyLineComponent();
+
+    // 2. Verify that the element was created with the correct namespace
+    expect(polyline.element.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    expect(polyline.element.tagName.toLowerCase()).toBe('polyline');
+  });
+});
+
 describe('TComponent.from (Global Registry Mapping)', () => {
   class ListItem extends TComponent<HTMLLIElement> {
     static template = `<li class="list-item">Item</li>`;

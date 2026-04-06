@@ -54,5 +54,6 @@ export interface ComponentParams {
  */
 export interface ParsedComponent {
   template: TNode;
+  ns?: string;
   uses: Record<string, typeof AbstractComponent>;
 }
