@@ -63,7 +63,7 @@ class InteractivePolyline extends TComponent<SVGPolylineElement> {
       stroke="black"
       stroke-width="5"
       onmouseover="handleHover"
-    />
+    ></polyline>
   `;
 
   handleHover() {
