@@ -1,6 +1,7 @@
 import type {
   AbstractConstructor,
   ComponentParams,
+  DefaultIDMap,
   ParseOptions,
   ParsedComponent,
 } from './types';
@@ -23,7 +24,7 @@ const componentRegistry = new WeakMap<Element, TComponent>();
  */
 export class TComponent<
   T extends Element = Element,
-  IDMap = Record<string, Element | AbstractComponent>,
+  IDMap = DefaultIDMap,
 > extends AbstractComponent {
   /** A dictionary of custom components to be used within the template. */
   static uses: Record<string, typeof AbstractComponent> = {};

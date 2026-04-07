@@ -50,6 +50,12 @@ export interface ComponentParams {
 }
 
 /**
+ * The default type for idMap.
+ * It allows mapping strings to any DOM Element or AbstractComponent instance.
+ */
+export type DefaultIDMap = Record<string, Element | AbstractComponent>;
+
+/**
  * The interface that aggregates the parsing results of templates and subcomponents.
  */
 export interface ParsedComponent {
