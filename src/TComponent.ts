@@ -53,7 +53,13 @@ export class TComponent<
     const Component = this.constructor as typeof TComponent;
     const parsed = Component.getParsed();
 
-    this.context = new BuildContext(this, parsed.uses, params.signal);
+    // Determine the AbortSignal for this component's lifecycle:
+    let signal = params.signal;
+    if (!signal && this.parent instanceof TComponent) {
+      signal = this.parent.context.signal;
+    }
+
+    this.context = new BuildContext(this, parsed.uses, signal);
     this.element = this.context.build(parsed.template, parsed.ns) as T;
     this.context.resolveIdReferences();
 

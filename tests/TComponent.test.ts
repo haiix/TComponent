@@ -103,6 +103,67 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
     child.element.click();
     expect(child.clickCount).toBe(0);
   });
+
+  it('automatically inherits the parent signal when dynamically created without an explicit signal', () => {
+    class DynamicChild extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="handleClick">Dynamic Child</button>`;
+      public clickCount = 0;
+      handleClick() {
+        this.clickCount++;
+      }
+    }
+
+    class Parent extends TComponent<HTMLDivElement> {
+      static template = `<div></div>`;
+    }
+
+    const parent = new Parent();
+
+    // Dynamically instantiate the child passing only the parent.
+    // It should automatically inherit the parent's AbortSignal.
+    const child = new DynamicChild({ parent });
+    parent.element.appendChild(child.element);
+
+    // Verify events work initially
+    child.element.click();
+    expect(child.clickCount).toBe(1);
+
+    parent.destroy();
+
+    // Verify the child's controller was aborted automatically
+    expect(child.context.signal.aborted).toBe(true);
+
+    // Verify the child's events were successfully unbound
+    child.element.click();
+    expect(child.clickCount).toBe(1);
+  });
+
+  it('prioritizes an explicitly provided signal over the parent signal', () => {
+    class DynamicChild extends TComponent<HTMLDivElement> {
+      static template = `<div></div>`;
+    }
+
+    class Parent extends TComponent<HTMLDivElement> {
+      static template = `<div></div>`;
+    }
+
+    const parent = new Parent();
+    const customController = new AbortController();
+
+    // Dynamically instantiate the child passing BOTH parent and an explicit signal
+    const child = new DynamicChild({ parent, signal: customController.signal });
+
+    parent.destroy();
+
+    // The child should NOT be aborted yet, because it is linked to customController, not the parent
+    expect(child.context.signal.aborted).toBe(false);
+
+    // Now abort the custom controller
+    customController.abort();
+
+    // The child should now be aborted
+    expect(child.context.signal.aborted).toBe(true);
+  });
 });
 
 describe('TComponent - Composition (uses) & Error Boundaries', () => {

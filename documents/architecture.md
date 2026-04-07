@@ -141,12 +141,8 @@ class UserListApp extends TComponent<HTMLDivElement> {
 
     for (const name of users) {
       // 1. Manually instantiate the child component.
-      // 2. Pass the parent and the parent's signal so lifecycles and error boundaries are linked.
-      const card = new UserCard({
-        userName: name,
-        parent: this,
-        signal: this.context.signal,
-      });
+      // 2. Pass the parent. Its lifecycle (signal) and error boundary are automatically linked.
+      const card = new UserCard({ userName: name, parent: this });
 
       // 3. Manually append the child's element to the DOM
       container.appendChild(card.element);
