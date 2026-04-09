@@ -82,6 +82,19 @@ document.body.appendChild(counter.element);
  */
 ```
 
+### Tips: Editor Support & Formatting
+
+Since `TComponent` uses standard template literals for HTML, you can drastically improve your Developer Experience (DX) by prefixing your templates with the `/* HTML */` comment.
+
+```typescript
+static template = /* HTML */ `
+  <div>Hello World</div>
+`;
+```
+
+- **Prettier**: Automatically recognizes the `/* HTML */` comment and will format the inner string as HTML.
+- **VSCode**: By installing extensions like [es6-string-html](https://marketplace.visualstudio.com/items?itemName=Tobermory.es6-string-html), you get rich HTML syntax highlighting directly inside your TypeScript files.
+
 ---
 
 ## Registering Components
