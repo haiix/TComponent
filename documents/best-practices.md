@@ -28,7 +28,7 @@ class GoodComponent extends TComponent {
 
   constructor(params: ComponentParams) {
     super(params);
-    const output = this.idMap['output'] as HTMLDivElement;
+    const output = this.getById('output', HTMLDivElement);
     // .textContent automatically escapes HTML entities, preventing XSS
     output.textContent = getUserInput();
   }

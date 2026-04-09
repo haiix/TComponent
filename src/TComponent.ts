@@ -1,5 +1,5 @@
 import type {
-  AbstractConstructor,
+  ConstructorOf,
   ComponentParams,
   DefaultIDMap,
   ParseOptions,
@@ -77,6 +77,52 @@ export class TComponent<
   }
 
   /**
+   * Retrieves an internal element or sub-component by its original template ID.
+   * Leverages the IDMap generic for strict type inference.
+   *
+   * @param id - The original ID defined in the static template.
+   * @returns The element, strongly typed based on the IDMap.
+   */
+  getById<K extends keyof IDMap>(id: K): IDMap[K];
+
+  /**
+   * Retrieves an internal element or sub-component by its original template ID,
+   * and asserts its type at runtime.
+   *
+   * @param id - The original ID defined in the static template.
+   * @param ExpectedType - The expected class (e.g., HTMLInputElement, ChildComponent).
+   * @returns The element, strongly typed to the ExpectedType.
+   */
+  getById<
+    /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */
+    K extends keyof IDMap,
+    /* eslint-enable @typescript-eslint/no-unnecessary-type-parameters */
+    E extends Element | AbstractComponent,
+  >(id: K, ExpectedType: ConstructorOf<E>): E;
+
+  // Actual implementation
+  getById<K extends keyof IDMap, E extends Element | AbstractComponent>(
+    id: K,
+    ExpectedType?: ConstructorOf<E>,
+  ): IDMap[K] | E {
+    const el = this.context.idMap[id as string];
+
+    if (!el) {
+      throw new Error(
+        `[TComponent] Element with id "${String(id)}" not found.`,
+      );
+    }
+
+    if (ExpectedType && !(el instanceof ExpectedType)) {
+      throw new TypeError(
+        `[TComponent] Element "${String(id)}" is not an instance of ${ExpectedType.name}`,
+      );
+    }
+
+    return el as IDMap[K] | E;
+  }
+
+  /**
    * Retrieves the component instance associated with the given DOM element.
    * Only returns the instance if it matches the calling class type.
    *
@@ -84,7 +130,7 @@ export class TComponent<
    * @returns The component instance, or undefined if not found or type mismatch.
    */
   static from<C extends TComponent>(
-    this: AbstractConstructor<C>,
+    this: ConstructorOf<C>,
     element: Element | null | undefined,
   ): C | undefined {
     if (element) {
@@ -95,15 +141,6 @@ export class TComponent<
         return component;
       }
     }
-  }
-
-  /**
-   * Maps original template IDs to unique DOM elements.
-   *
-   * @returns The map.
-   */
-  get idMap(): IDMap {
-    return this.context.idMap as IDMap;
   }
 
   /**

@@ -87,73 +87,92 @@ _(Note: Keep in mind the browser parser limitation regarding camelCase SVG tags 
 
 ---
 
-## Strict TypeScript Typing for `idMap`
+## Strict TypeScript Typing & Runtime Safety for `getById`
 
-By default, elements retrieved from `this.idMap` are typed as `Element | AbstractComponent`, requiring you to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties.
+By default, elements retrieved via `this.getById('some-id')` are typed as `Element | AbstractComponent`. In standard TypeScript, you would normally need to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties or custom component methods.
 
-While this keeps the component definition simple, you might prefer strict, automatic type inference for your mapped IDs. `TComponent` supports a second generic type parameter that allows you to define the exact shape of your `idMap`.
+To provide a superior Developer Experience (DX) and eliminate the need for repetitive `as` assertions, `TComponent` offers two powerful approaches for typing and validating your retrieved elements.
 
-### Example: Strongly Typed ID Map and Encapsulation
+### Approach A: Runtime Validation (Recommended for most cases)
 
-By defining an interface for your IDs and passing it to `TComponent`, your editor will provide full auto-completion for ID strings, and automatically infer the correct DOM element or Component types—eliminating the need for repetitive `as` assertions.
+The simplest and safest way to retrieve an element is to pass its expected class constructor as the **second argument** to `getById()`.
+
+This approach serves two purposes:
+
+1. **Dynamic Type Inference:** TypeScript will automatically infer the return type based on the class you pass, completely eliminating the need for `as Type` assertions.
+2. **Runtime Safety:** `TComponent` performs an `instanceof` check at runtime. If the template changes and the element is no longer the correct tag, it throws a clear `TypeError` immediately, catching bugs early.
 
 ```typescript
-import TComponent, { ComponentParams, kebabKeys } from '@haiix/tcomponent';
+import TComponent, { kebabKeys } from '@user/tcomponent';
 
 class CustomAvatar extends TComponent<HTMLImageElement> {
   static template = /* HTML */ `<img class="avatar" />`;
-
-  // Best Practice: Expose explicit methods to update internal state,
-  // rather than letting external components mutate `this.element` directly.
   setSrc(url: string) {
     this.element.src = url;
   }
 }
 
+class UserProfile extends TComponent<HTMLFormElement> {
+  static uses = kebabKeys({ CustomAvatar });
+  static template = /* HTML */ `
+    <form>
+      <custom-avatar id="user-avatar"></custom-avatar>
+      <input id="username-input" type="text" />
+    </form>
+  `;
+
+  // 1. Pass the expected class as the second argument
+  // Type is automatically inferred as HTMLInputElement!
+  input = this.getById('username-input', HTMLInputElement);
+
+  // Works perfectly with custom sub-components too!
+  avatar = this.getById('user-avatar', CustomAvatar);
+
+  constructor() {
+    super();
+    // Fully typed, no 'as' casting required.
+    this.input.value = 'JohnDoe';
+    this.avatar.setSrc('/path/to/image.png');
+  }
+}
+```
+
+### Approach B: Strict ID Generics (Recommended for large components)
+
+If you have a massive component with dozens of IDs, passing the class every time might feel repetitive. Moreover, you might want your editor to **auto-complete the ID strings** to prevent typos.
+
+`TComponent` supports a second generic type parameter (`IDMap`) that allows you to define the exact shape of all IDs inside your template.
+
+```typescript
 // 1. Define an interface mapping your exact IDs to their expected types
 interface ProfileIdMap {
   'profile-title': HTMLHeadingElement;
   'username-input': HTMLInputElement;
-  'submit-btn': HTMLButtonElement;
-  'user-avatar': CustomAvatar; // Works perfectly with custom sub-components!
+  'user-avatar': CustomAvatar;
 }
 
 // 2. Pass the interface as the second generic parameter
 class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
-  static uses = kebabKeys({ CustomAvatar });
+  // ... static template defined here ...
 
-  static template = /* HTML */ `
-    <form>
-      <h2 id="profile-title">Edit Profile</h2>
-      <custom-avatar id="user-avatar"></custom-avatar>
-      <input id="username-input" type="text" />
-      <button id="submit-btn" type="submit">Save</button>
-    </form>
-  `;
+  constructor() {
+    super();
 
-  constructor(params?: ComponentParams) {
-    super(params);
-
-    // Fully typed! No `as HTMLInputElement` required.
-    // Your IDE will auto-complete 'username-input' and know it's an HTMLInputElement.
-    const input = this.idMap['username-input'];
+    // Your IDE will auto-complete 'username-input' and know it's an HTMLInputElement!
+    const input = this.getById('username-input');
     input.value = 'JohnDoe';
 
-    const btn = this.idMap['submit-btn'];
-    btn.disabled = false;
-
-    // Custom component methods are strongly typed and auto-completed
-    const avatar = this.idMap['user-avatar'];
+    const avatar = this.getById('user-avatar');
     avatar.setSrc('/path/to/image.png');
   }
 }
 ```
 
-**Benefits of this approach:**
+**Benefits of Approach B:**
 
-- **Zero runtime cost:** It's purely for TypeScript DX.
-- **Refactoring safety:** If you change an ID string in the interface, TypeScript will flag any outdated strings used inside `this.idMap['...']`.
-- **Intellisense:** Immediate auto-completion of all available IDs and public methods of custom components.
+- **Zero runtime cost:** It operates purely at the TypeScript level.
+- **IntelliSense:** Immediate auto-completion of all available IDs when typing `this.getById('...`
+- **Refactoring safety:** If you rename an ID string in the `ProfileIdMap` interface, TypeScript will instantly flag any outdated strings used inside your component.
 
 ---
 
@@ -205,7 +224,7 @@ class EncapsulatedCard extends TComponent<HTMLElement> {
     }
 
     // 3. (Optional) Route props and slots to an internal element inside the Shadow DOM
-    const body = this.idMap['card-body'] as HTMLDivElement;
+    const body = this.getById('card-body', HTMLDivElement);
     applyParams(this, body, params);
   }
 }
@@ -345,8 +364,8 @@ class App extends TComponent {
     </div>
   `;
 
-  // Get the component instance safely via idMap
-  list = this.idMap['my-list'] as DynamicList;
+  // Get the component instance safely via getById()
+  list = this.getById('my-list', DynamicList);
   itemCount = 0;
 
   handleAddButton() {

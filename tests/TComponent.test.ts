@@ -95,7 +95,7 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
     }
 
     const parent = new Parent();
-    const child = parent.idMap['my-child'] as Child;
+    const child = parent.getById('my-child', Child);
 
     // Destroying the parent should cascade down to the child
     parent.destroy();
@@ -166,6 +166,66 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
   });
 });
 
+describe('TComponent - getById()', () => {
+  class ChildComp extends TComponent<HTMLSpanElement> {
+    static template = `<span class="child">Child</span>`;
+  }
+
+  class TestComp extends TComponent<HTMLDivElement> {
+    static uses = { ChildComp };
+    static template = /* HTML */ `
+      <div>
+        <h1 id="title">Title</h1>
+        <input id="my-input" type="text" />
+        <childcomp id="my-child"></childcomp>
+      </div>
+    `;
+  }
+
+  it('retrieves an element or component by its original ID', () => {
+    const comp = new TestComp();
+
+    const title = comp.getById('title');
+    const child = comp.getById('my-child');
+
+    expect(title).toBeInstanceOf(HTMLHeadingElement);
+    expect(child).toBeInstanceOf(ChildComp);
+  });
+
+  it('throws an Error if the ID does not exist in the template', () => {
+    const comp = new TestComp();
+
+    expect(() => comp.getById('non-existent')).toThrow(
+      '[TComponent] Element with id "non-existent" not found.',
+    );
+  });
+
+  it('validates the type at runtime and returns the typed element when ExpectedType is provided', () => {
+    const comp = new TestComp();
+
+    // Type inference works correctly here (no `as HTMLInputElement` needed)
+    const input = comp.getById('my-input', HTMLInputElement);
+    const child = comp.getById('my-child', ChildComp);
+
+    expect(input).toBeInstanceOf(HTMLInputElement);
+    expect(child).toBeInstanceOf(ChildComp);
+  });
+
+  it('throws a TypeError if the retrieved element does not match the ExpectedType', () => {
+    const comp = new TestComp();
+
+    // 'title' is an HTMLHeadingElement, so expecting HTMLInputElement should fail
+    expect(() => comp.getById('title', HTMLInputElement)).toThrow(
+      '[TComponent] Element "title" is not an instance of HTMLInputElement',
+    );
+
+    // Expecting a Custom Component on a native DOM element should fail
+    expect(() => comp.getById('title', ChildComp)).toThrow(
+      '[TComponent] Element "title" is not an instance of ChildComp',
+    );
+  });
+});
+
 describe('TComponent - Composition (uses) & Error Boundaries', () => {
   class ChildComponent extends TComponent<HTMLDivElement> {
     static template = `<div class="child"></div>`;
@@ -197,7 +257,7 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
 
   it('expands child components, passes Props and Slots, and maps child instances in idMap', () => {
     const parent = new ParentComponent();
-    const child = parent.idMap['my-child'] as ChildComponent;
+    const child = parent.getById('my-child', ChildComponent);
 
     expect(child).toBeInstanceOf(ChildComponent);
     expect(child.element).toBe(parent.element.querySelector('.child'));
@@ -221,7 +281,7 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
     const parentOnErrorSpy = vi
       .spyOn(parent, 'onerror')
       .mockImplementation(() => {});
-    const child = parent.idMap['my-child'] as ErrorChild;
+    const child = parent.getById('my-child', ErrorChild);
 
     // Trigger the error in the child
     child.element.click();
@@ -255,8 +315,8 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
     const parent2 = new CachedParent();
 
     // Verify it works correctly
-    expect(parent1.idMap['child-1']).toBeInstanceOf(MockChild);
-    expect(parent2.idMap['child-1']).toBeInstanceOf(MockChild);
+    expect(parent1.getById('child-1')).toBeInstanceOf(MockChild);
+    expect(parent2.getById('child-1')).toBeInstanceOf(MockChild);
 
     // Verify the static cache was built
     const parsedUses = CachedParent.getParsed().uses;

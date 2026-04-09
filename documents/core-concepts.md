@@ -29,7 +29,7 @@ Unlike modern reactive frameworks, `TComponent` **does not** use a virtual DOM, 
 When building a component, you will primarily work with these three core features:
 
 - **`static template`**: A standard HTML string defining your component's structure. It is parsed exactly once per component class and cached for maximum performance.
-- **`this.idMap`**: Any element assigned an `id` in your template is automatically converted to a unique UUID to prevent global DOM collisions. You can instantly and safely access these inner elements via the `this.idMap` dictionary.
+- **`this.getById(id, ExpectedType?)`**: Any element assigned an id in your template is automatically converted to a unique UUID. You can instantly access these inner nodes via this.getById().
 - **`this.element`**: Every component instance exposes its root DOM node via the `.element` property. Because it is a native `Element`, you mount it to the page using standard methods like `document.body.appendChild()`.
 
 ### Example: A Simple Counter
@@ -52,8 +52,9 @@ class Counter extends TComponent<HTMLElement> {
     </div>
   `;
 
-  // 2. Access internal elements instantly via this.idMap
-  countDisplay = this.idMap['count-display'] as HTMLHeadingElement;
+  // 2. Access internal elements instantly via this.getById()
+  // Passing the class as the second argument provides automatic typing and runtime safety.
+  countDisplay = this.getById('count-display', HTMLHeadingElement);
 
   // 3. Manage your own state explicitly
   count = 0;
@@ -165,7 +166,7 @@ class UiCard extends TComponent<HTMLDivElement> {
     super(params);
 
     // 1. Get the target internal element using its ID
-    const target = this.idMap['card-body'] as HTMLDivElement;
+    const target = this.getById('card-body', HTMLDivElement);
 
     // 2. Safely apply all passed attributes and child nodes (slots) to it
     applyParams(this, target, params);
@@ -226,7 +227,7 @@ If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-chi
 
 If you need to link a `<label>` in a parent component to an `<input>` managed by a child component, the most robust approach is to use **Slots**.
 
-Because slot content is evaluated in the **parent's scope**, elements passed via slots share the same `idMap` as the parent. This ensures that their UUIDs resolve perfectly.
+Because slot content is evaluated in the **parent's scope**, elements passed via slots share the same id as the parent. This ensures that their UUIDs resolve perfectly.
 
 ```typescript
 import TComponent, {
@@ -246,7 +247,7 @@ class InputWrapper extends TComponent<HTMLDivElement> {
   constructor(params: ComponentParams) {
     super(params);
     // Route child nodes (slots) into the internal container
-    applyParams(this, this.idMap['inner-container'] as Element, params);
+    applyParams(this, this.getById('inner-container', Element), params);
   }
 }
 

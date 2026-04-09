@@ -102,7 +102,7 @@ class UserCard extends TComponent<HTMLDivElement> {
 
   constructor(params: ComponentParams & { userName: string }) {
     super(params);
-    const nameEl = this.idMap['name'] as HTMLHeadingElement;
+    const nameEl = this.getById('name', HTMLHeadingElement);
     nameEl.textContent = params.userName;
   }
 
@@ -124,7 +124,7 @@ class UserListApp extends TComponent<HTMLDivElement> {
   `;
 
   async loadUsers() {
-    const container = this.idMap['list-container'] as HTMLDivElement;
+    const container = this.getById('list-container', HTMLDivElement);
 
     // [CRITICAL] Memory Leak Prevention
     // Before rendering new children, you MUST destroy existing child components.
@@ -192,7 +192,7 @@ class Parent extends TComponent {
 
   constructor(params: ComponentParams) {
     super(params);
-    const child = this.idMap['my-child'] as Child;
+    const child = this.getById('my-child', Child);
 
     // Explicitly assign a callback to the child instance
     child.onAction = (data) => console.log('Data from child:', data);

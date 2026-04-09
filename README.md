@@ -10,7 +10,7 @@ Designed for developers who prefer explicit DOM manipulation without the overhea
 - **String-based Templates**: Write declarative HTML templates that are automatically parsed and cached per component class.
 - **Automatic Event Binding**: Easily bind class methods to DOM events using `on*` attributes. Supports both synchronous and asynchronous functions.
 - **Built-in Error Handling**: Errors thrown inside event listeners bubble up the component tree and can be handled gracefully via a unified `onerror` method.
-- **Unique ID Generation**: Element `id`s are automatically converted to UUIDs to prevent global DOM collisions, while remaining easily accessible via `this.idMap`.
+- **Unique ID Generation**: Element `id`s are automatically converted to UUIDs to prevent global DOM collisions, while remaining easily accessible via `this.getById()`.
 - **Automatic ID Reference Resolution**: Attributes like `for`, `aria-labelledby`, and `aria-controls` automatically resolve to the newly generated UUIDs, maintaining accessibility.
 - **Component Composition**: Nest reusable sub-components easily using the `static uses` property.
 - **Easy Cleanup**: Simply call `.destroy()` to safely remove the component from the DOM and automatically unbind all event listeners. Cleanup automatically cascades down to all nested child components to prevent memory leaks.
@@ -36,8 +36,9 @@ class CounterApp extends TComponent<HTMLElement> {
     </section>
   `;
 
-  // The original "id" is replaced with a UUID, accessible via this.idMap
-  countDisplay = this.idMap['count-display'] as HTMLHeadingElement;
+  // Instantly retrieve internal elements or sub-components.
+  // Passing the class as the second argument provides automatic typing and runtime safety.
+  countDisplay = this.getById('count-display', HTMLHeadingElement);
 
   // State is managed explicitly by you, not the framework
   count = 0;
