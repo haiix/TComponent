@@ -4,7 +4,7 @@ title: Caveats & Best Practices
 
 # Caveats & Best Practices
 
-When working close to the native DOM, understanding the underlying browser mechanics is crucial. `TComponent` aims to be transparent, meaning native HTML behaviors and limitations apply directly to your components.
+When working closely with the native DOM, understanding browser mechanics is important. TComponent aims to be transparent, which means native HTML behaviors and limitations apply directly to your components.
 
 This document outlines critical security practices (such as preventing XSS), how whitespace is handled during template parsing, and known limitations with native browser parsers regarding custom namespaces like SVG and MathML.
 
@@ -12,7 +12,7 @@ This document outlines critical security practices (such as preventing XSS), how
 
 ## Security & XSS Prevention
 
-`TComponent` is designed to parse static HTML templates using the browser's built-in parser. **You should never concatenate untrusted user input directly into the `static template` string.**
+TComponent is designed to parse static HTML templates using the browser's built-in parser. **Do not concatenate untrusted user input directly into the `static template` string.**
 
 Doing so exposes your application to Cross-Site Scripting (XSS) attacks. Instead, always keep the template static, and inject dynamic user data safely via explicit DOM manipulation in the constructor or component methods.
 
@@ -39,12 +39,12 @@ class GoodComponent extends TComponent {
 
 ## Whitespace Handling in Templates
 
-By default, when parsing the HTML template, `TComponent` automatically strips out pure whitespace text nodes that are used only for code indentation. Specifically, any text node that **is completely empty when trimmed AND contains a newline (`\n`)** is ignored.
+By default, when parsing the HTML template, TComponent automatically strips out pure whitespace text nodes that are used only for code indentation. Specifically, any text node that **is completely empty when trimmed AND contains a newline (`\n`)** is ignored.
 
 - **Ignored**: `"\n  "` (e.g., line breaks with indentation spaces between HTML tags).
 - **Kept**: `" "` (e.g., a single space between two `<span>` elements).
 
-This ensures that meaningful inline spaces are preserved, while your compiled AST (`TNode`) remains as lightweight as possible.
+This ensures that meaningful inline spaces are preserved, while your compiled AST (`TNode`) remains lightweight.
 
 **When to use `preserveWhitespace: true`**
 If your layout relies on the browser rendering whitespace between HTML tags (for example, spaces between inline elements like `<span>` or `<button>`), or if you have a `<textarea>` that intentionally starts with empty newlines, you can override this behavior by defining `static parseOptions`.
@@ -71,9 +71,9 @@ class PreservedWhitespaceComponent extends TComponent {
 
 ## SVG & MathML CamelCase Tags Limitation
 
-`TComponent` parses HTML strings natively using `document.createElement('template').innerHTML` to keep the library zero-dependency and tiny.
+TComponent parses HTML strings natively using `document.createElement('template').innerHTML` to keep the library zero-dependency and tiny.
 
-However, the browser's HTML parser **forces all tags to lowercase**. While `TComponent` correctly assigns the SVG/MathML namespaces, certain SVG tags that require camelCase (e.g., `<linearGradient>`, `<clipPath>`) will be parsed as `<lineargradient>`.
+However, the browser's HTML parser **forces all tags to lowercase**. While TComponent correctly assigns the SVG/MathML namespaces, certain SVG tags that require camelCase (e.g., `<linearGradient>`, `<clipPath>`) will be parsed as `<lineargradient>`.
 
 Because of this browser limitation, **complex SVGs with camelCase tags might not render correctly when written directly inside `static template`**.
 For complex SVGs, it is recommended to insert them manually via DOM manipulation in the constructor, or load them externally.

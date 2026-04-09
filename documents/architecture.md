@@ -4,7 +4,7 @@ title: Architecture
 
 # Architecture & Component Communication
 
-Building scalable applications with `TComponent` requires a solid understanding of how components interact and manage their lifecycles. By embracing the DOM as the "Single Source of Truth," you can orchestrate complex UIs without the overhead of complex state management.
+Building scalable applications with TComponent requires a solid understanding of how components interact and manage their lifecycles. By embracing the DOM as the primary source of truth, you can orchestrate complex UIs without the overhead of complex state management.
 
 This document covers component teardown, dynamic instantiation, error boundaries, event delegation, and explicit strategies for communication between components.
 
@@ -12,12 +12,12 @@ This document covers component teardown, dynamic instantiation, error boundaries
 
 ## Component Lifecycle & Teardown
 
-Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. `TComponent` handles this gracefully behind the scenes.
+Managing event listeners in vanilla JavaScript can often lead to memory leaks if elements are removed from the DOM but their listeners remain active. TComponent handles this automatically.
 
-Every `TComponent` instance comes with a built-in `destroy()` method. Calling this method is the standard and safest way to remove a component. It will automatically perform the following steps:
+Every TComponent instance comes with a built-in `destroy()` method. Calling this method is the standard and safest way to remove a component. It will automatically perform the following steps:
 
 1. **Remove from DOM:** The component's root element is detached from the document (`this.element.remove()`).
-2. **Unbind Events:** Instantly unbind all event listeners defined via `on*` attributes in your template.
+2. **Unbind Events:** Unbind all event listeners defined via `on*` attributes in your template.
 3. **Cascade Teardown:** Automatically cascade the teardown process to all nested child components, ensuring no memory leaks remain.
 
 ```typescript
@@ -26,11 +26,11 @@ document.body.appendChild(app.element);
 
 // Later, when the app needs to be entirely removed:
 // This will safely remove the app from the DOM, unbind its listeners,
-// and recursively destroy all child components inside it!
+// and recursively destroy all child components inside it.
 app.destroy();
 ```
 
-By simply calling `.destroy()`, you ensure that your application remains fast and memory-safe, without needing to manually call `removeEventListener` for every single element.
+Calling `.destroy()` ensures that your application remains fast and memory-safe, without needing to manually call `removeEventListener` for every single element.
 
 _(For advanced use cases like SPA routers or external signals, see [Advanced Memory Management: External AbortSignals](./advanced.md#advanced-memory-management-external-abortsignals).)_
 
@@ -38,15 +38,15 @@ _(For advanced use cases like SPA routers or external signals, see [Advanced Mem
 
 ## Retrieving Components from the DOM
 
-`TComponent` embraces the DOM as the "Single Source of Truth." Instead of maintaining a complex virtual component tree, it provides a built-in `static from(element)` method. This allows you to instantly retrieve the component instance associated with a specific DOM node.
+TComponent embraces the DOM as the primary source of truth. Instead of maintaining a complex virtual component tree, it provides a built-in `static from(element)` method. This allows you to retrieve the component instance associated with a specific DOM node.
 
-This is extremely useful when you need to interact with a component originating from an external script, or when identifying specific items in [a dynamically generated list](#dynamic-component-creation).
+This is particularly useful when you need to interact with a component originating from an external script, or when identifying items in [a dynamic list](#dynamic-component-creation).
 
 ### How it works securely
 
-Under the hood, `TComponent` maintains a single, global `WeakMap` that binds root DOM elements to their component instances.
+Under the hood, TComponent maintains a single, global `WeakMap` that binds root DOM elements to their component instances.
 
-- **Type-safe:** Calling `ComponentClass.from()` automatically checks `instanceof` before returning. This ensures you never accidentally invoke methods on the wrong component type, and TypeScript perfectly infers the return type as `ComponentClass | undefined`.
+- **Type-safe:** Calling `ComponentClass.from()` automatically checks `instanceof` before returning. This ensures you never accidentally invoke methods on the wrong component type, and TypeScript correctly infers the return type as `ComponentClass | undefined`.
 - **Memory-safe:** Because it relies on a `WeakMap`, when a DOM element is permanently removed and garbage-collected, its component reference is automatically cleared without causing memory leaks.
 
 ### Basic Example
@@ -82,10 +82,9 @@ if (alert) {
 
 Instead of defining components statically in the template using `uses`, you will often need to create child components dynamically—such as when rendering a list of items fetched from an API, or opening a modal dialog.
 
-When manually instantiating a child component, it is highly recommended to pass down the `parent` and `signal` from the parent component's `context`.
+When manually instantiating a child component, it is highly recommended to pass down the `parent`.
 
-- Passing `parent: this`: Links the child to the parent's Error Boundary (so if the child throws an error, the parent's `onerror` catches it).
-- Passing `signal: this.context.signal`: Links the child's lifecycle to the parent. **If the parent is destroyed, the dynamically created child will automatically clean up its own event listeners.**
+- Passing `parent: this`: Links the child to the parent's lifecycle (So if the parent is destroyed, the dynamically created child will automatically clean up its own event listeners.) and Error Boundary (so if the child throws an error, the parent's `onerror` catches it).
 
 ### Example: Rendering a Dynamic List
 
@@ -126,10 +125,11 @@ class UserListApp extends TComponent<HTMLDivElement> {
   async loadUsers() {
     const container = this.getById('list-container', HTMLDivElement);
 
-    // [CRITICAL] Memory Leak Prevention
-    // Before rendering new children, you MUST destroy existing child components.
+    // [Important] Memory Leak Prevention
+    // Before rendering new children, you must destroy existing child components.
     // Simply calling `container.innerHTML = ''` removes elements from the DOM,
-    // but leaves their event listeners active and references alive in the parent's AbortSignal!
+    // but this may leave event listeners active and references retained via the parent's AbortSignal,
+    // which can lead to memory leaks if not properly cleaned up.
     for (const childElement of Array.from(container.children)) {
       const card = UserCard.from(childElement);
       if (card) {
@@ -141,7 +141,7 @@ class UserListApp extends TComponent<HTMLDivElement> {
 
     for (const name of users) {
       // 1. Manually instantiate the child component.
-      // 2. Pass the parent. Its lifecycle (signal) and error boundary are automatically linked.
+      // 2. Pass the parent. Its lifecycle and error boundary are automatically linked.
       const card = new UserCard({ userName: name, parent: this });
 
       // 3. Manually append the child's element to the DOM
@@ -155,7 +155,7 @@ class UserListApp extends TComponent<HTMLDivElement> {
 
 ## Component Communication
 
-`TComponent` is intentionally completely unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
+TComponent is intentionally unopinionated about how components communicate with each other. It does not force you into a specific prop-drilling or event-emitting system. You can choose the approach that best fits your project's architecture.
 
 Here are a few standard patterns you can use:
 
@@ -202,13 +202,13 @@ class Parent extends TComponent {
 
 ### Approach C: External State / PubSub
 
-Because `TComponent` components are just standard ES6 classes managing DOM nodes, they play perfectly with external state managers (like Redux, Zustand, or simple Observables/EventEmitters). You can subscribe to external state within your component's constructor and explicitly update the DOM when state changes.
+Because TComponent components are just standard ES6 classes managing DOM nodes, they integrate well with external state managers (like Redux, Zustand, or simple Observables/EventEmitters). You can subscribe to external state within your component's constructor and explicitly update the DOM when state changes.
 
 ---
 
 ## Error Boundaries and Bubbling
 
-If an event listener throws an error (or a Promise rejects), `TComponent` catches it and calls the `onerror` method. If the current component does not override `onerror` or explicitly throws the error again, the error bubbles up to the `parent` component.
+If an event listener throws an error (or a Promise rejects), TComponent catches it and calls the `onerror` method. If the current component does not override `onerror` or explicitly throws the error again, the error propagates to the parent component.
 
 This allows you to create top-level "Error Boundary" components to handle UI failures gracefully.
 
@@ -237,7 +237,7 @@ class Parent extends TComponent {
 
 In vanilla JavaScript, **Event Delegation** is a powerful pattern where you attach a single event listener to a parent element to handle events triggered by its many children. This drastically reduces memory usage compared to attaching individual `onclick` listeners to hundreds of child components.
 
-Because `TComponent` provides the [`static from(element)`](#retrieving-components-from-the-dom), implementing type-safe event delegation is highly intuitive.
+Because TComponent provides the [`static from(element)`](#retrieving-components-from-the-dom) method, implementing type-safe event delegation is highly intuitive.
 
 ### Example: Using `from()` with Event Delegation
 
@@ -258,7 +258,7 @@ class TaskItem extends TComponent<HTMLLIElement> {
     applyParams(this, this.element, params);
   }
 
-  // Best Practice: State is derived directly from the DOM (Single Source of Truth)
+  // Best Practice: State is derived directly from the DOM
   get isCompleted(): boolean {
     return this.element.style.textDecoration === 'line-through';
   }

@@ -4,7 +4,7 @@ title: Advanced Usage
 
 # Advanced Usage & Internals
 
-Underneath its simple API, `TComponent` packs powerful capabilities for complex applications, SPA routing, and extreme performance optimization. This guide is intended for developers looking to push the boundaries of explicit DOM manipulation.
+Underneath its simple API, TComponent provides powerful capabilities for complex applications, SPA routing, and high-performance optimization. This guide is intended for developers looking to explore advanced use cases of explicit DOM manipulation.
 
 This document dives deep into advanced memory management using external `AbortSignal`s, strict TypeScript typing for internal elements, dynamic AST (`TNode`) manipulation, and building purely manual components via `AbstractComponent`.
 
@@ -31,11 +31,11 @@ const page = new UserListApp({ signal: routerController.signal });
 routerController.abort();
 ```
 
-### Intelligent Garbage Collection (GC)
+### Garbage Collection (GC) behavior
 
-When linking lifecycles via external signals, a common trap in vanilla JavaScript is accidentally creating memory leaks by leaving references to destroyed child components inside a long-lived parent's `AbortSignal`.
+When linking lifecycles via external signals, a common issue in vanilla JavaScript is accidentally creating memory leaks by leaving references to destroyed child components inside a long-lived parent's `AbortSignal`.
 
-`TComponent` is intelligently designed to prevent this. If a child component is manually `.destroy()`ed before its parent (for example, a user deletes a single item from a list), `TComponent` automatically removes the child's abort listener from the parent's signal.
+TComponent is designed to prevent this. If a child component is manually destroyed using `.destroy()` before its parent (for example, a user deletes a single item from a list), TComponent automatically removes the child's abort listener from the parent's signal.
 
 This ensures proper Garbage Collection (GC) and guarantees that no memory leaks or hanging references remain attached to the parent, even in highly dynamic, long-lived applications.
 
@@ -43,7 +43,7 @@ This ensures proper Garbage Collection (GC) and guarantees that no memory leaks 
 
 ## Custom Namespace URIs
 
-By default, `TComponent` automatically infers the correct namespace when the root element of your template is `<svg>` or `<math>`. However, if you want to create a sub-component where the root element is an **internal** SVG or MathML node (e.g., `<polyline>`, `<g>`, or `<path>`), the browser will default to generating a standard HTML element.
+By default, TComponent automatically infers the correct namespace when the root element of your template is `<svg>` or `<math>`. However, if you want to create a sub-component where the root element is an **internal** SVG or MathML node (e.g., `<polyline>`, `<g>`, or `<path>`), the browser will default to generating a standard HTML element.
 
 To ensure these elements are created with the correct internal representation, you can explicitly define the `static namespaceURI` property on your component.
 
@@ -83,7 +83,7 @@ class DrawingBoard extends TComponent<SVGSVGElement> {
 }
 ```
 
-_(Note: Keep in mind the browser parser limitation regarding camelCase SVG tags as mentioned in the [Best Practices & Caveats](./best-practices.md#svg-mathml-camelcase-tags-limitation) document. Standard lowercase tags like `polyline` or `path` work perfectly.)_
+_Note: Keep in mind the browser parser limitation regarding camelCase SVG tags as mentioned in the [Best Practices & Caveats](./best-practices.md#svg-mathml-camelcase-tags-limitation) document. Standard lowercase tags like `polyline` or `path` work perfectly._
 
 ---
 
@@ -91,7 +91,7 @@ _(Note: Keep in mind the browser parser limitation regarding camelCase SVG tags 
 
 By default, elements retrieved via `this.getById('some-id')` are typed as `Element | AbstractComponent`. In standard TypeScript, you would normally need to use type assertions (e.g., `as HTMLInputElement`) to access specific DOM properties or custom component methods.
 
-To provide a superior Developer Experience (DX) and eliminate the need for repetitive `as` assertions, `TComponent` offers two powerful approaches for typing and validating your retrieved elements.
+To provide a superior Developer Experience (DX) and eliminate the need for repetitive `as` assertions, TComponent offers two powerful approaches for typing and validating your retrieved elements.
 
 ### Approach A: Runtime Validation (Recommended for most cases)
 
@@ -100,10 +100,10 @@ The simplest and safest way to retrieve an element is to pass its expected class
 This approach serves two purposes:
 
 1. **Dynamic Type Inference:** TypeScript will automatically infer the return type based on the class you pass, completely eliminating the need for `as Type` assertions.
-2. **Runtime Safety:** `TComponent` performs an `instanceof` check at runtime. If the template changes and the element is no longer the correct tag, it throws a clear `TypeError` immediately, catching bugs early.
+2. **Runtime Safety:** TComponent performs an `instanceof` check at runtime. If the template changes and the element is no longer the correct tag, it throws a clear `TypeError` immediately, catching bugs early.
 
 ```typescript
-import TComponent, { kebabKeys } from '@user/tcomponent';
+import TComponent, { kebabKeys } from '@haiix/tcomponent';
 
 class CustomAvatar extends TComponent<HTMLImageElement> {
   static template = /* HTML */ `<img class="avatar" />`;
@@ -122,10 +122,10 @@ class UserProfile extends TComponent<HTMLFormElement> {
   `;
 
   // 1. Pass the expected class as the second argument
-  // Type is automatically inferred as HTMLInputElement!
+  // Type is automatically inferred as HTMLInputElement.
   input = this.getById('username-input', HTMLInputElement);
 
-  // Works perfectly with custom sub-components too!
+  // This approach also works with custom sub-components.
   avatar = this.getById('user-avatar', CustomAvatar);
 
   constructor() {
@@ -141,7 +141,7 @@ class UserProfile extends TComponent<HTMLFormElement> {
 
 If you have a massive component with dozens of IDs, passing the class every time might feel repetitive. Moreover, you might want your editor to **auto-complete the ID strings** to prevent typos.
 
-`TComponent` supports a second generic type parameter (`IDMap`) that allows you to define the exact shape of all IDs inside your template.
+TComponent supports a second generic type parameter (`IDMap`) that allows you to define the exact shape of all IDs inside your template.
 
 ```typescript
 // 1. Define an interface mapping your exact IDs to their expected types
@@ -178,9 +178,9 @@ class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
 
 ## Shadow DOM Encapsulation
 
-As mentioned in the Core Concepts, `TComponent` renders into the Light DOM by default. However, if you need strict CSS encapsulation (e.g., for a highly reusable, isolated widget), you can explicitly opt into Shadow DOM.
+As mentioned in the Core Concepts, TComponent renders into the Light DOM by default. However, if you need strict CSS encapsulation (e.g., for a highly reusable, isolated widget), you can explicitly opt into Shadow DOM.
 
-Because `TComponent` embraces explicit, vanilla-like DOM manipulation, you don't need a special framework API to do this. You simply attach a Shadow Root inside your component's constructor and move the auto-generated parsed elements into it.
+Because TComponent embraces explicit, vanilla DOM manipulation, you don't need a special framework API to do this. You simply attach a Shadow Root inside your component's constructor and move the auto-generated parsed elements into it.
 
 ### Example: Creating a Shadow DOM Component
 
@@ -235,20 +235,20 @@ class EncapsulatedCard extends TComponent<HTMLElement> {
 If you choose to use Shadow DOM, keep in mind standard browser behaviors:
 
 1. **Global Styles Ignored:** Your global `styles.css` or Tailwind classes will **not** apply to the HTML inside the Shadow Root. You must include a `<style>` tag inside your `static template`.
-2. **Event Retargeting:** Events bubbling out of the Shadow DOM are "retargeted". This means `event.target` will point to the host element (`EncapsulatedCard`), not the internal clicked element. `TComponent`'s automatic event binding (`onclick="..."`) inside the template still works perfectly, but external event delegation (e.g., calling `Component.from(event.target)` in a parent component) will behave differently.
+2. **Event Retargeting:** Events bubbling out of the Shadow DOM are "retargeted". This means `event.target` will point to the host element (`EncapsulatedCard`), not the internal clicked element. TComponent's automatic event binding (`onclick="..."`) inside the template still works perfectly, but external event delegation (e.g., calling `Component.from(event.target)` in a parent component) will behave differently.
 
 ---
 
 ## AbstractComponent vs. TComponent
 
-`TComponent` is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
+TComponent is actually a feature-rich subclass of a much simpler base class called `AbstractComponent`.
 
-- **`TComponent`**: Provides the high-level API you use most of the time. It automatically parses the `static template` into an AST, builds the DOM, resolves ID references (`idMap`), and binds events.
+- **TComponent**: Provides the high-level API you use most of the time. It automatically parses the `static template` into an AST, builds the DOM, resolves ID references (`idMap`), and binds events.
 - **`AbstractComponent`**: The minimal, bare-bones foundation. It only provides the component tree structure (the `parent` reference) and the error bubbling mechanism (`onerror`). It does **not** handle HTML templates or event binding automatically. It requires you to explicitly define and construct the `element` property yourself.
 
 ### When should you use `AbstractComponent` directly?
 
-You should extend `AbstractComponent` instead of `TComponent` when:
+You should extend `AbstractComponent` instead of TComponent when:
 
 1. You don't need a static HTML template (e.g., generating DOM entirely via `document.createElement`).
 2. You want absolute maximum performance by skipping the template parsing phase entirely.
@@ -277,7 +277,7 @@ class ManualComponent extends AbstractComponent {
 
 ## Advanced AST Manipulation (Dynamic Templates)
 
-Because `TComponent` compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
+Because TComponent compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
 
 ### Example: A Generic Dynamic List
 

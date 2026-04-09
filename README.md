@@ -1,19 +1,25 @@
 # TComponent
 
-A tiny, zero-dependency, non-reactive component system written in TypeScript.
+**Tiny. Typed. Transparent.**
 
-Designed for developers who prefer explicit DOM manipulation without the overhead of virtual DOMs or complex state management, while still enjoying a structured, component-based architecture.
+No virtual DOM. No reactivity. No hidden magic.
+
+Just components with explicit, direct DOM control.
+
+---
+
+`TComponent` is a zero-dependency TypeScript component system designed for developers who want full control over how their UI works.
 
 ## Features
 
-- **Non-reactive by Design**: Unlike modern reactive frameworks, `TComponent` does not automatically update the DOM when state changes. It embraces explicit, vanilla-like DOM manipulation, keeping the mental model incredibly simple and transparent.
-- **String-based Templates**: Write declarative HTML templates that are automatically parsed and cached per component class.
-- **Automatic Event Binding**: Easily bind class methods to DOM events using `on*` attributes. Supports both synchronous and asynchronous functions.
-- **Built-in Error Handling**: Errors thrown inside event listeners bubble up the component tree and can be handled gracefully via a unified `onerror` method.
-- **Unique ID Generation**: Element `id`s are automatically converted to UUIDs to prevent global DOM collisions, while remaining easily accessible via `this.getById()`.
+- **Non-reactive by Design**: Unlike reactive frameworks, TComponent does not automatically update the DOM when state changes. It embraces explicit, vanilla DOM manipulation, keeping the mental model simple and transparent.
+- **String-based Templates**: Write declarative HTML templates that are parsed and cached once per component class.
+- **Automatic Event Binding**: Bind class methods to DOM events using `on*` attributes. Supports both synchronous and asynchronous functions.
+- **Built-in Error Handling**: Errors thrown in event listeners propagate through the component tree and can be handled via a unified `onerror` method.
+- **Unique ID Generation**: Element `id` attributes are automatically replaced with UUIDs to prevent global DOM collisions, while remaining easily accessible via `this.getById()`.
 - **Automatic ID Reference Resolution**: Attributes like `for`, `aria-labelledby`, and `aria-controls` automatically resolve to the newly generated UUIDs, maintaining accessibility.
-- **Component Composition**: Nest reusable sub-components easily using the `static uses` property.
-- **Easy Cleanup**: Simply call `.destroy()` to safely remove the component from the DOM and automatically unbind all event listeners. Cleanup automatically cascades down to all nested child components to prevent memory leaks.
+- **Component Composition**: Compose reusable sub-components using the `static uses` property.
+- **Lifecycle Cleanup**: Call `.destroy()` to safely remove the component from the DOM and automatically unbind all event listeners. The cleanup process automatically cascades to all nested child components, preventing memory leaks.
 
 ## Installation
 
@@ -36,11 +42,11 @@ class CounterApp extends TComponent<HTMLElement> {
     </section>
   `;
 
-  // Instantly retrieve internal elements or sub-components.
-  // Passing the class as the second argument provides automatic typing and runtime safety.
+  // Access internal elements or sub-components.
+  // Passing a class as the second argument provides automatic typing and runtime safety.
   countDisplay = this.getById('count-display', HTMLHeadingElement);
 
-  // State is managed explicitly by you, not the framework
+  // State is managed explicitly by the developer, not by the framework
   count = 0;
 
   handleIncrement(event: MouseEvent) {
@@ -49,7 +55,7 @@ class CounterApp extends TComponent<HTMLElement> {
     this.countDisplay.textContent = this.count.toString();
   }
 
-  // Errors thrown in events (sync or async) bubble up and are caught here
+  // Errors thrown in events (sync or async) propagate and are caught here
   onerror(error: unknown) {
     console.error('An error occurred:', error);
   }
@@ -61,13 +67,13 @@ const app = new CounterApp();
 // 2. Mount to the DOM
 document.body.appendChild(app.element);
 
-// To safely destroy the component (removes from DOM and clears event listeners):
+// To destroy the component safely (which removes it from the DOM and clears event listeners):
 // app.destroy();
 ```
 
 ## Tips: Editor Support & Formatting
 
-Since `TComponent` uses standard template literals for HTML, you can drastically improve your Developer Experience (DX) by prefixing your templates with the `/* HTML */` comment.
+Since TComponent uses standard template literals for HTML, you can improve your Developer Experience (DX) by prefixing your templates with the `/* HTML */` comment.
 
 ```typescript
 static template = /* HTML */ `
@@ -76,11 +82,11 @@ static template = /* HTML */ `
 ```
 
 - **Prettier**: Automatically recognizes the `/* HTML */` comment and will format the inner string as HTML.
-- **VSCode**: By installing extensions like [es6-string-html](https://marketplace.visualstudio.com/items?itemName=Tobermory.es6-string-html), you get rich HTML syntax highlighting directly inside your TypeScript files.
+- **VS Code**: By installing extensions like [es6-string-html](https://marketplace.visualstudio.com/items?itemName=Tobermory.es6-string-html), you get rich HTML syntax highlighting directly inside your TypeScript files.
 
 ## Documentation / Advanced Usage
 
-TComponent is designed to be simple, but it packs powerful features for complex applications. Check out the detailed documentation below:
+TComponent is designed to be simple, but it provides useful features for complex applications. See the detailed documentation below:
 
 https://haiix.github.io/TComponent/modules.html
 

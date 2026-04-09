@@ -4,15 +4,15 @@ title: Core Concepts
 
 # Core Concepts
 
-Welcome to the foundational guide for `TComponent`. While the system is designed to be incredibly simple and non-reactive, its string-based templates and explicit DOM manipulation allow you to build structured, component-based UIs with ease.
+Welcome to the foundational guide for `TComponent`. While TComponent is simple and non-reactive, its string-based templates and explicit DOM manipulation allow you to build structured, component-based UIs with ease.
 
-This document covers the essentials of defining components, composing UIs, handling props and slots, and native event binding.
+This document covers the essentials of defining components, composing UIs, handling props and slots, and DOM event binding.
 
 ---
 
 ## Installation
 
-To get started with `TComponent`, install it via your preferred package manager:
+To get started with TComponent, install it via your preferred package manager:
 
 ```bash
 npm install @haiix/tcomponent
@@ -22,19 +22,19 @@ npm install @haiix/tcomponent
 
 ## Defining a Basic Component
 
-At its core, a `TComponent` is just a standard ES6 class that manages a specific piece of the DOM.
+At its core, a TComponent is a standard ES6 class that manages a specific portion of the DOM.
 
-Unlike modern reactive frameworks, `TComponent` **does not** use a virtual DOM, nor does it automatically re-render when variables change. Instead, you define a static HTML template once, and explicitly manipulate the DOM elements using standard Web APIs.
+Unlike reactive frameworks, TComponent **does not** use a virtual DOM and does not automatically re-render when variables change. Instead, you define a static HTML template once, and explicitly manipulate the DOM elements using standard Web APIs.
 
-When building a component, you will primarily work with these three core features:
+When building a component, you will mainly work with the following three core features:
 
-- **`static template`**: A standard HTML string defining your component's structure. It is parsed exactly once per component class and cached for maximum performance.
-- **`this.getById(id, ExpectedType?)`**: Any element assigned an id in your template is automatically converted to a unique UUID. You can instantly access these inner nodes via this.getById().
+- **`static template`**: A standard HTML string defining your component's structure. It is parsed once per component class and cached for maximum performance.
+- **`this.getById(id, ExpectedType?)`**: Any element assigned an id in your template is automatically converted to a unique UUID. You can access these inner nodes via `this.getById()`.
 - **`this.element`**: Every component instance exposes its root DOM node via the `.element` property. Because it is a native `Element`, you mount it to the page using standard methods like `document.body.appendChild()`.
 
 ### Example: A Simple Counter
 
-Here is how you define, instantiate, and mount a single component by putting these concepts together:
+Here is how you define, instantiate, and mount a single component by combining these concepts:
 
 ```typescript
 import TComponent from '@haiix/tcomponent';
@@ -47,12 +47,12 @@ class Counter extends TComponent<HTMLElement> {
       <!-- "count-display" is automatically replaced with a UUID in the DOM -->
       <h2 id="count-display">0</h2>
 
-      <!-- Event bindings natively map to class methods -->
+      <!-- Event bindings are mapped to class methods -->
       <button onclick="handleIncrement">Increment</button>
     </div>
   `;
 
-  // 2. Access internal elements instantly via this.getById()
+  // 2. Access internal elements via `this.getById()`
   // Passing the class as the second argument provides automatic typing and runtime safety.
   countDisplay = this.getById('count-display', HTMLHeadingElement);
 
@@ -62,7 +62,7 @@ class Counter extends TComponent<HTMLElement> {
   // 4. Handle events and mutate the DOM directly
   handleIncrement(event: MouseEvent) {
     this.count++;
-    // Explicit, vanilla-like DOM update
+    // Explicit, direct DOM update
     this.countDisplay.textContent = this.count.toString();
   }
 }
@@ -84,7 +84,7 @@ document.body.appendChild(counter.element);
 
 ### Tips: Editor Support & Formatting
 
-Since `TComponent` uses standard template literals for HTML, you can drastically improve your Developer Experience (DX) by prefixing your templates with the `/* HTML */` comment.
+Since TComponent uses standard template literals for HTML, you can improve your Developer Experience (DX) by prefixing your templates with the `/* HTML */` comment.
 
 ```typescript
 static template = /* HTML */ `
@@ -93,7 +93,7 @@ static template = /* HTML */ `
 ```
 
 - **Prettier**: Automatically recognizes the `/* HTML */` comment and will format the inner string as HTML.
-- **VSCode**: By installing extensions like [es6-string-html](https://marketplace.visualstudio.com/items?itemName=Tobermory.es6-string-html), you get rich HTML syntax highlighting directly inside your TypeScript files.
+- **VS Code**: By installing extensions like [es6-string-html](https://marketplace.visualstudio.com/items?itemName=Tobermory.es6-string-html), you get rich HTML syntax highlighting directly inside your TypeScript files.
 
 ---
 
@@ -101,7 +101,7 @@ static template = /* HTML */ `
 
 You can compose complex UIs by nesting reusable child components. To use a custom component inside a template, you must explicitly register it using the `static uses` property.
 
-To make your templates look like standard HTML Web Components (using hyphenated tags), use the `kebabKeys` utility. It automatically converts `PascalCase` class names into `kebab-case` tag names.
+To resemble standard Web Components (using hyphenated tags), use the `kebabKeys` utility. It automatically converts `PascalCase` class names into `kebab-case` tag names.
 
 ### Example: Basic Composition
 
@@ -137,25 +137,25 @@ class App extends TComponent<HTMLElement> {
 
 ## Styling Components (No Shadow DOM)
 
-By default, `TComponent` deliberately **does not** use Shadow DOM. All elements rendered by your components exist in the standard, global "Light DOM".
+By default, TComponent deliberately **does not** use Shadow DOM. All elements rendered by your components exist in the standard, global light DOM.
 
 This means you can easily style your application using global stylesheets, utility-first CSS frameworks (like Tailwind CSS), or CSS Modules without worrying about style encapsulation blocking your rules. To prevent styling conflicts, it is highly recommended to use a naming convention like BEM (Block Element Modifier).
 
-If you are building a highly reusable widget and absolutely need strict CSS encapsulation, you can explicitly opt into Shadow DOM. See [Advanced Usage: Shadow DOM Encapsulation](./advanced.md#shadow-dom-encapsulation) for details.
+If you are building a reusable component and need strict CSS encapsulation, you can explicitly opt into Shadow DOM. See [Advanced Usage: Shadow DOM Encapsulation](./advanced.md#shadow-dom-encapsulation) for details.
 
 ---
 
 ## Passing Props and Slots
 
-When you pass attributes (props) or child nodes (slots) to a custom component in your template, `TComponent` deliberately **does not** automatically apply them to the child component's root element.
+When you pass attributes (props) or child nodes (slots) to a custom component in your template, TComponent deliberately **does not** automatically apply them to the child component's root element.
 
-This is a strict design choice: a component might need to apply certain attributes or inject slot content into a specific internal element rather than the outer wrapper, ensuring you have complete, explicit control over the DOM.
+This is an intentional design choice: a component might need to apply certain attributes or inject slot content into a specific internal element rather than the outer wrapper, giving you full, explicit control over the DOM.
 
 ### The `applyParams` Utility
 
-To easily route passed attributes (like `class` or `style`) and child nodes to a specific target element inside your component, `TComponent` provides the `applyParams` utility.
+To easily route passed attributes (like `class` or `style`) and child nodes to a specific target element inside your component, TComponent provides the `applyParams` utility.
 
-It smartly handles appending child nodes, merges `class` and `style` strings, and safely ignores internal attributes like `id` and `on*`.
+It handles appending child nodes, merges `class` and `style` strings, and safely ignores internal attributes like `id` and `on*`.
 
 ### Example: A Reusable Card Component
 
@@ -209,7 +209,7 @@ class Dashboard extends TComponent<HTMLElement> {
 
 When writing reusable components, managing HTML `id` attributes can be tricky because duplicating IDs across a page breaks accessibility and DOM queries.
 
-`TComponent` solves this automatically. Any element with an `id` attribute is assigned a **randomly generated UUID**. Furthermore, `TComponent` automatically updates reference attributes—such as `for`, `aria-labelledby`, and `aria-controls`—to match the new UUIDs.
+TComponent solves this automatically. Any element with an `id` attribute is assigned a **UUID**. Furthermore, TComponent automatically updates reference attributes—such as `for`, `aria-labelledby`, and `aria-controls`—to match the new UUIDs.
 
 ```typescript
 import TComponent from '@haiix/tcomponent';
@@ -228,13 +228,13 @@ class AccessibleForm extends TComponent<HTMLFormElement> {
 }
 ```
 
-_Note: If an ID reference contains multiple space-separated IDs, `TComponent` correctly resolves all of them._
+_Note: If an ID reference contains multiple space-separated IDs, TComponent correctly resolves all of them._
 
 ### Component Boundaries and the Power of Slots
 
-In `TComponent`, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.
+In TComponent, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.
 
-If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), `TComponent` deliberately **does not** apply this ID to the child's root HTML element. This prevents unexpected DOM behaviors, such as a parent's `<label>` pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden inside the child component.
+If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), TComponent deliberately **does not** apply this ID to the child's root HTML element. This prevents unexpected DOM behaviors, such as a parent's `<label>` pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden inside the child component.
 
 ### Best Practice: Inversion of Control with Slots
 
@@ -290,7 +290,7 @@ Instead of the child component (`InputWrapper`) having to accept dozens of props
 
 ## Event Binding Syntax
 
-`TComponent` binds events by parsing the `on*` attributes in your template. To keep your templates clean and modern, the recommended syntax is to simply provide the method name:
+TComponent binds events by parsing the `on*` attributes in your template. To keep your templates clean and modern, the recommended syntax is to simply provide the method name:
 
 ```html
 <button onclick="handleSubmit">Submit</button>
@@ -298,9 +298,9 @@ Instead of the child component (`InputWrapper`) having to accept dozens of props
 
 ### Native HTML Compatibility
 
-To make migrating existing Vanilla HTML templates seamless, `TComponent` securely parses and allows native-like event handler syntaxes.
+To make migrating existing Vanilla HTML templates seamless, TComponent securely parses and allows native-like event handler syntaxes.
 
-It is important to understand that **all of the following examples are semantically identical**. They do not change how the event is executed; `TComponent` simply extracts the target method name (`handleSubmit`) and binds it via `addEventListener`.
+It is important to understand that **all of the following examples are semantically identical**. They do not change how the event is executed; TComponent simply extracts the target method name (`handleSubmit`) and binds it via `addEventListener`.
 
 - `onclick="handleSubmit"`
 - `onclick="this.handleSubmit"`
@@ -308,19 +308,21 @@ It is important to understand that **all of the following examples are semantica
 - `onclick="this.handleSubmit(event);"`
 - `onclick="return handleSubmit()"`
 
-_Note: Behind the scenes, `TComponent` uses a strict regex to safely extract just the method name. It does not use `eval()`, meaning the presence of `return` or `(event)` in the attribute has no effect on the actual execution. The method will always receive the `Event` object as its first argument._
+_Note: Behind the scenes, TComponent uses a strict regex to safely extract just the method name. It does not use `eval()`, meaning the presence of `return` or `(event)` in the attribute has no effect on the actual execution. The method will always receive the `Event` object as its first argument._
 
 ### Security Validation
 
-For security reasons, event handlers must strictly match a valid JavaScript identifier (method name). If you attempt to write raw JavaScript logic (e.g., `onclick="console.log(event)"` or `onclick="alert('XSS')"`), `TComponent` will throw a `SecurityError` during initialization, preventing arbitrary inline execution.
+For security reasons, event handlers must strictly match a valid JavaScript identifier (method name). If you attempt to write raw JavaScript logic (e.g., `onclick="console.log(event)"` or `onclick="alert('XSS')"`), TComponent will throw a `SecurityError` during initialization, preventing arbitrary inline execution.
 
 ---
 
 ## Preventing Default Actions
 
-In native HTML, returning `false` from an inline event handler cancels the browser's default action. `TComponent` perfectly emulates this behavior.
+In native HTML, returning `false` from an inline event handler cancels the browser's default action. TComponent replicates this behavior.
 
-If your bound method explicitly returns exactly `false`, `TComponent` will automatically call `event.preventDefault()` for you. (Note: This depends entirely on what your method returns in TypeScript/JavaScript, not on whether you wrote `return` in the HTML attribute).
+If your bound method explicitly returns exactly `false`, TComponent will automatically call `event.preventDefault()` for you.
+
+_Note: This depends entirely on what your method returns in TypeScript/JavaScript, not on whether you wrote `return` in the HTML attribute._
 
 ```typescript
 class LinkComponent extends TComponent {
