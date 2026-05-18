@@ -77,9 +77,13 @@ export class BuildContext {
         .split(/\s+/u)
         .map((id) => {
           const target = this.idMap[id];
+          if (target instanceof Element) {
+            target.id ||= generateId();
+            return target.id;
+          }
           // For custom components (AbstractComponent) or unresolvable IDs,
           // Leave the original string as-is and defer handling to the child component.
-          return target instanceof Element ? target.id : id;
+          return id;
         })
         .join(' ');
 
@@ -112,7 +116,6 @@ export class BuildContext {
   ): void {
     for (const [name, value] of Object.entries(attributes)) {
       if (name === 'id') {
-        element.id = generateId();
         registerId(this.idMap, value, element);
       } else if (ID_REF_ATTRIBUTES.has(name)) {
         this.idReferenceMap.push({ attrName: name, refId: value, element });
