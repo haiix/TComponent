@@ -21,11 +21,5 @@ export function appendSlots(
   const contextComponent =
     component.parent instanceof TComponent ? component.parent : component;
 
-  for (const child of childNodes) {
-    target.appendChild(
-      typeof child === 'string'
-        ? document.createTextNode(child)
-        : contextComponent.context.build(child),
-    );
-  }
+  contextComponent.context.appendChildren(target, childNodes);
 }

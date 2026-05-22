@@ -30,7 +30,7 @@ import { applyAttributes } from '../internal/dom';
 export function applyParams(
   component: TComponent,
   target: Element,
-  params: ComponentParams,
+  params: ComponentParams = {},
 ): void {
   if (params.attributes) {
     applyAttributes(target, params.attributes);
