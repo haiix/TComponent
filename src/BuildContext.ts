@@ -62,7 +62,7 @@ export class BuildContext {
   build(tNode: TNode, ns?: string | null): Element {
     const { element, childNs } = createNativeElement(tNode.t, ns);
     this._applyAttributes(element, tNode.a);
-    this._appendChildren(element, tNode.c, childNs);
+    this.appendChildren(element, tNode.c, childNs);
 
     return element;
   }
@@ -159,7 +159,14 @@ export class BuildContext {
     }
   }
 
-  private _appendChildren(
+  /**
+   * Builds child nodes and appends them to the specified element.
+   *
+   * @param element - The parent element to append child nodes to.
+   * @param children - The child nodes or text content to append.
+   * @param childNs - The namespace URI used when creating child elements.
+   */
+  appendChildren(
     element: Element,
     children: (TNode | string)[],
     childNs?: string | null,

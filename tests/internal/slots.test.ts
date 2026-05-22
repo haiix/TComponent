@@ -50,4 +50,37 @@ describe('appendSlots', () => {
     appendSlots(root, targetEl, []);
     expect(targetEl.childNodes.length).toBe(0);
   });
+
+  it('instantiates custom components successfully when they are at the top level of the slots', () => {
+    class SlottedCustomComp extends TComponent {
+      static template = `<span class="slotted-custom">Slotted</span>`;
+    }
+
+    class ParentComponent extends TComponent {
+      static uses = { SlottedCustomComp };
+      static template = `<div></div>`;
+    }
+    const parent = new ParentComponent();
+
+    class ChildComponent extends TComponent {
+      static template = `<div></div>`;
+    }
+    const child = new ChildComponent({ parent });
+
+    const targetEl = document.createElement('div');
+
+    const childNodes = [
+      { t: 'slottedcustomcomp', a: { id: 'my-slotted' }, c: [] },
+    ];
+
+    appendSlots(child, targetEl, childNodes);
+
+    expect(targetEl.childNodes.length).toBe(1);
+    const mountedEl = targetEl.childNodes[0] as HTMLElement;
+    expect(mountedEl.tagName.toLowerCase()).toBe('span');
+    expect(mountedEl.className).toBe('slotted-custom');
+
+    const inst = parent.getById('my-slotted');
+    expect(inst).toBeInstanceOf(SlottedCustomComp);
+  });
 });
