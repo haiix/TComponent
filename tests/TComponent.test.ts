@@ -324,6 +324,25 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
   });
 });
 
+describe('TComponent - Root Element Validation', () => {
+  it('throws an error if the root element of the template is a custom component', () => {
+    class SubComponent extends TComponent {
+      static template = `<div class="sub"></div>`;
+    }
+
+    class InvalidRootComponent extends TComponent {
+      static uses = { SubComponent };
+      static template = /* HTML */ `<subcomponent></subcomponent>`;
+    }
+
+    expect(() => {
+      new InvalidRootComponent();
+    }).toThrow(
+      /ParseError: The root element of a template cannot be a custom component \("<subcomponent>"\)/,
+    );
+  });
+});
+
 describe('TComponent - Custom Namespace URI (SVG/MathML)', () => {
   it('creates the root element with the specified custom namespace URI', () => {
     class PolyLineComponent extends TComponent<SVGPolylineElement> {

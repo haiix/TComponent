@@ -69,6 +69,59 @@ class PreservedWhitespaceComponent extends TComponent {
 
 ---
 
+## Root Element Constraints (Composition vs. Inheritance)
+
+When defining a component, **the root element of your `static template` must be a native HTML/SVG/MathML tag.** It cannot be a custom sub-component registered in `static uses`.
+
+If you attempt to use a custom component as the root element, TComponent will immediately throw a `ParseError` during initialization.
+
+### Why this limitation?
+
+1. **Strict 1-to-1 DOM Mapping:**
+   TComponent maintains a strict one-to-one mapping between a DOM element and its component instance (which makes `Component.from(element)` highly reliable). If a parent and a child component shared the exact same root DOM node, this registry would overwrite itself, creating ambiguity about which component actually owns the element.
+2. **Object-Oriented Design:**
+   TComponent encourages a clean mental model. If you need to modify, extend, or wrap the root behavior of an existing component, you should use **Class Inheritance** rather than component composition.
+
+```typescript
+// ❌ ERROR: Attempting to use a custom component as the root element
+class InvalidComponent extends TComponent {
+  static uses = kebabKeys({ CustomButton });
+
+  // This will throw a ParseError!
+  static template = /* HTML */ ` <custom-button>Click Me</custom-button> `;
+}
+
+// ✅ CORRECT: Use Class Inheritance to extend the component's behavior
+class ValidComponent extends CustomButton {
+  // You can override the template, lifecycle, or methods here.
+
+  handleClick(event: MouseEvent) {
+    // Optionally call the parent's logic
+    super.handleClick(event);
+
+    // Add your extended behavior
+    console.log('Extended behavior executed!');
+  }
+}
+```
+
+If you purely want to add a layout wrapper around a custom component, you must wrap it in a native HTML element (like a `<div>` or `<section>`).
+
+```typescript
+// ✅ CORRECT: Wrapping the custom component in a native DOM element
+class WrapperComponent extends TComponent {
+  static uses = kebabKeys({ CustomButton });
+
+  static template = /* HTML */ `
+    <div class="button-wrapper">
+      <custom-button>Click Me</custom-button>
+    </div>
+  `;
+}
+```
+
+---
+
 ## SVG & MathML CamelCase Tags Limitation
 
 TComponent parses HTML strings natively using `document.createElement('template').innerHTML` to keep the library zero-dependency and tiny.

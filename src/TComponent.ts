@@ -153,16 +153,22 @@ export class TComponent<
     if (!Object.hasOwn(this, '_parsed') || !this._parsed) {
       const parseOptions = this.parseOptions ?? {};
 
-      this._parsed = {
-        template: parseTemplate(this.template, parseOptions),
-        ns: this.namespaceURI,
-        uses: Object.fromEntries(
-          Object.entries(this.uses).map(([name, Component]) => [
-            name.toLowerCase(),
-            Component,
-          ]),
-        ),
-      };
+      const template = parseTemplate(this.template, parseOptions);
+      const uses = Object.fromEntries(
+        Object.entries(this.uses).map(([name, Component]) => [
+          name.toLowerCase(),
+          Component,
+        ]),
+      );
+
+      if (template.t in uses) {
+        throw new Error(
+          `[TComponent] ParseError: The root element of a template cannot be a custom component ("<${template.t}>"). ` +
+            `To extend or alter a component's root behavior, use class inheritance (extends) instead of composition.`,
+        );
+      }
+
+      this._parsed = { template, ns: this.namespaceURI, uses };
     }
     return this._parsed;
   }
