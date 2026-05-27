@@ -1,3 +1,6 @@
+export const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
+export const MATHML_NAMESPACE_URI = 'http://www.w3.org/1998/Math/MathML';
+
 /**
  * Checks whether the given string is a valid HTML/XML tag name.
  *
@@ -29,9 +32,9 @@ export function createNativeElement(
 
   let elementNs = ns;
   if (tagName === 'svg') {
-    elementNs = 'http://www.w3.org/2000/svg';
+    elementNs = SVG_NAMESPACE_URI;
   } else if (tagName === 'math') {
-    elementNs = 'http://www.w3.org/1998/Math/MathML';
+    elementNs = MATHML_NAMESPACE_URI;
   }
 
   const element = elementNs

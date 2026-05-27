@@ -5,11 +5,11 @@ import {
   mergeClass,
   mergeStyle,
   applyAttributes,
+  SVG_NAMESPACE_URI,
+  MATHML_NAMESPACE_URI,
 } from '../../src/internal/dom';
 
-const HTML_NS = 'http://www.w3.org/1999/xhtml';
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const MATHML_NS = 'http://www.w3.org/1998/Math/MathML';
+const HTML_NAMESPACE_URI = 'http://www.w3.org/1999/xhtml';
 
 describe('isSafeTagName', () => {
   it('returns true for valid tag names', () => {
@@ -28,27 +28,30 @@ describe('isSafeTagName', () => {
 describe('createNativeElement', () => {
   it('creates standard HTML elements without a namespace', () => {
     const { element, childNs } = createNativeElement('div');
-    expect(element.namespaceURI).toBe(HTML_NS);
+    expect(element.namespaceURI).toBe(HTML_NAMESPACE_URI);
     expect(childNs).toBeUndefined();
   });
 
   it('assigns the correct namespace for SVG elements', () => {
     const { element, childNs } = createNativeElement('svg');
-    expect(element.namespaceURI).toBe(SVG_NS);
-    expect(childNs).toBe(SVG_NS); // Children should inherit the SVG namespace
+    expect(element.namespaceURI).toBe(SVG_NAMESPACE_URI);
+    expect(childNs).toBe(SVG_NAMESPACE_URI); // Children should inherit the SVG namespace
   });
 
   it('assigns the correct namespace for MathML elements', () => {
     const { element, childNs } = createNativeElement('math');
-    expect(element.namespaceURI).toBe(MATHML_NS);
-    expect(childNs).toBe(MATHML_NS);
+    expect(element.namespaceURI).toBe(MATHML_NAMESPACE_URI);
+    expect(childNs).toBe(MATHML_NAMESPACE_URI);
   });
 
   it('resets the child namespace to HTML when creating a foreignObject inside SVG', () => {
     // Parent namespace is passed down as SVG
-    const { element, childNs } = createNativeElement('foreignobject', SVG_NS);
+    const { element, childNs } = createNativeElement(
+      'foreignobject',
+      SVG_NAMESPACE_URI,
+    );
 
-    expect(element.namespaceURI).toBe(SVG_NS);
+    expect(element.namespaceURI).toBe(SVG_NAMESPACE_URI);
     expect(childNs).toBe(null); // Children of foreignObject should revert to HTML
   });
 
