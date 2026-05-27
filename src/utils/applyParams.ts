@@ -18,7 +18,7 @@ import { applyAttributes } from '../internal/dom';
  *   constructor(params: ComponentParams) {
  *     super(params);
  *     // Inject props and slots into the internal body element
- *     applyParams(this, this.idMap['body'], params);
+ *     applyParams(this, this.getById('body', HTMLDivElement), params);
  *   }
  * }
  * ```
