@@ -1,4 +1,4 @@
-import type { ComponentParams, TNode } from './types';
+import type { ComponentParams, IDReferenceEntry, TNode } from './types';
 import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
@@ -13,11 +13,7 @@ export class BuildContext {
   /** Map of original IDs to newly generated unique elements. */
   readonly idMap: Record<string, Element | AbstractComponent> = {};
   /** List of elements that reference other elements by ID, needing resolution. */
-  readonly idReferenceMap: {
-    attrName: string;
-    refId: string;
-    element: Element;
-  }[] = [];
+  readonly idReferenceMap: IDReferenceEntry[] = [];
 
   /** The component instance that owns the template being built. */
   readonly component: AbstractComponent;
