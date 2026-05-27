@@ -61,7 +61,7 @@ export class BuildContext {
    */
   build(tNode: TNode, ns?: string | null): Element {
     const { element, childNs } = createNativeElement(tNode.t, ns);
-    this._applyAttributes(element, tNode.a);
+    this.applyAttributes(element, tNode.a);
     this.appendChildren(element, tNode.c, childNs);
 
     return element;
@@ -92,7 +92,7 @@ export class BuildContext {
     this.idReferenceMap.length = 0;
   }
 
-  private _buildCustomComponent(tNode: TNode): Element {
+  private buildCustomComponent(tNode: TNode): Element {
     const Component = this.uses[tNode.t] as new (
       params: ComponentParams,
     ) => AbstractComponent;
@@ -110,7 +110,7 @@ export class BuildContext {
     return cComponent.element;
   }
 
-  private _applyAttributes(
+  private applyAttributes(
     element: Element,
     attributes: Record<string, string>,
   ): void {
@@ -120,14 +120,14 @@ export class BuildContext {
       } else if (ID_REF_ATTRIBUTES.has(name)) {
         this.idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
-        this._bindEvent(element, name, value);
+        this.bindEvent(element, name, value);
       } else {
         element.setAttribute(name, value);
       }
     }
   }
 
-  private _bindEvent(
+  private bindEvent(
     element: Element,
     attrName: string,
     attrValue: string,
@@ -179,7 +179,7 @@ export class BuildContext {
         typeof cNode === 'string'
           ? document.createTextNode(cNode)
           : this.uses[cNode.t]
-            ? this._buildCustomComponent(cNode)
+            ? this.buildCustomComponent(cNode)
             : this.build(cNode, childNs),
       );
     }
