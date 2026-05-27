@@ -58,7 +58,7 @@ export type DefaultIDMap = Record<string, Element | AbstractComponent>;
 /**
  * The interface that aggregates the parsing results of templates and subcomponents.
  */
-export interface ParsedComponent {
+export interface ParsedTemplateData {
   template: TNode;
   ns?: string;
   uses: Record<string, typeof AbstractComponent>;
