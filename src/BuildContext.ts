@@ -92,7 +92,7 @@ export class BuildContext {
     const Component = this.uses[tNode.t] as new (
       params: ComponentParams,
     ) => AbstractComponent;
-    const cComponent = new Component({
+    const childComponent = new Component({
       parent: this.component,
       attributes: tNode.a,
       childNodes: tNode.c,
@@ -100,10 +100,10 @@ export class BuildContext {
     });
 
     if (tNode.a.id) {
-      registerId(this.idMap, tNode.a.id, cComponent);
+      registerId(this.idMap, tNode.a.id, childComponent);
     }
 
-    return cComponent.element;
+    return childComponent.element;
   }
 
   private processAttributes(
@@ -170,13 +170,13 @@ export class BuildContext {
     children: (TNode | string)[],
     childNs?: string | null,
   ): void {
-    for (const cNode of children) {
+    for (const childNode of children) {
       element.appendChild(
-        typeof cNode === 'string'
-          ? document.createTextNode(cNode)
-          : this.uses[cNode.t]
-            ? this.buildCustomComponent(cNode)
-            : this.build(cNode, childNs),
+        typeof childNode === 'string'
+          ? document.createTextNode(childNode)
+          : this.uses[childNode.t]
+            ? this.buildCustomComponent(childNode)
+            : this.build(childNode, childNs),
       );
     }
   }
