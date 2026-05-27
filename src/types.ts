@@ -5,7 +5,7 @@ import type { AbstractComponent } from './AbstractComponent';
  *
  * @typeParam T - The instance type created by the constructor.
  */
-export type ConstructorOf<T> = new (
+export type ConstructorOf<T> = abstract new (
   /* eslint-disable @typescript-eslint/no-explicit-any */
   ...args: any[]
   /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -58,8 +58,20 @@ export type DefaultIDMap = Record<string, Element | AbstractComponent>;
 /**
  * The interface that aggregates the parsing results of templates and subcomponents.
  */
-export interface ParsedComponent {
+export interface ParsedTemplateData {
   template: TNode;
   ns?: string;
   uses: Record<string, typeof AbstractComponent>;
+}
+
+/**
+ * Represents an entry for an ID reference that needs to be resolved after the element is built.
+ */
+export interface IDReferenceEntry {
+  /** The attribute name to resolve (e.g. "for", "aria-labelledby") */
+  attrName: string;
+  /** The ID string written in the original template (space-separated values allowed) */
+  refId: string;
+  /** The DOM element that holds the reference */
+  element: Element;
 }

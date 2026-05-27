@@ -3,7 +3,7 @@ import type {
   ComponentParams,
   DefaultIDMap,
   ParseOptions,
-  ParsedComponent,
+  ParsedTemplateData,
 } from './types';
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
@@ -36,7 +36,7 @@ export class TComponent<
   static parseOptions?: ParseOptions;
 
   /** The parsed AST (`TNode`) of the HTML template and Lowercased uses. Cached across instances. */
-  private static _parsed?: ParsedComponent;
+  private static _parsed?: ParsedTemplateData;
 
   /** The context object for the build process. */
   readonly context: BuildContext;
@@ -150,7 +150,7 @@ export class TComponent<
    *
    * @returns The parsed templates and their dependencies.
    */
-  static getParsed(): ParsedComponent {
+  static getParsed(): ParsedTemplateData {
     if (!Object.hasOwn(this, '_parsed') || !this._parsed) {
       const parseOptions = this.parseOptions ?? {};
 

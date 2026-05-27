@@ -1,4 +1,4 @@
-import type { ComponentParams, TNode } from './types';
+import type { ComponentParams, IDReferenceEntry, TNode } from './types';
 import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
@@ -13,11 +13,7 @@ export class BuildContext {
   /** Map of original IDs to newly generated unique elements. */
   readonly idMap: Record<string, Element | AbstractComponent> = {};
   /** List of elements that reference other elements by ID, needing resolution. */
-  readonly idReferenceMap: {
-    attrName: string;
-    refId: string;
-    element: Element;
-  }[] = [];
+  readonly idReferenceMap: IDReferenceEntry[] = [];
 
   /** The component instance that owns the template being built. */
   readonly component: AbstractComponent;
@@ -61,7 +57,7 @@ export class BuildContext {
    */
   build(tNode: TNode, ns?: string | null): Element {
     const { element, childNs } = createNativeElement(tNode.t, ns);
-    this._applyAttributes(element, tNode.a);
+    this.processAttributes(element, tNode.a);
     this.appendChildren(element, tNode.c, childNs);
 
     return element;
@@ -92,11 +88,11 @@ export class BuildContext {
     this.idReferenceMap.length = 0;
   }
 
-  private _buildCustomComponent(tNode: TNode): Element {
+  private buildCustomComponent(tNode: TNode): Element {
     const Component = this.uses[tNode.t] as new (
       params: ComponentParams,
     ) => AbstractComponent;
-    const cComponent = new Component({
+    const childComponent = new Component({
       parent: this.component,
       attributes: tNode.a,
       childNodes: tNode.c,
@@ -104,13 +100,13 @@ export class BuildContext {
     });
 
     if (tNode.a.id) {
-      registerId(this.idMap, tNode.a.id, cComponent);
+      registerId(this.idMap, tNode.a.id, childComponent);
     }
 
-    return cComponent.element;
+    return childComponent.element;
   }
 
-  private _applyAttributes(
+  private processAttributes(
     element: Element,
     attributes: Record<string, string>,
   ): void {
@@ -120,14 +116,14 @@ export class BuildContext {
       } else if (ID_REF_ATTRIBUTES.has(name)) {
         this.idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
-        this._bindEvent(element, name, value);
+        this.bindEvent(element, name, value);
       } else {
         element.setAttribute(name, value);
       }
     }
   }
 
-  private _bindEvent(
+  private bindEvent(
     element: Element,
     attrName: string,
     attrValue: string,
@@ -149,7 +145,10 @@ export class BuildContext {
     ];
     if (typeof fn === 'function') {
       const eventType = attrName.slice(2).toLowerCase();
-      const wrappedFn = createEventHandler(this.component, fn);
+      const wrappedFn = createEventHandler(
+        this.component,
+        fn as (event: Event) => unknown,
+      );
       element.addEventListener(eventType, wrappedFn, { signal: this.signal });
     } else {
       warnOnce(
@@ -171,13 +170,13 @@ export class BuildContext {
     children: (TNode | string)[],
     childNs?: string | null,
   ): void {
-    for (const cNode of children) {
+    for (const childNode of children) {
       element.appendChild(
-        typeof cNode === 'string'
-          ? document.createTextNode(cNode)
-          : this.uses[cNode.t]
-            ? this._buildCustomComponent(cNode)
-            : this.build(cNode, childNs),
+        typeof childNode === 'string'
+          ? document.createTextNode(childNode)
+          : this.uses[childNode.t]
+            ? this.buildCustomComponent(childNode)
+            : this.build(childNode, childNs),
       );
     }
   }

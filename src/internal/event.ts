@@ -30,13 +30,11 @@ export interface ErrorBoundary {
  */
 export function createEventHandler(
   thisArg: ErrorBoundary,
-  /* eslint-disable @typescript-eslint/no-unsafe-function-type */
-  fn: Function,
-  /* eslint-enable @typescript-eslint/no-unsafe-function-type */
+  fn: (event: Event) => unknown,
 ) {
   return (event: Event): void => {
     try {
-      const result = fn.call(thisArg, event) as unknown;
+      const result = fn.call(thisArg, event);
       if (result instanceof Promise) {
         result.catch((error: unknown) => {
           thisArg.onerror(error);

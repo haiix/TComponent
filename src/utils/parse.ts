@@ -17,9 +17,9 @@ function parseTemplateRecur(
       a: Object.fromEntries(
         Array.from(node.attributes, (attr) => [attr.name, attr.value]),
       ),
-      c: Array.from(node.childNodes, (cNode) =>
-        parseTemplateRecur(cNode, options),
-      ).filter((cNode): cNode is TNode | string => cNode != null),
+      c: Array.from(node.childNodes, (childNode) =>
+        parseTemplateRecur(childNode, options),
+      ).filter((childNode): childNode is TNode | string => childNode != null),
     };
   }
 
