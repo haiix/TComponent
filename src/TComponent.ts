@@ -54,13 +54,14 @@ export class TComponent<
     const Component = this.constructor as typeof TComponent;
     const parsed = Component.getParsed();
 
-    // Determine the AbortSignal for this component's lifecycle:
-    let signal = params.signal;
-    if (!signal && this.parent instanceof TComponent) {
-      signal = this.parent.context.signal;
+    // Determine the AbortSignals for this component's lifecycle:
+    // If both parent and custom signal are provided, the component will be destroyed when ANY of them aborts.
+    const signals: (AbortSignal | undefined)[] = [params.signal];
+    if (this.parent instanceof TComponent) {
+      signals.push(this.parent.context.signal);
     }
 
-    this.context = new BuildContext(this, parsed.uses, signal);
+    this.context = new BuildContext(this, parsed.uses, ...signals);
     this.element = this.context.build(parsed.template, parsed.ns) as T;
     this.context.resolveIdReferences();
 

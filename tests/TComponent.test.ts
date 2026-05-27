@@ -138,7 +138,7 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
     expect(child.clickCount).toBe(1);
   });
 
-  it('prioritizes an explicitly provided signal over the parent signal', () => {
+  it('links to both the parent signal and an explicitly provided signal when both are present', () => {
     class DynamicChild extends TComponent<HTMLDivElement> {
       static template = `<div></div>`;
     }
@@ -151,18 +151,29 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
     const customController = new AbortController();
 
     // Dynamically instantiate the child passing BOTH parent and an explicit signal
-    const child = new DynamicChild({ parent, signal: customController.signal });
+    const child1 = new DynamicChild({
+      parent,
+      signal: customController.signal,
+    });
+    const child2 = new DynamicChild({
+      parent,
+      signal: customController.signal,
+    });
+
+    // 1. Aborting the custom controller should destroy child1 and child2
+    customController.abort();
+    expect(child1.context.signal.aborted).toBe(true);
+    expect(child2.context.signal.aborted).toBe(true);
+
+    // 2. Aborting the parent should also destroy the child
+    const customController3 = new AbortController();
+    const child3 = new DynamicChild({
+      parent,
+      signal: customController3.signal,
+    });
 
     parent.destroy();
-
-    // The child should NOT be aborted yet, because it is linked to customController, not the parent
-    expect(child.context.signal.aborted).toBe(false);
-
-    // Now abort the custom controller
-    customController.abort();
-
-    // The child should now be aborted
-    expect(child.context.signal.aborted).toBe(true);
+    expect(child3.context.signal.aborted).toBe(true);
   });
 });
 

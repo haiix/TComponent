@@ -34,21 +34,21 @@ export class BuildContext {
    *
    * @param component - The component instance that owns this template.
    * @param uses - A map of custom component classes to be used within the template.
-   * @param parentSignal - An AbortSignal to clean up event listeners.
+   * @param parentSignals - AbortSignals to clean up event listeners.
    */
   constructor(
     component: AbstractComponent,
     uses: Record<string, typeof AbstractComponent>,
-    parentSignal?: AbortSignal,
+    ...parentSignals: (AbortSignal | undefined)[]
   ) {
     this.component = component;
     this.uses = uses;
 
-    // [WARNING] We intentionally do NOT use `AbortSignal.any([parentSignal, this.signal])` here.
-    // If the parent component is long-lived and child components are frequently created and destroyed,
+    // [WARNING] We intentionally do NOT use `AbortSignal.any(parentSignals)` here.
+    // If a parent component is long-lived and child components are frequently created and destroyed,
     // using `AbortSignal.any()` would leave a reference to the child's signal inside the parent's signal.
     // This prevents the child from being garbage collected, causing a memory leak.
-    this.controller = createLinkedController(parentSignal);
+    this.controller = createLinkedController(...parentSignals);
     this.signal = this.controller.signal;
   }
 
