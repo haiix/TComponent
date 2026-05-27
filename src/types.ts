@@ -5,7 +5,7 @@ import type { AbstractComponent } from './AbstractComponent';
  *
  * @typeParam T - The instance type created by the constructor.
  */
-export type ConstructorOf<T> = new (
+export type ConstructorOf<T> = abstract new (
   /* eslint-disable @typescript-eslint/no-explicit-any */
   ...args: any[]
   /* eslint-enable @typescript-eslint/no-explicit-any */
