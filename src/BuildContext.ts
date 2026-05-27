@@ -61,7 +61,7 @@ export class BuildContext {
    */
   build(tNode: TNode, ns?: string | null): Element {
     const { element, childNs } = createNativeElement(tNode.t, ns);
-    this.applyAttributes(element, tNode.a);
+    this.processAttributes(element, tNode.a);
     this.appendChildren(element, tNode.c, childNs);
 
     return element;
@@ -110,7 +110,7 @@ export class BuildContext {
     return cComponent.element;
   }
 
-  private applyAttributes(
+  private processAttributes(
     element: Element,
     attributes: Record<string, string>,
   ): void {
