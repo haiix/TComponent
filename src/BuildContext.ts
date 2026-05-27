@@ -149,7 +149,10 @@ export class BuildContext {
     ];
     if (typeof fn === 'function') {
       const eventType = attrName.slice(2).toLowerCase();
-      const wrappedFn = createEventHandler(this.component, fn);
+      const wrappedFn = createEventHandler(
+        this.component,
+        fn as (event: Event) => unknown,
+      );
       element.addEventListener(eventType, wrappedFn, { signal: this.signal });
     } else {
       warnOnce(
