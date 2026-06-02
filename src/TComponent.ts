@@ -1,6 +1,6 @@
 import type {
-  ConstructorOf,
   ComponentParams,
+  ConstructorOf,
   DefaultIDMap,
   ParseOptions,
   ParsedTemplateData,
@@ -54,27 +54,11 @@ export class TComponent<
     const Component = this.constructor as typeof TComponent;
     const parsed = Component.getParsed();
 
-    // Determine the AbortSignals for this component's lifecycle:
-    // If both parent and custom signal are provided, the component will be destroyed when ANY of them aborts.
-    const signals: (AbortSignal | undefined)[] = [params.signal];
-    if (this.parent instanceof TComponent) {
-      signals.push(this.parent.context.signal);
-    }
-
-    this.context = new BuildContext(this, parsed.uses, ...signals);
+    this.context = new BuildContext(this, parsed.uses);
     this.element = this.context.build(parsed.template, parsed.ns) as T;
     this.context.resolveIdReferences();
 
     componentRegistry.set(this.element, this as TComponent);
-  }
-
-  /**
-   * Destroys the component.
-   * Automatically removes the element from the DOM and cleans up all associated event listeners.
-   */
-  destroy(): void {
-    this.context.controller.abort();
-    this.element.remove();
   }
 
   /**

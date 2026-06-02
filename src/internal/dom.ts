@@ -94,7 +94,8 @@ export function applyAttributes(
 ): void {
   for (const [name, value] of Object.entries(attributes)) {
     if (name === 'id' || name.startsWith('on')) {
-      continue; // Skip specific attributes
+      // Skip specific attributes
+      continue;
     }
 
     if (name === 'class') {
