@@ -7,12 +7,12 @@ import type { ComponentParams } from './types';
  */
 export abstract class AbstractComponent {
   /** The parent component instance, if any. */
-  parent?: AbstractComponent;
+  readonly parent?: AbstractComponent;
   /** The root DOM Element of the component. */
   abstract element: Element;
 
   #controller?: AbortController;
-  readonly #customSignal?: AbortSignal;
+  readonly #signal?: AbortSignal;
 
   /**
    * Creates an instance of `AbstractComponent`.
@@ -20,8 +20,13 @@ export abstract class AbstractComponent {
    * @param params - The initialization parameters.
    */
   constructor(params?: ComponentParams) {
+    if (params?.parent && params.signal) {
+      throw new Error(
+        'Cannot provide a signal when a parent component is already set.',
+      );
+    }
     this.parent = params?.parent;
-    this.#customSignal = params?.signal;
+    this.#signal = this.parent?.signal ?? params?.signal;
   }
 
   /**
@@ -30,10 +35,7 @@ export abstract class AbstractComponent {
    */
   get signal(): AbortSignal {
     if (!this.#controller) {
-      this.#controller = createLinkedController(
-        this.#customSignal,
-        this.parent?.signal,
-      );
+      this.#controller = createLinkedController(this.#signal);
     }
     return this.#controller.signal;
   }

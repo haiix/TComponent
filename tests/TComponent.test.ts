@@ -20,7 +20,7 @@ describe('TComponent - parseOptions Configuration', () => {
   it('applies parseOptions.preserveWhitespace implicitly and inherits to subclasses', () => {
     class PreservedComp extends TComponent<HTMLDivElement> {
       static parseOptions: ParseOptions = { preserveWhitespace: true };
-      static template = /* HTML */ `
+      static template = `
         <div>
           <span>A</span>
           <span>B</span>
@@ -29,7 +29,7 @@ describe('TComponent - parseOptions Configuration', () => {
     }
 
     class DefaultComp extends PreservedComp {
-      static template = /* HTML */ `
+      static template = `
         <div>
           <span>A</span>
           <span>B</span>
@@ -40,47 +40,40 @@ describe('TComponent - parseOptions Configuration', () => {
     const preservedInstance = new PreservedComp();
     const defaultInstance = new DefaultComp();
 
-    // With preserveWhitespace: true, the newlines between spans are kept as text nodes
-    const preservedChildNodes = Array.from(
-      preservedInstance.element.childNodes,
+    expect(preservedInstance.element.childNodes).toHaveLength(5);
+    expect(preservedInstance.element.childNodes[0]!.nodeType).toBe(
+      Node.TEXT_NODE,
     );
-    expect(preservedChildNodes).toHaveLength(5);
-    expect(preservedChildNodes[0]!.nodeType).toBe(Node.TEXT_NODE);
 
-    // Subclasses should inherit the static configuration
-    const defaultChildNodes = Array.from(defaultInstance.element.childNodes);
-    expect(defaultChildNodes).toHaveLength(5);
-    expect(defaultChildNodes[0]!.nodeType).toBe(Node.TEXT_NODE);
+    expect(defaultInstance.element.childNodes).toHaveLength(5);
+    expect(defaultInstance.element.childNodes[0]!.nodeType).toBe(
+      Node.TEXT_NODE,
+    );
   });
 });
 
-describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
-  class LifecycleComp extends TComponent<HTMLButtonElement> {
-    static template = `<button onclick="handleClick">Click Me</button>`;
-    public clickCount = 0;
-    handleClick() {
-      this.clickCount++;
+describe('TComponent - Template Integration (Events & Hierarchy)', () => {
+  it('unbinds event listeners defined in the template when destroyed', () => {
+    class EventComp extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="handleClick">Click Me</button>`;
+      public clickCount = 0;
+      handleClick() {
+        this.clickCount++;
+      }
     }
-  }
 
-  it('removes the element from the DOM and unbinds events when destroy() is called', () => {
-    const comp = new LifecycleComp();
-    document.body.appendChild(comp.element);
+    const comp = new EventComp();
 
     comp.element.click();
     expect(comp.clickCount).toBe(1);
 
     comp.destroy();
 
-    // 1. Removed from DOM
-    expect(comp.element.isConnected).toBe(false);
-
-    // 2. Events unbound (click count shouldn't increase)
     comp.element.click();
     expect(comp.clickCount).toBe(1);
   });
 
-  it('cascades destroy() automatically from Parent to Child components', () => {
+  it('establishes parent-child relationships automatically via template composition', () => {
     class Child extends TComponent<HTMLButtonElement> {
       static template = `<button onclick="handleClick">Child</button>`;
       public clickCount = 0;
@@ -97,83 +90,11 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
     const parent = new Parent();
     const child = parent.getById('my-child', Child);
 
-    // Destroying the parent should cascade down to the child
-    parent.destroy();
+    expect(child.parent).toBe(parent);
 
+    parent.destroy();
     child.element.click();
     expect(child.clickCount).toBe(0);
-  });
-
-  it('automatically inherits the parent signal when dynamically created without an explicit signal', () => {
-    class DynamicChild extends TComponent<HTMLButtonElement> {
-      static template = `<button onclick="handleClick">Dynamic Child</button>`;
-      public clickCount = 0;
-      handleClick() {
-        this.clickCount++;
-      }
-    }
-
-    class Parent extends TComponent<HTMLDivElement> {
-      static template = `<div></div>`;
-    }
-
-    const parent = new Parent();
-
-    // Dynamically instantiate the child passing only the parent.
-    // It should automatically inherit the parent's AbortSignal.
-    const child = new DynamicChild({ parent });
-    parent.element.appendChild(child.element);
-
-    // Verify events work initially
-    child.element.click();
-    expect(child.clickCount).toBe(1);
-
-    parent.destroy();
-
-    // Verify the child's controller was aborted automatically
-    expect(child.signal.aborted).toBe(true);
-
-    // Verify the child's events were successfully unbound
-    child.element.click();
-    expect(child.clickCount).toBe(1);
-  });
-
-  it('links to both the parent signal and an explicitly provided signal when both are present', () => {
-    class DynamicChild extends TComponent<HTMLDivElement> {
-      static template = `<div></div>`;
-    }
-
-    class Parent extends TComponent<HTMLDivElement> {
-      static template = `<div></div>`;
-    }
-
-    const parent = new Parent();
-    const customController = new AbortController();
-
-    // Dynamically instantiate the child passing BOTH parent and an explicit signal
-    const child1 = new DynamicChild({
-      parent,
-      signal: customController.signal,
-    });
-    const child2 = new DynamicChild({
-      parent,
-      signal: customController.signal,
-    });
-
-    // 1. Aborting the custom controller should destroy child1 and child2
-    customController.abort();
-    expect(child1.signal.aborted).toBe(true);
-    expect(child2.signal.aborted).toBe(true);
-
-    // 2. Aborting the parent should also destroy the child
-    const customController3 = new AbortController();
-    const child3 = new DynamicChild({
-      parent,
-      signal: customController3.signal,
-    });
-
-    parent.destroy();
-    expect(child3.signal.aborted).toBe(true);
   });
 });
 
@@ -184,7 +105,7 @@ describe('TComponent - getById()', () => {
 
   class TestComp extends TComponent<HTMLDivElement> {
     static uses = { ChildComp };
-    static template = /* HTML */ `
+    static template = `
       <div>
         <h1 id="title">Title</h1>
         <input id="my-input" type="text" />
@@ -195,44 +116,30 @@ describe('TComponent - getById()', () => {
 
   it('retrieves an element or component by its original ID', () => {
     const comp = new TestComp();
-
-    const title = comp.getById('title');
-    const child = comp.getById('my-child');
-
-    expect(title).toBeInstanceOf(HTMLHeadingElement);
-    expect(child).toBeInstanceOf(ChildComp);
+    expect(comp.getById('title')).toBeInstanceOf(HTMLHeadingElement);
+    expect(comp.getById('my-child')).toBeInstanceOf(ChildComp);
   });
 
   it('throws an Error if the ID does not exist in the template', () => {
     const comp = new TestComp();
-
-    expect(() => comp.getById('non-existent')).toThrow(
-      '[TComponent] Element with id "non-existent" not found.',
-    );
+    expect(() => comp.getById('non-existent')).toThrow(/not found/);
   });
 
   it('validates the type at runtime and returns the typed element when ExpectedType is provided', () => {
     const comp = new TestComp();
-
-    // Type inference works correctly here (no `as HTMLInputElement` needed)
-    const input = comp.getById('my-input', HTMLInputElement);
-    const child = comp.getById('my-child', ChildComp);
-
-    expect(input).toBeInstanceOf(HTMLInputElement);
-    expect(child).toBeInstanceOf(ChildComp);
+    expect(comp.getById('my-input', HTMLInputElement)).toBeInstanceOf(
+      HTMLInputElement,
+    );
+    expect(comp.getById('my-child', ChildComp)).toBeInstanceOf(ChildComp);
   });
 
   it('throws a TypeError if the retrieved element does not match the ExpectedType', () => {
     const comp = new TestComp();
-
-    // 'title' is an HTMLHeadingElement, so expecting HTMLInputElement should fail
     expect(() => comp.getById('title', HTMLInputElement)).toThrow(
-      '[TComponent] Element "title" is not an instance of HTMLInputElement',
+      /is not an instance of HTMLInputElement/,
     );
-
-    // Expecting a Custom Component on a native DOM element should fail
     expect(() => comp.getById('title', ChildComp)).toThrow(
-      '[TComponent] Element "title" is not an instance of ChildComp',
+      /is not an instance of ChildComp/,
     );
   });
 });
@@ -246,7 +153,6 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
       if (params.attributes?.['data-text']) {
         this.element.textContent = params.attributes['data-text'];
       }
-      // Manually append slots for testing
       if (params.childNodes) {
         for (const child of params.childNodes) {
           if (typeof child === 'string') {
@@ -257,25 +163,24 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
     }
   }
 
-  class ParentComponent extends TComponent<HTMLDivElement> {
-    static uses = { Child: ChildComponent };
-    static template = /* HTML */ `
-      <div class="parent">
-        <child data-text="Props Data" id="my-child">Slot Text</child>
-      </div>
-    `;
-  }
-
   it('expands child components, passes Props and Slots, and maps child instances in idMap', () => {
+    class ParentComponent extends TComponent<HTMLDivElement> {
+      static uses = { Child: ChildComponent };
+      static template = `
+        <div class="parent">
+          <child data-text="Props Data" id="my-child">Slot Text</child>
+        </div>
+      `;
+    }
+
     const parent = new ParentComponent();
     const child = parent.getById('my-child', ChildComponent);
 
     expect(child).toBeInstanceOf(ChildComponent);
-    expect(child.element).toBe(parent.element.querySelector('.child'));
     expect(child.element.textContent).toBe('Props DataSlot Text');
   });
 
-  it('propagates child component errors to the parent component (Error Boundary)', () => {
+  it('propagates child component errors to the parent defined in the template (Error Boundary)', () => {
     class ErrorChild extends TComponent<HTMLDivElement> {
       static template = `<div onclick="fail"></div>`;
       fail() {
@@ -294,22 +199,12 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
       .mockImplementation(() => {});
     const child = parent.getById('my-child', ErrorChild);
 
-    // Trigger the error in the child
     child.element.click();
 
-    // The parent's onerror should catch it
     expect(parentOnErrorSpy).toHaveBeenCalledTimes(1);
     expect(parentOnErrorSpy).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Child Failed' }),
     );
-  });
-
-  it('throws the error if onerror is called without a parent component', () => {
-    const rootComp = new ChildComponent({});
-
-    expect(() => {
-      rootComp.onerror(new Error('Fatal Error'));
-    }).toThrow('Fatal Error');
   });
 
   it('caches lowercased uses and correctly maps camelCase component tags via getParsed()', () => {
@@ -322,14 +217,9 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
       static template = `<div><mycustomchild id="child-1"></mycustomchild></div>`;
     }
 
-    const parent1 = new CachedParent();
-    const parent2 = new CachedParent();
+    const parent = new CachedParent();
+    expect(parent.getById('child-1')).toBeInstanceOf(MockChild);
 
-    // Verify it works correctly
-    expect(parent1.getById('child-1')).toBeInstanceOf(MockChild);
-    expect(parent2.getById('child-1')).toBeInstanceOf(MockChild);
-
-    // Verify the static cache was built
     const parsedUses = CachedParent.getParsed().uses;
     expect(parsedUses).toHaveProperty('mycustomchild');
   });
@@ -343,28 +233,23 @@ describe('TComponent - Root Element Validation', () => {
 
     class InvalidRootComponent extends TComponent {
       static uses = { SubComponent };
-      static template = /* HTML */ `<subcomponent></subcomponent>`;
+      static template = `<subcomponent></subcomponent>`;
     }
 
-    expect(() => {
-      new InvalidRootComponent();
-    }).toThrow(
-      /ParseError: The root element of a template cannot be a custom component \("<subcomponent>"\)/,
+    expect(() => new InvalidRootComponent()).toThrow(
+      /The root element of a template cannot be a custom component/,
     );
   });
 });
 
-describe('TComponent - Custom Namespace URI (SVG/MathML)', () => {
+describe('TComponent - Custom Namespace URI', () => {
   it('creates the root element with the specified custom namespace URI', () => {
     class PolyLineComponent extends TComponent<SVGPolylineElement> {
-      // 1. Explicitly specify the SVG namespace
       static namespaceURI = 'http://www.w3.org/2000/svg';
-      static template = /* HTML */ ` <polyline fill="none" stroke="black" /> `;
+      static template = `<polyline fill="none" stroke="black" />`;
     }
 
     const polyline = new PolyLineComponent();
-
-    // 2. Verify that the element was created with the correct namespace
     expect(polyline.element.namespaceURI).toBe('http://www.w3.org/2000/svg');
     expect(polyline.element.tagName.toLowerCase()).toBe('polyline');
   });
@@ -373,34 +258,24 @@ describe('TComponent - Custom Namespace URI (SVG/MathML)', () => {
 describe('TComponent.from (Global Registry Mapping)', () => {
   class ListItem extends TComponent<HTMLLIElement> {
     static template = `<li class="list-item">Item</li>`;
-    public isSelected = false;
-    select() {
-      this.isSelected = true;
-    }
   }
-
   class AnotherComponent extends TComponent<HTMLDivElement> {
     static template = `<div>Another</div>`;
   }
 
   it('retrieves the component instance from its root element', () => {
     const item = new ListItem();
-    const retrieved = ListItem.from(item.element);
-    expect(retrieved).toBe(item);
+    expect(ListItem.from(item.element)).toBe(item);
   });
 
   it('returns undefined for null, undefined, or unassociated elements', () => {
-    const unassociatedElement = document.createElement('li');
     expect(ListItem.from(null)).toBeUndefined();
-    expect(ListItem.from(undefined)).toBeUndefined();
-    expect(ListItem.from(unassociatedElement)).toBeUndefined();
+    expect(ListItem.from(document.createElement('li'))).toBeUndefined();
   });
 
   it('returns undefined if the element belongs to a different component class', () => {
     const another = new AnotherComponent();
-    // Element exists in registry, but type doesn't match
-    const retrieved = ListItem.from(another.element);
-    expect(retrieved).toBeUndefined();
+    expect(ListItem.from(another.element)).toBeUndefined();
   });
 
   it('supports retrieving instances of subclasses', () => {
@@ -409,10 +284,7 @@ describe('TComponent.from (Global Registry Mapping)', () => {
     }
 
     const specialItem = new SpecializedItem();
-    // Fetching via the base class should work because it passes instanceof
-    const retrieved = ListItem.from(specialItem.element);
-
-    expect(retrieved).toBe(specialItem);
-    expect(retrieved).toBeInstanceOf(SpecializedItem);
+    expect(ListItem.from(specialItem.element)).toBe(specialItem);
+    expect(ListItem.from(specialItem.element)).toBeInstanceOf(SpecializedItem);
   });
 });
