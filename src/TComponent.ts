@@ -1,6 +1,6 @@
 import type {
-  ConstructorOf,
   ComponentParams,
+  ConstructorOf,
   DefaultIDMap,
   ParseOptions,
   ParsedTemplateData,

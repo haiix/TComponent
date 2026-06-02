@@ -1,5 +1,5 @@
-import { createLinkedController } from './internal/signal';
 import type { ComponentParams } from './types';
+import { createLinkedController } from './internal/signal';
 
 /**
  * The base class for all components.
