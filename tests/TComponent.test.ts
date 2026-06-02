@@ -131,7 +131,7 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
     parent.destroy();
 
     // Verify the child's controller was aborted automatically
-    expect(child.context.signal.aborted).toBe(true);
+    expect(child.signal.aborted).toBe(true);
 
     // Verify the child's events were successfully unbound
     child.element.click();
@@ -162,8 +162,8 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
 
     // 1. Aborting the custom controller should destroy child1 and child2
     customController.abort();
-    expect(child1.context.signal.aborted).toBe(true);
-    expect(child2.context.signal.aborted).toBe(true);
+    expect(child1.signal.aborted).toBe(true);
+    expect(child2.signal.aborted).toBe(true);
 
     // 2. Aborting the parent should also destroy the child
     const customController3 = new AbortController();
@@ -173,7 +173,7 @@ describe('TComponent - Lifecycle & Teardown (.destroy)', () => {
     });
 
     parent.destroy();
-    expect(child3.context.signal.aborted).toBe(true);
+    expect(child3.signal.aborted).toBe(true);
   });
 });
 

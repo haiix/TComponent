@@ -2,7 +2,6 @@ import type { ComponentParams, IDReferenceEntry, TNode } from './types';
 import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
-import { createLinkedController } from './internal/signal';
 import { createNativeElement } from './internal/dom';
 import { warnOnce } from './internal/console';
 
@@ -20,32 +19,18 @@ export class BuildContext {
   /** A dictionary of custom components to be used within the template. */
   readonly uses: Record<string, typeof AbstractComponent>;
 
-  /** Controller to manage the component's own teardown. */
-  readonly controller: AbortController;
-  /** Signal to pass to event listeners (linked to the component's teardown). */
-  readonly signal: AbortSignal;
-
   /**
    * Builds a DOM tree from a parsed template (`TNode`) and resolves ID references.
    *
    * @param component - The component instance that owns this template.
    * @param uses - A map of custom component classes to be used within the template.
-   * @param parentSignals - AbortSignals to clean up event listeners.
    */
   constructor(
     component: AbstractComponent,
     uses: Record<string, typeof AbstractComponent>,
-    ...parentSignals: (AbortSignal | undefined)[]
   ) {
     this.component = component;
     this.uses = uses;
-
-    // [WARNING] We intentionally do NOT use `AbortSignal.any(parentSignals)` here.
-    // If a parent component is long-lived and child components are frequently created and destroyed,
-    // using `AbortSignal.any()` would leave a reference to the child's signal inside the parent's signal.
-    // This prevents the child from being garbage collected, causing a memory leak.
-    this.controller = createLinkedController(...parentSignals);
-    this.signal = this.controller.signal;
   }
 
   /**
@@ -96,7 +81,6 @@ export class BuildContext {
       parent: this.component,
       attributes: tNode.a,
       childNodes: tNode.c,
-      signal: this.signal,
     });
 
     if (tNode.a.id) {
@@ -149,7 +133,12 @@ export class BuildContext {
         this.component,
         fn as (event: Event) => unknown,
       );
-      element.addEventListener(eventType, wrappedFn, { signal: this.signal });
+
+      // Accessing `this.component.signal` here safely triggers the lazy instantiation
+      // inside AbstractComponent only when an event handler actually exists.
+      element.addEventListener(eventType, wrappedFn, {
+        signal: this.component.signal,
+      });
     } else {
       warnOnce(
         `missing-method:${this.component.constructor.name}:${methodName}`,
