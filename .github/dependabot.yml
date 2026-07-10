@@ -14,10 +14,10 @@ updates:
     groups:
       typescript:
         patterns:
-          - "typescript"
+          - 'typescript'
 
       all-dependencies:
         patterns:
-          - "*"
+          - '*'
         exclude-patterns:
-          - "typescript"
+          - 'typescript'
