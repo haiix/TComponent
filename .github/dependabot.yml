@@ -21,3 +21,13 @@ updates:
           - '*'
         exclude-patterns:
           - 'typescript'
+
+  - package-ecosystem: 'github-actions'
+    directory: /
+    schedule:
+      interval: weekly
+    target-branch: 'develop'
+    groups:
+      actions-dependencies:
+        patterns:
+          - '*'
