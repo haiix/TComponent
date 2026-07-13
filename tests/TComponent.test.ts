@@ -56,30 +56,28 @@ describe('TComponent - Template Integration (Events & Hierarchy)', () => {
   it('unbinds event listeners defined in the template when destroyed', () => {
     class EventComp extends TComponent<HTMLButtonElement> {
       static template = `<button onclick="handleClick">Click Me</button>`;
-      public clickCount = 0;
-      handleClick() {
-        this.clickCount++;
-      }
+
+      handleClick() {}
     }
 
     const comp = new EventComp();
+    const clickSpy = vi.spyOn(comp, 'handleClick');
 
     comp.element.click();
-    expect(comp.clickCount).toBe(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
 
+    // Destroy should unbind the event
     comp.destroy();
 
     comp.element.click();
-    expect(comp.clickCount).toBe(1);
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
   it('establishes parent-child relationships automatically via template composition', () => {
     class Child extends TComponent<HTMLButtonElement> {
       static template = `<button onclick="handleClick">Child</button>`;
-      public clickCount = 0;
-      handleClick() {
-        this.clickCount++;
-      }
+
+      handleClick() {}
     }
 
     class Parent extends TComponent<HTMLDivElement> {
@@ -92,9 +90,14 @@ describe('TComponent - Template Integration (Events & Hierarchy)', () => {
 
     expect(child.parent).toBe(parent);
 
+    const childClickSpy = vi.spyOn(child, 'handleClick');
+
+    // Destroying the parent should cascade and unbind the child's events
     parent.destroy();
+
     child.element.click();
-    expect(child.clickCount).toBe(0);
+
+    expect(childClickSpy).not.toHaveBeenCalled();
   });
 });
 
