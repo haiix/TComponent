@@ -129,13 +129,8 @@ export class BuildContext {
     ];
     if (typeof fn === 'function') {
       const eventType = attrName.slice(2).toLowerCase();
-      const wrappedFn = createEventHandler(
-        this.component,
-        fn as (event: Event) => unknown,
-      );
+      const wrappedFn = createEventHandler(this.component, methodName);
 
-      // Accessing `this.component.signal` here safely triggers the lazy instantiation
-      // inside AbstractComponent only when an event handler actually exists.
       element.addEventListener(eventType, wrappedFn, {
         signal: this.component.signal,
       });

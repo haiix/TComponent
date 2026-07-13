@@ -98,6 +98,48 @@ describe('TComponent - Template Integration (Events & Hierarchy)', () => {
   });
 });
 
+describe('TComponent - Dynamic Event Resolution', () => {
+  it('allows event handlers to be overridden dynamically after instantiation', () => {
+    class DynamicEventComp extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="handleDynamicClick">Click</button>`;
+
+      handleDynamicClick() {
+        // Default implementation
+      }
+    }
+
+    const comp = new DynamicEventComp();
+
+    // Assign a new mock function to the instance property AFTER initialization
+    const overrideMock = vi.fn();
+    comp.handleDynamicClick = overrideMock;
+
+    comp.element.click();
+
+    expect(overrideMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows easily mocking event handlers for testing using vi.spyOn', () => {
+    class SpyEventComp extends TComponent<HTMLButtonElement> {
+      static template = `<button onclick="handleSpyClick">Click</button>`;
+
+      handleSpyClick() {
+        // Original implementation logic
+      }
+    }
+
+    const comp = new SpyEventComp();
+
+    // Because the event listener resolves the method dynamically by name,
+    // mocking it with vi.spyOn after instantiation works seamlessly.
+    const spy = vi.spyOn(comp, 'handleSpyClick').mockImplementation(() => {});
+
+    comp.element.click();
+
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('TComponent - getById()', () => {
   class ChildComp extends TComponent<HTMLSpanElement> {
     static template = `<span class="child">Child</span>`;
