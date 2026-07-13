@@ -5,10 +5,12 @@ import {
 } from '../../src/internal/event';
 
 describe('createEventHandler', () => {
-  it('executes the wrapped function with the correct this context and event', () => {
+  it('executes the dynamically resolved function with the correct this context and event', () => {
     const mockFn = vi.fn();
-    const thisArg = { onerror: vi.fn() };
-    const handler = createEventHandler(thisArg, mockFn);
+    const thisArg = { onerror: vi.fn(), handleClick: mockFn };
+
+    // Pass the method name (string) instead of the function reference
+    const handler = createEventHandler(thisArg, 'handleClick');
 
     const event = new Event('click');
     handler(event);
@@ -18,9 +20,26 @@ describe('createEventHandler', () => {
     expect(mockFn).toHaveBeenCalledWith(event);
   });
 
+  it('resolves the method dynamically at execution time', () => {
+    const initialMock = vi.fn();
+    const updatedMock = vi.fn();
+    const thisArg = { onerror: vi.fn(), handleAction: initialMock };
+
+    const handler = createEventHandler(thisArg, 'handleAction');
+
+    // Overwrite the method after the handler has been created
+    thisArg.handleAction = updatedMock;
+
+    handler(new Event('click'));
+
+    // The initial function should not be called, only the dynamically updated one
+    expect(initialMock).not.toHaveBeenCalled();
+    expect(updatedMock).toHaveBeenCalledTimes(1);
+  });
+
   it('calls event.preventDefault() when the handler returns exactly false', () => {
-    const thisArg = { onerror: vi.fn() };
-    const handler = createEventHandler(thisArg, () => false);
+    const thisArg = { onerror: vi.fn(), handleLink: () => false };
+    const handler = createEventHandler(thisArg, 'handleLink');
 
     const event = new Event('click', { cancelable: true });
     handler(event);
@@ -29,10 +48,13 @@ describe('createEventHandler', () => {
   });
 
   it('catches synchronous errors and forwards them to thisArg.onerror', () => {
-    const thisArg = { onerror: vi.fn() };
-    const handler = createEventHandler(thisArg, () => {
-      throw new Error('Sync Error');
-    });
+    const thisArg = {
+      onerror: vi.fn(),
+      handleFail: () => {
+        throw new Error('Sync Error');
+      },
+    };
+    const handler = createEventHandler(thisArg, 'handleFail');
 
     handler(new Event('click'));
 
@@ -43,10 +65,13 @@ describe('createEventHandler', () => {
   });
 
   it('catches asynchronous promise rejections and forwards them to thisArg.onerror', async () => {
-    const thisArg = { onerror: vi.fn() };
-    const handler = createEventHandler(thisArg, async () => {
-      throw new Error('Async Error');
-    });
+    const thisArg = {
+      onerror: vi.fn(),
+      handleAsyncFail: async () => {
+        throw new Error('Async Error');
+      },
+    };
+    const handler = createEventHandler(thisArg, 'handleAsyncFail');
 
     handler(new Event('click'));
     await Promise.resolve(); // Wait for the microtask queue
@@ -54,6 +79,23 @@ describe('createEventHandler', () => {
     expect(thisArg.onerror).toHaveBeenCalledTimes(1);
     expect(thisArg.onerror).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Async Error' }),
+    );
+  });
+
+  it('throws a TypeError to thisArg.onerror if the method is no longer a function at execution time', () => {
+    // Start with a valid function
+    const thisArg = { onerror: vi.fn(), doSomething: (() => {}) as unknown };
+    const handler = createEventHandler(thisArg, 'doSomething');
+
+    // Overwrite it with a non-function value before execution
+    thisArg.doSomething = 'not a function';
+
+    handler(new Event('click'));
+
+    expect(thisArg.onerror).toHaveBeenCalledTimes(1);
+    expect(thisArg.onerror).toHaveBeenCalledWith(expect.any(TypeError));
+    expect(thisArg.onerror.mock.calls[0]?.[0].message).toContain(
+      'is not a function',
     );
   });
 });

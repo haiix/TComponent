@@ -7,11 +7,8 @@ import type { ComponentParams } from '../src/types';
 
 class DummyOwner extends AbstractComponent {
   element = document.createElement('div');
-  public clickCount = 0;
 
-  handleClick() {
-    this.clickCount++;
-  }
+  handleClick() {}
 }
 
 describe('BuildContext - DOM Building & ID Resolution', () => {
@@ -77,24 +74,12 @@ describe('BuildContext - Event Binding', () => {
     const context = new BuildContext(owner, {});
     const ast = parseTemplate(`<button onclick="handleClick">Click</button>`);
 
+    const clickSpy = vi.spyOn(owner, 'handleClick');
+
     const button = context.build(ast) as HTMLButtonElement;
     button.click();
 
-    expect(owner.clickCount).toBe(1);
-  });
-
-  it('warns if the event handler method is not found on the component', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const owner = new DummyOwner();
-    const context = new BuildContext(owner, {});
-    const ast = parseTemplate(`<button onclick="nonExistent">Error</button>`);
-
-    context.build(ast);
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[TComponent] Method "nonExistent" not found on component for event "onclick"',
-    );
+    expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 
   it('throws SecurityError for invalid or malicious event handler syntaxes', () => {

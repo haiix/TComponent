@@ -25,16 +25,23 @@ export interface ErrorBoundary {
  * mirroring common DOM event handler behavior.
  *
  * @param thisArg - The execution context for `fn`, and the error boundary that receives all errors.
- * @param fn - The event handler function to wrap. It may return `void`, `boolean`, or a `Promise`.
+ * @param methodName - The event handler method name to wrap. It may return `void`, `boolean`, or a `Promise`.
  * @returns A new event handler function with error forwarding and default prevention handling.
  */
-export function createEventHandler(
-  thisArg: ErrorBoundary,
-  fn: (event: Event) => unknown,
-) {
+export function createEventHandler(thisArg: ErrorBoundary, methodName: string) {
   return (event: Event): void => {
     try {
-      const result = fn.call(thisArg, event);
+      const fn = (thisArg as ErrorBoundary & Record<string, unknown>)[
+        methodName
+      ];
+
+      if (typeof fn !== 'function') {
+        throw new TypeError(
+          `Event handler "${methodName}" is not a function on the component.`,
+        );
+      }
+
+      const result = fn.call(thisArg, event) as unknown;
       if (result instanceof Promise) {
         result.catch((error: unknown) => {
           thisArg.onerror(error);
