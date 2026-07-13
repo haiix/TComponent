@@ -3,7 +3,6 @@ import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
 import { createNativeElement } from './internal/dom';
-import { warnOnce } from './internal/console';
 
 /**
  * Context object used during the recursive build process.
@@ -124,22 +123,12 @@ export class BuildContext {
       throw new Error(`SecurityError: Access to "${methodName}" is forbidden.`);
     }
 
-    const fn = (this.component as unknown as Record<string, unknown>)[
-      methodName
-    ];
-    if (typeof fn === 'function') {
-      const eventType = attrName.slice(2).toLowerCase();
-      const wrappedFn = createEventHandler(this.component, methodName);
+    const eventType = attrName.slice(2).toLowerCase();
+    const wrappedFn = createEventHandler(this.component, methodName);
 
-      element.addEventListener(eventType, wrappedFn, {
-        signal: this.component.signal,
-      });
-    } else {
-      warnOnce(
-        `missing-method:${this.component.constructor.name}:${methodName}`,
-        `Method "${methodName}" not found on component for event "${attrName}"`,
-      );
-    }
+    element.addEventListener(eventType, wrappedFn, {
+      signal: this.component.signal,
+    });
   }
 
   /**

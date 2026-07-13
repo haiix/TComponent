@@ -83,20 +83,6 @@ describe('BuildContext - Event Binding', () => {
     expect(owner.clickCount).toBe(1);
   });
 
-  it('warns if the event handler method is not found on the component', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const owner = new DummyOwner();
-    const context = new BuildContext(owner, {});
-    const ast = parseTemplate(`<button onclick="nonExistent">Error</button>`);
-
-    context.build(ast);
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[TComponent] Method "nonExistent" not found on component for event "onclick"',
-    );
-  });
-
   it('throws SecurityError for invalid or malicious event handler syntaxes', () => {
     const owner = new DummyOwner();
     const context = new BuildContext(owner, {});

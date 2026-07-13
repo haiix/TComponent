@@ -36,7 +36,9 @@ export function createEventHandler(thisArg: ErrorBoundary, methodName: string) {
       ];
 
       if (typeof fn !== 'function') {
-        throw new TypeError(`Event handler "${methodName}" is not a function.`);
+        throw new TypeError(
+          `Event handler "${methodName}" is not a function on the component.`,
+        );
       }
 
       const result = fn.call(thisArg, event) as unknown;
