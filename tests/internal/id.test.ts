@@ -3,11 +3,26 @@ import { generateId, registerId } from '../../src/internal/id';
 import { resetWarnings } from '../../src/internal/console';
 
 describe('generateId', () => {
-  it('generates unique identifier strings', () => {
+  it('generates unique identifier strings using crypto (if available)', () => {
     const id1 = generateId();
     const id2 = generateId();
     expect(id1).not.toBe(id2);
     expect(typeof id1).toBe('string');
+  });
+
+  it('generates pseudo-random ID with "uid-" prefix when crypto is unavailable', () => {
+    const originalCrypto = globalThis.crypto;
+    Object.defineProperty(globalThis, 'crypto', {
+      value: undefined,
+      writable: true,
+    });
+
+    const id1 = generateId();
+    const id2 = generateId();
+    expect(id1).not.toBe(id2);
+    expect(id1).toMatch(/^uid-[a-z0-9]{9}$/u);
+
+    globalThis.crypto = originalCrypto;
   });
 });
 
