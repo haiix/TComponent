@@ -63,11 +63,12 @@ describe('AbstractComponent', () => {
 
     it('removes the element from the DOM', () => {
       const component = new TestComponent();
-      document.body.append(component.element);
+      const container = document.createElement('div');
+      container.append(component.element);
 
-      expect(document.body.contains(component.element)).toBe(true);
+      expect(container.contains(component.element)).toBe(true);
       component.destroy();
-      expect(document.body.contains(component.element)).toBe(false);
+      expect(container.contains(component.element)).toBe(false);
     });
 
     it('does not fail if no signal was created', () => {

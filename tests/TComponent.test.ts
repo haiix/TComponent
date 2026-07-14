@@ -3,16 +3,11 @@ import type { ParseOptions, ComponentParams } from '../src/types';
 import { TComponent } from '../src/TComponent';
 import { resetWarnings } from '../src/internal/console';
 
-let uuidCounter = 0;
-
 beforeEach(() => {
-  uuidCounter = 0;
-  vi.stubGlobal('crypto', { randomUUID: () => `mock-uuid-${++uuidCounter}` });
   resetWarnings();
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
