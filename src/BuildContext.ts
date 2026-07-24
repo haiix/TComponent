@@ -1,5 +1,5 @@
 import type { ComponentParams, IDReferenceEntry, TNode } from './types';
-import { EVENT_HANDLER_REGEX, createEventHandler } from './internal/event';
+import { bindEvent } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
 import { createNativeElement } from './internal/dom';
@@ -99,36 +99,11 @@ export class BuildContext {
       } else if (ID_REF_ATTRIBUTES.has(name)) {
         this.idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
-        this.bindEvent(element, name, value);
+        bindEvent(element, name, value, this.component, this.component.signal);
       } else {
         element.setAttribute(name, value);
       }
     }
-  }
-
-  private bindEvent(
-    element: Element,
-    attrName: string,
-    attrValue: string,
-  ): void {
-    const match = EVENT_HANDLER_REGEX.exec(attrValue);
-    const methodName = match?.[1];
-
-    if (!methodName) {
-      throw new Error(
-        `SecurityError: Invalid event handler signature in attribute "${attrName}": "${attrValue}"`,
-      );
-    }
-    if (methodName === 'constructor' || methodName === '__proto__') {
-      throw new Error(`SecurityError: Access to "${methodName}" is forbidden.`);
-    }
-
-    const eventType = attrName.slice(2).toLowerCase();
-    const wrappedFn = createEventHandler(this.component, methodName);
-
-    element.addEventListener(eventType, wrappedFn, {
-      signal: this.component.signal,
-    });
   }
 
   /**

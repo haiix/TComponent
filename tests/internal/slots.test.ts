@@ -3,7 +3,7 @@ import { TComponent } from '../../src/TComponent';
 import { appendSlots } from '../../src/internal/slots';
 
 describe('appendSlots', () => {
-  it('builds child nodes using the parent component context if a parent exists', () => {
+  it('builds child nodes using the explicitly provided context component', () => {
     class ParentComponent extends TComponent {
       static template = `<div></div>`;
     }
@@ -12,7 +12,7 @@ describe('appendSlots', () => {
     class ChildComponent extends TComponent {
       static template = `<div></div>`;
     }
-    const child = new ChildComponent({ parent });
+    new ChildComponent({ parent });
 
     const targetEl = document.createElement('div');
     const childNodes = [
@@ -20,14 +20,15 @@ describe('appendSlots', () => {
       { t: 'span', a: { class: 'slotted' }, c: [] },
     ];
 
-    appendSlots(child, targetEl, childNodes);
+    // Explicitly pass the parent context
+    appendSlots(parent, targetEl, childNodes);
 
     expect(targetEl.childNodes.length).toBe(2);
     expect(targetEl.childNodes[0]?.textContent).toBe('Text Node');
     expect((targetEl.childNodes[1] as Element).className).toBe('slotted');
   });
 
-  it('falls back to the current component context if no parent is present', () => {
+  it('falls back seamlessly if the child component itself is passed as context', () => {
     class RootComponent extends TComponent {
       static template = `<div></div>`;
     }
@@ -65,7 +66,7 @@ describe('appendSlots', () => {
     class ChildComponent extends TComponent {
       static template = `<div></div>`;
     }
-    const child = new ChildComponent({ parent });
+    new ChildComponent({ parent });
 
     const targetEl = document.createElement('div');
 
@@ -73,13 +74,15 @@ describe('appendSlots', () => {
       { t: 'slottedcustomcomp', a: { id: 'my-slotted' }, c: [] },
     ];
 
-    appendSlots(child, targetEl, childNodes);
+    // Pass the parent context so it can resolve `SlottedCustomComp`
+    appendSlots(parent, targetEl, childNodes);
 
     expect(targetEl.childNodes.length).toBe(1);
     const mountedEl = targetEl.childNodes[0] as HTMLElement;
     expect(mountedEl.tagName.toLowerCase()).toBe('span');
     expect(mountedEl.className).toBe('slotted-custom');
 
+    // The sub-component is registered in the parent's idMap
     const inst = parent.getById('my-slotted');
     expect(inst).toBeInstanceOf(SlottedCustomComp);
   });

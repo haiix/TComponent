@@ -1,8 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   createEventHandler,
+  bindEvent,
   EVENT_HANDLER_REGEX,
 } from '../../src/internal/event';
+import { AbstractComponent } from '../../src/AbstractComponent';
 
 describe('createEventHandler', () => {
   it('executes the dynamically resolved function with the correct this context and event', () => {
@@ -97,6 +99,53 @@ describe('createEventHandler', () => {
     expect(thisArg.onerror.mock.calls[0]?.[0].message).toContain(
       'is not a function',
     );
+  });
+});
+
+describe('bindEvent', () => {
+  class DummyComponent extends AbstractComponent {
+    element = document.createElement('div');
+    myMethod = vi.fn();
+  }
+
+  it('binds the event listener to the element with the proper context and signal', () => {
+    const comp = new DummyComponent();
+    const el = document.createElement('button');
+
+    bindEvent(el, 'onclick', 'myMethod', comp, comp.signal);
+
+    // Trigger event
+    el.click();
+
+    expect(comp.myMethod).toHaveBeenCalledTimes(1);
+  });
+
+  it('unbinds the event listener when the signal is aborted', () => {
+    const comp = new DummyComponent();
+    const el = document.createElement('button');
+
+    bindEvent(el, 'onclick', 'myMethod', comp, comp.signal);
+
+    // Abort the signal explicitly
+    comp.destroy();
+
+    el.click();
+
+    // Should not have been called because it was destroyed
+    expect(comp.myMethod).not.toHaveBeenCalled();
+  });
+
+  it('throws a SecurityError for forbidden or invalid methods', () => {
+    const comp = new DummyComponent();
+    const el = document.createElement('button');
+
+    expect(() => {
+      bindEvent(el, 'onclick', 'constructor', comp, comp.signal);
+    }).toThrow(/SecurityError: Access to "constructor" is forbidden/);
+
+    expect(() => {
+      bindEvent(el, 'onclick', "alert('XSS')", comp, comp.signal);
+    }).toThrow(/SecurityError: Invalid event handler signature/);
   });
 });
 
