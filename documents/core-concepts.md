@@ -155,7 +155,7 @@ This is an intentional design choice: a component might need to apply certain at
 
 To easily route passed attributes (like `class` or `style`) and child nodes to a specific target element inside your component, TComponent provides the `applyParams` utility.
 
-It handles appending child nodes, merges `class` and `style` strings, and safely ignores internal attributes like `id` and `on*`.
+It handles appending child nodes, merges `class` and `style` strings, seamlessly binds events (`on*`) to the parent's methods, and safely ignores internal attributes like id.
 
 ### Example: A Reusable Card Component
 

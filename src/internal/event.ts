@@ -1,3 +1,5 @@
+import type { AbstractComponent } from '../AbstractComponent';
+
 /**
  * Syntax of supported event handlers
  * Matches "method", "this.method", "method(event)", "return method()", " this . method ( event ) ; ", etc.,
@@ -53,4 +55,38 @@ export function createEventHandler(thisArg: ErrorBoundary, methodName: string) {
       thisArg.onerror(error);
     }
   };
+}
+
+/**
+ * Parses an event attribute and binds the corresponding method to the DOM element.
+ *
+ * @param element - The DOM element to attach the event listener to.
+ * @param attrName - The event attribute name (e.g., 'onclick').
+ * @param attrValue - The event attribute value containing the method name.
+ * @param contextComponent - The component instance providing the method context.
+ * @param signal - The AbortSignal to automatically unbind the listener.
+ */
+export function bindEvent(
+  element: Element,
+  attrName: string,
+  attrValue: string,
+  contextComponent: AbstractComponent,
+  signal: AbortSignal,
+): void {
+  const match = EVENT_HANDLER_REGEX.exec(attrValue);
+  const methodName = match?.[1];
+
+  if (!methodName) {
+    throw new Error(
+      `SecurityError: Invalid event handler signature in attribute "${attrName}": "${attrValue}"`,
+    );
+  }
+  if (methodName === 'constructor' || methodName === '__proto__') {
+    throw new Error(`SecurityError: Access to "${methodName}" is forbidden.`);
+  }
+
+  const eventType = attrName.slice(2).toLowerCase();
+  const wrappedFn = createEventHandler(contextComponent, methodName);
+
+  element.addEventListener(eventType, wrappedFn, { signal });
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ParseOptions, ComponentParams } from '../src/types';
 import { TComponent } from '../src/TComponent';
+import { applyParams } from '../src/utils/applyParams';
 import { resetWarnings } from '../src/internal/console';
 
 beforeEach(() => {
@@ -326,5 +327,42 @@ describe('TComponent.from (Global Registry Mapping)', () => {
     const specialItem = new SpecializedItem();
     expect(ListItem.from(specialItem.element)).toBe(specialItem);
     expect(ListItem.from(specialItem.element)).toBeInstanceOf(SpecializedItem);
+  });
+});
+
+describe('TComponent - Props Event Binding (applyParams Integration)', () => {
+  class CustomButton extends TComponent<HTMLDivElement> {
+    static template = `<div class="wrapper"><button id="btn">Child Text</button></div>`;
+
+    constructor(params: ComponentParams) {
+      super(params);
+      // Route all props (including events) directly to the internal button
+      applyParams(this, this.getById('btn', HTMLButtonElement), params);
+    }
+  }
+
+  it('allows parent components to pass events to child components seamlessly', () => {
+    class App extends TComponent<HTMLDivElement> {
+      static uses = { CustomButton };
+      static template = `
+        <div>
+          <!-- Parent passes its own method to the child's onclick prop -->
+          <custombutton id="my-btn" onclick="handleParentClick" class="btn-primary"></custombutton>
+        </div>
+      `;
+
+      handleParentClick = vi.fn();
+    }
+
+    const app = new App();
+    const customButton = app.getById('my-btn', CustomButton);
+    const internalBtn = customButton.getById('btn', HTMLButtonElement);
+
+    // Ensure general attributes like class were routed correctly
+    expect(internalBtn.className).toBe('btn-primary');
+
+    // Clicking the internal button should trigger the Parent's method
+    internalBtn.click();
+    expect(app.handleParentClick).toHaveBeenCalledTimes(1);
   });
 });
