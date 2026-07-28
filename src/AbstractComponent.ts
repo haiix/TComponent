@@ -26,7 +26,7 @@ export abstract class AbstractComponent {
       );
     }
     this.parent = params?.parent;
-    this.#signal = this.parent?.signal ?? params?.signal;
+    this.#signal = params?.signal;
   }
 
   /**
@@ -35,7 +35,9 @@ export abstract class AbstractComponent {
    */
   get signal(): AbortSignal {
     if (!this.#controller) {
-      this.#controller = createLinkedController(this.#signal);
+      this.#controller = createLinkedController(
+        this.#signal ?? this.parent?.signal,
+      );
     }
     return this.#controller.signal;
   }
