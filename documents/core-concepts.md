@@ -161,7 +161,7 @@ It handles appending child nodes, merges `class` and `style` strings, seamlessly
 
 ```typescript
 import TComponent, {
-  ComponentParams,
+  type ComponentParams,
   kebabKeys,
   applyParams,
 } from '@haiix/tcomponent';
@@ -244,7 +244,7 @@ Because slot content is evaluated in the **parent's scope**, elements passed via
 
 ```typescript
 import TComponent, {
-  ComponentParams,
+  type ComponentParams,
   kebabKeys,
   applyParams,
 } from '@haiix/tcomponent';
