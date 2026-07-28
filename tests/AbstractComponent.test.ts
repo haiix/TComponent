@@ -49,6 +49,20 @@ describe('AbstractComponent', () => {
       parent.destroy();
       expect(child.signal.aborted).toBe(true);
     });
+
+    it('does not evaluate the parent signal until the child signal is actually requested (lazy evaluation)', () => {
+      const parent = new TestComponent();
+
+      const parentSignalSpy = vi.spyOn(parent, 'signal', 'get');
+
+      const child = new TestComponent({ parent });
+      expect(parentSignalSpy).not.toHaveBeenCalled();
+
+      const childSignal = child.signal;
+      expect(parentSignalSpy).toHaveBeenCalledTimes(1);
+
+      expect(childSignal.aborted).toBe(false);
+    });
   });
 
   describe('destroy', () => {
