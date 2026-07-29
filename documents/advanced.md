@@ -324,7 +324,7 @@ class DynamicList extends AbstractComponent {
       parentUses = ParentClass.getParsed().uses;
     }
 
-    this.context = new BuildContext(params.parent, parentUses, params.signal);
+    this.context = new BuildContext(params.parent, parentUses);
     this.element = this.context.build(rootAst);
 
     // 2. Save the child element (Slot) as a reusable list-item template
