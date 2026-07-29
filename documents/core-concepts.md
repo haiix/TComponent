@@ -29,7 +29,7 @@ Unlike reactive frameworks, TComponent **does not** use a virtual DOM and does n
 When building a component, you will mainly work with the following three core features:
 
 - **`static template`**: A standard HTML string defining your component's structure. It is parsed once per component class and cached for maximum performance.
-- **`this.getById(id, ExpectedType?)`**: Any element assigned an id in your template is automatically converted to a unique UUID. You can access these inner nodes via `this.getById()`.
+- **`this.getById(id, ExpectedType?)`**: Any element assigned an `id` in your template is mapped internally and intentionally removed from the DOM to prevent collisions. You can safely access these inner nodes via `this.getById()`.
 - **`this.element`**: Every component instance exposes its root DOM node via the `.element` property. Because it is a native `Element`, you mount it to the page using standard methods like `document.body.appendChild()`.
 
 ### Example: A Simple Counter
@@ -209,7 +209,7 @@ class Dashboard extends TComponent<HTMLElement> {
 
 When writing reusable components, managing HTML `id` attributes can be tricky because duplicating IDs across a page breaks accessibility and DOM queries.
 
-TComponent solves this automatically. Any element with an `id` attribute is assigned a **UUID**. Furthermore, TComponent automatically updates reference attributes—such as `for`, `aria-labelledby`, and `aria-controls`—to match the new UUIDs.
+TComponent solves this automatically. When an element is assigned an `id`, it is mapped internally and removed from the DOM. However, if that ID is referenced by accessibility attributes—such as `for`, `aria-labelledby`, or `aria-controls`—TComponent detects this and automatically generates and injects a **UUID** strictly where needed, perfectly resolving the references.
 
 ```typescript
 import TComponent from '@haiix/tcomponent';
@@ -217,8 +217,8 @@ import TComponent from '@haiix/tcomponent';
 class AccessibleForm extends TComponent<HTMLFormElement> {
   static template = /* HTML */ `
     <form>
-      <!-- "my-input" becomes a UUID (e.g., '123e4567-...'). -->
-      <!-- The label's "for" attribute automatically updates to match it. -->
+      <!-- TComponent detects the 'for' reference. -->
+      <!-- It dynamically generates a UUID for "my-input" and updates both elements. -->
       <label for="my-input">Username:</label>
       <input id="my-input" aria-describedby="desc" type="text" />
       <br />
