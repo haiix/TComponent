@@ -103,7 +103,7 @@ This approach serves two purposes:
 2. **Runtime Safety:** TComponent performs an `instanceof` check at runtime. If the template changes and the element is no longer the correct tag, it throws a clear `TypeError` immediately, catching bugs early.
 
 ```typescript
-import TComponent, { kebabKeys } from '@haiix/tcomponent';
+import TComponent, { kebabKeys, type ComponentParams } from '@haiix/tcomponent';
 
 class CustomAvatar extends TComponent<HTMLImageElement> {
   static template = /* HTML */ `<img class="avatar" />`;
@@ -128,8 +128,8 @@ class UserProfile extends TComponent<HTMLFormElement> {
   // This approach also works with custom sub-components.
   avatar = this.getById('user-avatar', CustomAvatar);
 
-  constructor() {
-    super();
+  constructor(params?: ComponentParams) {
+    super(params);
     // Fully typed, no 'as' casting required.
     this.input.value = 'JohnDoe';
     this.avatar.setSrc('/path/to/image.png');
@@ -155,8 +155,8 @@ interface ProfileIdMap {
 class UserProfile extends TComponent<HTMLFormElement, ProfileIdMap> {
   // ... static template defined here ...
 
-  constructor() {
-    super();
+  constructor(params?: ComponentParams) {
+    super(params);
 
     // Your IDE will auto-complete 'username-input' and know it's an HTMLInputElement!
     const input = this.getById('username-input');
@@ -187,7 +187,10 @@ Because TComponent embraces explicit, vanilla DOM manipulation, you don't need a
 _Note: The `super()` call automatically builds the AST and appends the elements to `this.element` (the host). To encapsulate the template, we move those built nodes into the newly attached Shadow Root._
 
 ```typescript
-import TComponent, { ComponentParams, applyParams } from '@haiix/tcomponent';
+import TComponent, {
+  type ComponentParams,
+  applyParams,
+} from '@haiix/tcomponent';
 
 class EncapsulatedCard extends TComponent<HTMLElement> {
   static template = /* HTML */ `
@@ -257,7 +260,7 @@ You should extend `AbstractComponent` instead of TComponent when:
 **Example of a purely manual component:**
 
 ```typescript
-import { AbstractComponent, ComponentParams } from '@haiix/tcomponent';
+import { AbstractComponent, type ComponentParams } from '@haiix/tcomponent';
 
 class ManualComponent extends AbstractComponent {
   element: HTMLDivElement;
@@ -321,7 +324,7 @@ class DynamicList extends AbstractComponent {
       parentUses = ParentClass.getParsed().uses;
     }
 
-    this.context = new BuildContext(params.parent, parentUses, params.signal);
+    this.context = new BuildContext(params.parent, parentUses);
     this.element = this.context.build(rootAst);
 
     // 2. Save the child element (Slot) as a reusable list-item template

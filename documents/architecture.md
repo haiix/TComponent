@@ -36,6 +36,50 @@ _(For advanced use cases like SPA routers or external signals, see [Advanced Mem
 
 ---
 
+## Custom Cleanup Logic (Timers, Subscriptions, etc.)
+
+While TComponent automatically handles unbinding inline event listeners (`on*`) and removing the element from the DOM, you may need to perform explicit cleanup for other side effects—such as clearing `setTimeout`/`setInterval`, closing WebSockets, or destroying third-party library instances.
+
+You can easily register custom cleanup logic by listening to the `abort` event on the component's built-in `this.signal`.
+
+```typescript
+import TComponent, { type ComponentParams } from '@haiix/tcomponent';
+
+class TimerComponent extends TComponent<HTMLDivElement> {
+  static template = /* HTML */ `<div>Timer running...</div>`;
+
+  // IMPORTANT: Always accept and pass 'params' to super()
+  // to ensure the component is linked to its parent's lifecycle.
+  constructor(params?: ComponentParams) {
+    super(params);
+
+    // 1. Start a side effect
+    const timerId = setInterval(() => {
+      console.log('Tick');
+    }, 1000);
+
+    // 2. Register custom cleanup logic
+    this.signal.addEventListener(
+      'abort',
+      () => {
+        clearInterval(timerId);
+        console.log('Timer cleared!');
+      },
+      { once: true },
+    );
+    // Best Practice: Use { once: true } to ensure the callback runs exactly once.
+  }
+}
+```
+
+**How it works:**
+
+- **Registration:** By listening to `this.signal`, your custom cleanup logic becomes natively tied to the component's lifecycle.
+- **Execution:** When you call `component.destroy()`, it aborts the internal `AbortController`. This reliably triggers the `abort` event, executing your custom logic before the element is removed.
+- **Cascading Teardown:** Because child lifecycles are automatically linked to their parents (via `super(params)`), this cleanup is guaranteed to execute even if the entire component tree is destroyed from the top level.
+
+---
+
 ## Retrieving Components from the DOM
 
 TComponent embraces the DOM as the primary source of truth. Instead of maintaining a complex virtual component tree, it provides a built-in `static from(element)` method. This allows you to retrieve the component instance associated with a specific DOM node.
@@ -89,7 +133,7 @@ When manually instantiating a child component, it is highly recommended to pass 
 ### Example: Rendering a Dynamic List
 
 ```typescript
-import TComponent, { ComponentParams } from '@haiix/tcomponent';
+import TComponent, { type ComponentParams } from '@haiix/tcomponent';
 
 class UserCard extends TComponent<HTMLDivElement> {
   static template = /* HTML */ `
@@ -245,7 +289,7 @@ Instead of attaching an `onclick` listener to every single `<task-item>`, you ca
 
 ```typescript
 import TComponent, {
-  ComponentParams,
+  type ComponentParams,
   kebabKeys,
   applyParams,
 } from '@haiix/tcomponent';

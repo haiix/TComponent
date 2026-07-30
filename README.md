@@ -16,8 +16,8 @@ Just components with explicit, direct DOM control.
 - **String-based Templates**: Write declarative HTML templates that are parsed and cached once per component class.
 - **Automatic Event Binding**: Bind class methods to DOM events using `on*` attributes. Supports both synchronous and asynchronous functions.
 - **Built-in Error Handling**: Errors thrown in event listeners propagate through the component tree and can be handled via a unified `onerror` method.
-- **Unique ID Generation**: Element `id` attributes are automatically replaced with UUIDs to prevent global DOM collisions, while remaining easily accessible via `this.getById()`.
-- **Automatic ID Reference Resolution**: Attributes like `for`, `aria-labelledby`, and `aria-controls` automatically resolve to the newly generated UUIDs, maintaining accessibility.
+- **Smart ID Management**: Element `id` attributes are securely mapped to internal properties (accessible via `this.getById()`) and are **intentionally removed from the DOM** to keep it clean and prevent global collisions.
+- **Automatic ID Reference Resolution**: Attributes like `for`, `aria-labelledby`, and `aria-controls` resolve automatically. TComponent intelligently generates and injects UUIDs into the DOM _only when necessary_ to perfectly maintain accessibility.
 - **Component Composition**: Compose reusable sub-components using the `static uses` property.
 - **Lifecycle Cleanup**: Call `.destroy()` to safely remove the component from the DOM and automatically unbind all event listeners. The cleanup process automatically cascades to all nested child components, preventing memory leaks.
 
