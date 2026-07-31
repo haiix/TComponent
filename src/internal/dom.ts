@@ -1,3 +1,5 @@
+import { throwError } from './messages';
+
 export const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 export const MATHML_NAMESPACE_URI = 'http://www.w3.org/1998/Math/MathML';
 
@@ -27,7 +29,7 @@ export function createNativeElement(
   ns?: string | null,
 ): { element: Element; childNs?: string | null } {
   if (!isSafeTagName(tagName)) {
-    throw new Error(`Invalid tag name: ${tagName}`);
+    throwError(`Invalid tag name: ${tagName}`);
   }
 
   let elementNs = ns;

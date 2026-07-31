@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ParseOptions, ComponentParams } from '../src/types';
 import { TComponent } from '../src/TComponent';
 import { applyParams } from '../src/utils/applyParams';
-import { resetWarnings } from '../src/internal/console';
+import { resetWarnings } from '../src/internal/messages';
 
 beforeEach(() => {
   resetWarnings();

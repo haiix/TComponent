@@ -1,5 +1,6 @@
 import type { ComponentParams } from './types';
 import { createLinkedController } from './internal/signal';
+import { throwError } from './internal/messages';
 
 /**
  * The base class for all components.
@@ -21,7 +22,7 @@ export abstract class AbstractComponent {
    */
   constructor(params?: ComponentParams) {
     if (params?.parent && params.signal) {
-      throw new Error(
+      throwError(
         'Cannot provide a signal when a parent component is already set.',
       );
     }

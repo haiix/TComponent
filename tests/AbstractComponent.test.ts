@@ -21,7 +21,7 @@ describe('AbstractComponent', () => {
       expect(() => {
         new TestComponent({ parent, signal: controller.signal });
       }).toThrow(
-        'Cannot provide a signal when a parent component is already set.',
+        '[TComponent] Cannot provide a signal when a parent component is already set.',
       );
     });
   });

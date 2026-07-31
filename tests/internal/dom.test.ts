@@ -57,7 +57,7 @@ describe('createNativeElement', () => {
 
   it('throws an error for invalid tag names', () => {
     expect(() => createNativeElement('<invalid>')).toThrow(
-      'Invalid tag name: <invalid>',
+      '[TComponent] Invalid tag name: <invalid>',
     );
   });
 });
