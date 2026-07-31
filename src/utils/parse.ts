@@ -1,4 +1,5 @@
 import type { ParseOptions, TNode } from '../types';
+import { throwError } from '../internal/messages';
 
 /**
  * Recursively parses a DOM Node into a `TNode` or a text string.
@@ -47,9 +48,7 @@ export function parseTemplate(html: string, options: ParseOptions = {}): TNode {
   template.innerHTML = html.trim();
 
   if (template.content.children.length !== 1) {
-    throw new Error(
-      'ParseError: The template must have exactly one root element.',
-    );
+    throwError('ParseError: The template must have exactly one root element.');
   }
   return parseTemplateRecur(
     /* eslint-disable @typescript-eslint/no-non-null-assertion */

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateId, registerId } from '../../src/internal/id';
-import { resetWarnings } from '../../src/internal/console';
+import { resetWarnings } from '../../src/internal/messages';
 
 describe('generateId', () => {
   it('generates unique identifier strings using crypto (if available)', () => {

@@ -1,4 +1,5 @@
 import type { AbstractComponent } from '../AbstractComponent';
+import { throwError } from './messages';
 
 /**
  * Syntax of supported event handlers
@@ -38,8 +39,9 @@ export function createEventHandler(thisArg: ErrorBoundary, methodName: string) {
       ];
 
       if (typeof fn !== 'function') {
-        throw new TypeError(
+        throwError(
           `Event handler "${methodName}" is not a function on the component.`,
+          TypeError,
         );
       }
 
@@ -74,15 +76,15 @@ export function bindEvent(
   signal: AbortSignal,
 ): void {
   const match = EVENT_HANDLER_REGEX.exec(attrValue);
-  const methodName = match?.[1];
 
-  if (!methodName) {
-    throw new Error(
+  const methodName =
+    match?.[1] ??
+    throwError(
       `SecurityError: Invalid event handler signature in attribute "${attrName}": "${attrValue}"`,
     );
-  }
+
   if (methodName === 'constructor' || methodName === '__proto__') {
-    throw new Error(`SecurityError: Access to "${methodName}" is forbidden.`);
+    throwError(`SecurityError: Access to "${methodName}" is forbidden.`);
   }
 
   const eventType = attrName.slice(2).toLowerCase();

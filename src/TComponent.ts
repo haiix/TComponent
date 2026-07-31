@@ -8,6 +8,7 @@ import type {
 import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './utils/parse';
+import { throwError } from './internal/messages';
 
 /**
  * Global registry mapping root DOM elements to their respective TComponent instances.
@@ -90,17 +91,14 @@ export class TComponent<
     id: K,
     ExpectedType?: ConstructorOf<E>,
   ): IDMap[K] | E {
-    const el = this.context.idMap[id as string];
-
-    if (!el) {
-      throw new Error(
-        `[TComponent] Element with id "${String(id)}" not found.`,
-      );
-    }
+    const el =
+      this.context.idMap[id as string] ??
+      throwError(`Element with id "${String(id)}" not found.`);
 
     if (ExpectedType && !(el instanceof ExpectedType)) {
-      throw new TypeError(
-        `[TComponent] Element "${String(id)}" is not an instance of ${ExpectedType.name}`,
+      throwError(
+        `Element "${String(id)}" is not an instance of ${ExpectedType.name}`,
+        TypeError,
       );
     }
 
@@ -147,8 +145,8 @@ export class TComponent<
       );
 
       if (template.t in uses) {
-        throw new Error(
-          `[TComponent] ParseError: The root element of a template cannot be a custom component ("<${template.t}>"). ` +
+        throwError(
+          `ParseError: The root element of a template cannot be a custom component ("<${template.t}>"). ` +
             `To extend or alter a component's root behavior, use class inheritance (extends) instead of composition.`,
         );
       }

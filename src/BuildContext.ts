@@ -1,7 +1,7 @@
 import type { ComponentParams, IDReferenceEntry, TNode } from './types';
-import { bindEvent } from './internal/event';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
+import { bindEvent } from './internal/event';
 import { createNativeElement } from './internal/dom';
 
 /**

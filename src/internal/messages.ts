@@ -1,3 +1,5 @@
+const PREFIX = '[TComponent] ';
+
 const warnedTypes = new Set<string>();
 
 /**
@@ -10,7 +12,7 @@ const warnedTypes = new Set<string>();
 export function warnOnce(type: string, message: string): void {
   if (!warnedTypes.has(type)) {
     /* eslint-disable no-console */
-    console.warn(`[TComponent] ${message}`);
+    console.warn(`${PREFIX}${message}`);
     /* eslint-enable no-console */
     warnedTypes.add(type);
   }
@@ -21,4 +23,17 @@ export function warnOnce(type: string, message: string): void {
  */
 export function resetWarnings(): void {
   warnedTypes.clear();
+}
+
+/**
+ * Throws an error with the configured prefix.
+ *
+ * @param message - The error message.
+ * @param ErrorClass - The error class to throw (defaults to `Error`).
+ */
+export function throwError(
+  message: string,
+  ErrorClass: new (msg: string) => Error = Error,
+): never {
+  throw new ErrorClass(`${PREFIX}${message}`);
 }

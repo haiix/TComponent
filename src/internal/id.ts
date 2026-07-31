@@ -1,4 +1,4 @@
-import { warnOnce } from './console';
+import { warnOnce } from './messages';
 
 /**
  * List of attributes that reference elements by their ID.

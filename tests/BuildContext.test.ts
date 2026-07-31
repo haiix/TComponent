@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BuildContext } from '../src/BuildContext';
 import { AbstractComponent } from '../src/AbstractComponent';
 import { parseTemplate } from '../src/utils/parse';
-import { resetWarnings } from '../src/internal/console';
+import { resetWarnings } from '../src/internal/messages';
 import type { ComponentParams } from '../src/types';
 
 class DummyOwner extends AbstractComponent {
