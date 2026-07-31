@@ -1,5 +1,5 @@
-import { throwError } from '../internal/messages';
 import type { ParseOptions, TNode } from '../types';
+import { throwError } from '../internal/messages';
 
 /**
  * Recursively parses a DOM Node into a `TNode` or a text string.
