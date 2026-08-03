@@ -3,6 +3,11 @@ import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
 import { bindEvent } from './internal/event';
 import { createNativeElement } from './internal/dom';
+import { throwError, truncateForError } from './internal/messages';
+import {
+  ALLOWED_SCHEMES,
+  isSafeAttributeValue,
+} from './internal/dom-validator';
 
 /**
  * Context object used during the recursive build process.
@@ -100,6 +105,13 @@ export class BuildContext {
         this.idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
         bindEvent(element, name, value, this.component, this.component.signal);
+      } else if (!isSafeAttributeValue(name, value)) {
+        throwError(
+          `SecurityError: Unsafe value for attribute "${name}" on <${element.tagName.toLowerCase()}>: ` +
+            `"${truncateForError(value)}". ` +
+            `URL-bearing attributes must use an allowed scheme (${[...ALLOWED_SCHEMES].join(', ')}) ` +
+            `or a relative path.`,
+        );
       } else {
         element.setAttribute(name, value);
       }

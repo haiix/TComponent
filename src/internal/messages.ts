@@ -37,3 +37,10 @@ export function throwError(
 ): never {
   throw new ErrorClass(`${PREFIX}${message}`);
 }
+
+export function truncateForError(value: string, maxLength = 80): string {
+  const singleLine = value.replace(/\s+/g, ' ').trim();
+  return singleLine.length > maxLength
+    ? `${singleLine.slice(0, maxLength)}...`
+    : singleLine;
+}

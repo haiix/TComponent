@@ -1,17 +1,8 @@
+import { isSafeTagName } from './dom-validator';
 import { throwError } from './messages';
 
 export const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 export const MATHML_NAMESPACE_URI = 'http://www.w3.org/1998/Math/MathML';
-
-/**
- * Checks whether the given string is a valid HTML/XML tag name.
- *
- * @param tagName - The tag name to check.
- * @returns True if the tag name is valid.
- */
-export function isSafeTagName(tagName: string): boolean {
-  return /^[a-zA-Z][a-zA-Z0-9-]*$/u.test(tagName);
-}
 
 /**
  * Creates a native DOM element with optional namespace handling.
@@ -29,7 +20,10 @@ export function createNativeElement(
   ns?: string | null,
 ): { element: Element; childNs?: string | null } {
   if (!isSafeTagName(tagName)) {
-    throwError(`Invalid tag name: ${tagName}`);
+    throwError(
+      `ParseError: The tag name "${tagName}" is not permitted for security reasons ` +
+        `(potentially unsafe or unrecognized element).`,
+    );
   }
 
   let elementNs = ns;
