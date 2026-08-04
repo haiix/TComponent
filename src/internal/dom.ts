@@ -1,5 +1,9 @@
-import { isSafeTagName } from './dom-validator';
-import { throwError } from './messages';
+import {
+  isSafeTagName,
+  isSafeAttributeValue,
+  ALLOWED_SCHEMES,
+} from './dom-validator';
+import { throwError, truncateForError } from './messages';
 
 export const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 export const MATHML_NAMESPACE_URI = 'http://www.w3.org/1998/Math/MathML';
@@ -80,6 +84,7 @@ export function mergeStyle(target: Element, styleValue: string): void {
  * Applies a dictionary of attributes to a target DOM element.
  * Intentionally skips 'id' and 'on*' attributes to prevent DOM collisions
  * and unsafe inline event handlers. Routes 'class' and 'style' to their respective merge functions.
+ * Validates remaining attributes to prevent XSS (e.g. javascript: URLs).
  *
  * @param target - The DOM element to receive the attributes.
  * @param attributes - A record of attribute names and values.
@@ -98,6 +103,14 @@ export function applyAttributes(
       mergeClass(target, value);
     } else if (name === 'style') {
       mergeStyle(target, value);
+    } else if (!isSafeAttributeValue(name, value)) {
+      // Prevent assigning malicious URLs (e.g., javascript:) dynamically
+      throwError(
+        `SecurityError: Unsafe value for attribute "${name}" on <${target.tagName.toLowerCase()}>: ` +
+          `"${truncateForError(value)}". ` +
+          `URL-bearing attributes must use an allowed scheme (${[...ALLOWED_SCHEMES].join(', ')}) ` +
+          `or a relative path.`,
+      );
     } else {
       target.setAttribute(name, value);
     }

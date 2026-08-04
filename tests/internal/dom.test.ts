@@ -109,4 +109,20 @@ describe('applyAttributes', () => {
     expect(el.hasAttribute('onmouseover')).toBe(false);
     expect(el.getAttribute('valid')).toBe('yes');
   });
+
+  it('throws a SecurityError when applying unsafe attributes', () => {
+    const el = document.createElement('a');
+
+    expect(() => {
+      applyAttributes(el, { href: 'javascript:alert(1)' });
+    }).toThrow(/SecurityError: Unsafe value for attribute "href"/);
+
+    expect(() => {
+      applyAttributes(el, { srcdoc: '<html><script>alert(1)</script></html>' });
+    }).toThrow(/SecurityError: Unsafe value for attribute "srcdoc"/);
+
+    // It should still apply safe values correctly
+    applyAttributes(el, { href: 'https://example.com' });
+    expect(el.getAttribute('href')).toBe('https://example.com');
+  });
 });

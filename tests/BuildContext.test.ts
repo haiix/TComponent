@@ -133,3 +133,26 @@ describe('BuildContext - Custom Components (uses)', () => {
     expect(rootElement.querySelector('.child-span')).toBeTruthy();
   });
 });
+
+describe('BuildContext - Attribute Validation', () => {
+  it('throws SecurityError for unsafe URL attributes during build', () => {
+    const owner = new DummyOwner();
+    const context = new BuildContext(owner, {});
+    const ast = parseTemplate(
+      `<a href="javascript:alert(1)">Malicious Link</a>`,
+    );
+
+    expect(() => context.build(ast)).toThrow(
+      /SecurityError: Unsafe value for attribute "href"/,
+    );
+  });
+
+  it('allows safe URL attributes during build', () => {
+    const owner = new DummyOwner();
+    const context = new BuildContext(owner, {});
+    const ast = parseTemplate(`<a href="https://example.com">Safe Link</a>`);
+
+    const el = context.build(ast);
+    expect(el.getAttribute('href')).toBe('https://example.com');
+  });
+});
