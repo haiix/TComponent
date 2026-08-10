@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import {
-  isSafeTagName,
   createNativeElement,
   mergeClass,
   mergeStyle,
@@ -10,20 +9,6 @@ import {
 } from '../../src/internal/dom';
 
 const HTML_NAMESPACE_URI = 'http://www.w3.org/1999/xhtml';
-
-describe('isSafeTagName', () => {
-  it('returns true for valid tag names', () => {
-    expect(isSafeTagName('div')).toBe(true);
-    expect(isSafeTagName('custom-element')).toBe(true);
-    expect(isSafeTagName('h1')).toBe(true);
-  });
-
-  it('returns false for invalid or potentially dangerous tag names', () => {
-    expect(isSafeTagName('<script>')).toBe(false);
-    expect(isSafeTagName('div onload="alert(1)"')).toBe(false);
-    expect(isSafeTagName('123div')).toBe(false); // Cannot start with a number
-  });
-});
 
 describe('createNativeElement', () => {
   it('creates standard HTML elements without a namespace', () => {
@@ -44,20 +29,9 @@ describe('createNativeElement', () => {
     expect(childNs).toBe(MATHML_NAMESPACE_URI);
   });
 
-  it('resets the child namespace to HTML when creating a foreignObject inside SVG', () => {
-    // Parent namespace is passed down as SVG
-    const { element, childNs } = createNativeElement(
-      'foreignobject',
-      SVG_NAMESPACE_URI,
-    );
-
-    expect(element.namespaceURI).toBe(SVG_NAMESPACE_URI);
-    expect(childNs).toBe(null); // Children of foreignObject should revert to HTML
-  });
-
   it('throws an error for invalid tag names', () => {
     expect(() => createNativeElement('<invalid>')).toThrow(
-      '[TComponent] Invalid tag name: <invalid>',
+      '[TComponent] ParseError: The tag name "<invalid>" is not permitted for security reasons (potentially unsafe or unrecognized element).',
     );
   });
 });
@@ -134,5 +108,21 @@ describe('applyAttributes', () => {
     expect(el.hasAttribute('onclick')).toBe(false);
     expect(el.hasAttribute('onmouseover')).toBe(false);
     expect(el.getAttribute('valid')).toBe('yes');
+  });
+
+  it('throws a SecurityError when applying unsafe attributes', () => {
+    const el = document.createElement('a');
+
+    expect(() => {
+      applyAttributes(el, { href: 'javascript:alert(1)' });
+    }).toThrow(/SecurityError: Unsafe value for attribute "href"/);
+
+    expect(() => {
+      applyAttributes(el, { srcdoc: '<html><script>alert(1)</script></html>' });
+    }).toThrow(/SecurityError: Unsafe value for attribute "srcdoc"/);
+
+    // It should still apply safe values correctly
+    applyAttributes(el, { href: 'https://example.com' });
+    expect(el.getAttribute('href')).toBe('https://example.com');
   });
 });

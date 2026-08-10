@@ -193,22 +193,10 @@ import TComponent, {
 } from '@haiix/tcomponent';
 
 class EncapsulatedCard extends TComponent<HTMLElement> {
+  // Note: For security reasons, <style> tags are forbidden in static templates.
+  // Styles for Shadow DOM must be created and injected manually in the constructor.
   static template = /* HTML */ `
     <article class="card">
-      <style>
-        /* This style is strictly scoped to this component's Shadow DOM */
-        .card {
-          border: 1px solid #ccc;
-          padding: 16px;
-          border-radius: 8px;
-          background: white;
-        }
-        h2 {
-          color: royalblue;
-          margin-top: 0;
-        }
-      </style>
-
       <h2 id="card-title">Default Title</h2>
       <!-- The slot content will be injected here -->
       <div id="card-body"></div>
@@ -221,12 +209,29 @@ class EncapsulatedCard extends TComponent<HTMLElement> {
     // 1. Explicitly attach a Shadow Root to the host element
     const shadowRoot = this.element.attachShadow({ mode: 'open' });
 
-    // 2. Move all automatically generated child nodes from the Light DOM into the Shadow Root
+    // 2. Safely create and inject the encapsulated styles
+    const style = document.createElement('style');
+    style.textContent = `
+      /* This style is strictly scoped to this component's Shadow DOM */
+      .card {
+        border: 1px solid #ccc;
+        padding: 16px;
+        border-radius: 8px;
+        background: white;
+      }
+      h2 {
+        color: royalblue;
+        margin-top: 0;
+      }
+    `;
+    shadowRoot.appendChild(style);
+
+    // 3. Move all automatically generated child nodes from the Light DOM into the Shadow Root
     while (this.element.firstChild) {
       shadowRoot.appendChild(this.element.firstChild);
     }
 
-    // 3. (Optional) Route props and slots to an internal element inside the Shadow DOM
+    // 4. (Optional) Route props and slots to an internal element inside the Shadow DOM
     const body = this.getById('card-body', HTMLDivElement);
     applyParams(this, body, params);
   }
@@ -237,7 +242,7 @@ class EncapsulatedCard extends TComponent<HTMLElement> {
 
 If you choose to use Shadow DOM, keep in mind standard browser behaviors:
 
-1. **Global Styles Ignored:** Your global `styles.css` or Tailwind classes will **not** apply to the HTML inside the Shadow Root. You must include a `<style>` tag inside your `static template`.
+1. **Global Styles Ignored:** Your global `styles.css` or Tailwind classes will **not** apply to the HTML inside the Shadow Root. Because `<style>` tags are blocked in static templates for security, you must explicitly create and append a `<style>` element in your component's constructor as shown above.
 2. **Event Retargeting:** Events bubbling out of the Shadow DOM are "retargeted". This means `event.target` will point to the host element (`EncapsulatedCard`), not the internal clicked element. TComponent's automatic event binding (`onclick="..."`) inside the template still works perfectly, but external event delegation (e.g., calling `Component.from(event.target)` in a parent component) will behave differently.
 
 ---

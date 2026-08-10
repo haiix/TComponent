@@ -1,17 +1,12 @@
-import { throwError } from './messages';
+import {
+  isSafeTagName,
+  isSafeAttributeValue,
+  ALLOWED_SCHEMES,
+} from './dom-validator';
+import { throwError, truncateForError } from './messages';
 
 export const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 export const MATHML_NAMESPACE_URI = 'http://www.w3.org/1998/Math/MathML';
-
-/**
- * Checks whether the given string is a valid HTML/XML tag name.
- *
- * @param tagName - The tag name to check.
- * @returns True if the tag name is valid.
- */
-export function isSafeTagName(tagName: string): boolean {
-  return /^[a-zA-Z][a-zA-Z0-9-]*$/u.test(tagName);
-}
 
 /**
  * Creates a native DOM element with optional namespace handling.
@@ -29,7 +24,10 @@ export function createNativeElement(
   ns?: string | null,
 ): { element: Element; childNs?: string | null } {
   if (!isSafeTagName(tagName)) {
-    throwError(`Invalid tag name: ${tagName}`);
+    throwError(
+      `ParseError: The tag name "${tagName}" is not permitted for security reasons ` +
+        `(potentially unsafe or unrecognized element).`,
+    );
   }
 
   let elementNs = ns;
@@ -86,6 +84,7 @@ export function mergeStyle(target: Element, styleValue: string): void {
  * Applies a dictionary of attributes to a target DOM element.
  * Intentionally skips 'id' and 'on*' attributes to prevent DOM collisions
  * and unsafe inline event handlers. Routes 'class' and 'style' to their respective merge functions.
+ * Validates remaining attributes to prevent XSS (e.g. javascript: URLs).
  *
  * @param target - The DOM element to receive the attributes.
  * @param attributes - A record of attribute names and values.
@@ -104,6 +103,14 @@ export function applyAttributes(
       mergeClass(target, value);
     } else if (name === 'style') {
       mergeStyle(target, value);
+    } else if (!isSafeAttributeValue(name, value)) {
+      // Prevent assigning malicious URLs (e.g., javascript:) dynamically
+      throwError(
+        `SecurityError: Unsafe value for attribute "${name}" on <${target.tagName.toLowerCase()}>: ` +
+          `"${truncateForError(value)}". ` +
+          `URL-bearing attributes must use an allowed scheme (${[...ALLOWED_SCHEMES].join(', ')}) ` +
+          `or a relative path.`,
+      );
     } else {
       target.setAttribute(name, value);
     }
