@@ -23,7 +23,9 @@ export function createNativeElement(
   tagName: string,
   ns?: string | null,
 ): { element: Element; childNs?: string | null } {
-  if (!isSafeTagName(tagName)) {
+  const safeTagName = tagName.trim().toLowerCase();
+
+  if (!isSafeTagName(safeTagName)) {
     throwError(
       `ParseError: The tag name "${tagName}" is not permitted for security reasons ` +
         `(potentially unsafe or unrecognized element).`,
@@ -31,17 +33,17 @@ export function createNativeElement(
   }
 
   let elementNs = ns;
-  if (tagName === 'svg') {
+  if (safeTagName === 'svg') {
     elementNs = SVG_NAMESPACE_URI;
-  } else if (tagName === 'math') {
+  } else if (safeTagName === 'math') {
     elementNs = MATHML_NAMESPACE_URI;
   }
 
   const element = elementNs
-    ? document.createElementNS(elementNs, tagName)
-    : document.createElement(tagName);
+    ? document.createElementNS(elementNs, safeTagName)
+    : document.createElement(safeTagName);
 
-  const childNs = tagName === 'foreignobject' ? null : elementNs;
+  const childNs = safeTagName === 'foreignobject' ? null : elementNs;
 
   return { element, childNs };
 }
