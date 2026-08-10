@@ -25,6 +25,14 @@ export function createNativeElement(
 ): { element: Element; childNs?: string | null } {
   const safeTagName = tagName.trim().toLowerCase();
 
+  // Enforce a strict structural tag token to avoid any chance of DOM text
+  // being reinterpreted as HTML-like syntax at element-creation sinks.
+  if (!/^[a-z][a-z0-9-]*$/u.test(safeTagName)) {
+    throwError(
+      `ParseError: Invalid tag syntax "${tagName}" (must be a simple tag name).`,
+    );
+  }
+
   if (!isSafeTagName(safeTagName)) {
     throwError(
       `ParseError: The tag name "${tagName}" is not permitted for security reasons ` +
