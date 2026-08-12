@@ -9,24 +9,24 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    target-branch: develop
+    target-branch: main
 
     groups:
       typescript:
         patterns:
-          - 'typescript'
+          - typescript
 
       all-dependencies:
         patterns:
           - '*'
         exclude-patterns:
-          - 'typescript'
+          - typescript
 
-  - package-ecosystem: 'github-actions'
+  - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    target-branch: 'develop'
+    target-branch: main
     groups:
       actions-dependencies:
         patterns:
