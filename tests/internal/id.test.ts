@@ -42,6 +42,29 @@ describe('registerId', () => {
     expect(map['my-id']).toBe('target-element');
   });
 
+  it.each(['toString', 'constructor', '__proto__'])(
+    'registers "%s" as an own property and keeps the first target on duplicates',
+    (id) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const map: Record<string, string> = {};
+
+      registerId(map, id, 'first-target');
+
+      expect(Object.hasOwn(map, id)).toBe(true);
+      expect(map[id]).toBe('first-target');
+      expect(Object.getPrototypeOf(map)).toBe(Object.prototype);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      registerId(map, id, 'second-target');
+      registerId(map, id, 'third-target');
+
+      expect(map[id]).toBe('first-target');
+      expect(warnSpy).toHaveBeenCalledExactlyOnceWith(
+        `[TComponent] Duplicate id "${id}" found in template. Only the first instance will be mapped.`,
+      );
+    },
+  );
+
   it('keeps the first registered target and warns if a duplicate ID is found (first-wins)', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const map: Record<string, string> = {};

@@ -20,6 +20,39 @@ describe('BuildContext - DOM Building & ID Resolution', () => {
     vi.restoreAllMocks();
   });
 
+  it.each(['toString', 'constructor', '__proto__'])(
+    'resolves references to registered ID "%s" and preserves unregistered references',
+    (id) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const context = new BuildContext(new DummyOwner(), {});
+      const ast = parseTemplate(`
+        <div>
+          <label for="${id}" aria-labelledby="${id} unknown-id">Name</label>
+          <input id="${id}" />
+        </div>
+      `);
+      const root = context.build(ast);
+      context.resolveIdReferences();
+
+      const label = root.querySelector('label')!;
+      const input = root.querySelector('input')!;
+      expect(input.id).not.toBe('');
+      expect(label.htmlFor).toBe(input.id);
+      expect(label.getAttribute('aria-labelledby')).toBe(
+        `${input.id} unknown-id`,
+      );
+      expect(context.idMap[id]).toBe(input);
+      expect(warnSpy).not.toHaveBeenCalled();
+
+      const emptyContext = new BuildContext(new DummyOwner(), {});
+      const unresolved = emptyContext.build(
+        parseTemplate(`<label for="${id}">Name</label>`),
+      );
+      emptyContext.resolveIdReferences();
+      expect(unresolved.getAttribute('for')).toBe(id);
+    },
+  );
+
   it('builds elements and resolves id reference attributes (for, aria-*) with UUIDs', () => {
     const owner = new DummyOwner();
     const context = new BuildContext(owner, {});

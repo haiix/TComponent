@@ -32,6 +32,8 @@ When building a component, you will mainly work with the following three core fe
 - **`this.getById(id, ExpectedType?)`**: Any element assigned an `id` in your template is mapped internally and intentionally removed from the DOM to prevent collisions. You can safely access these inner nodes via `this.getById()`.
 - **`this.element`**: Every component instance exposes its root DOM node via the `.element` property. Because it is a native `Element`, you mount it to the page using standard methods like `document.body.appendChild()`.
 
+Only registered IDs are returned; an unregistered ID causes `getById()` to throw an error. If an ID appears more than once in the same template, the first target is kept and a warning is logged once.
+
 ### Example: A Simple Counter
 
 Here is how you define, instantiate, and mount a single component by combining these concepts:

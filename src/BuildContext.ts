@@ -9,8 +9,11 @@ import { lifecycleSignal, type ScopedComponentParams } from './internal/signal';
  * Context object used during the recursive build process.
  */
 export class BuildContext {
-  /** Map of original IDs to newly generated unique elements. */
-  readonly idMap: Record<string, Element | AbstractComponent> = {};
+  /** Prototype-free dictionary of original IDs to elements or sub-components. */
+  readonly idMap = Object.create(null) as Record<
+    string,
+    Element | AbstractComponent
+  >;
   /** List of elements that reference other elements by ID, needing resolution. */
   readonly idReferenceMap: IDReferenceEntry[] = [];
 

@@ -53,12 +53,18 @@ export function registerId<T>(
   id: string,
   target: T,
 ): void {
-  if (id in idMap) {
+  if (Object.hasOwn(idMap, id)) {
     warnOnce(
       `duplicate-id:${id}`,
       `Duplicate id "${id}" found in template. Only the first instance will be mapped.`,
     );
   } else {
-    idMap[id] = target;
+    // Define an own property even for "__proto__" on a regular object.
+    Object.defineProperty(idMap, id, {
+      value: target,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    });
   }
 }
