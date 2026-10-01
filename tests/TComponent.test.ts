@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { ParseOptions, ComponentParams } from '../src/types';
 import { TComponent } from '../src/TComponent';
+import { BuildContext } from '../src/BuildContext';
 import { applyParams } from '../src/utils/applyParams';
 import { resetWarnings } from '../src/internal/messages';
 
@@ -11,6 +12,180 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+});
+
+describe('TComponent - Construction Failure Cleanup', () => {
+  it.each(['external', 'parent'] as const)(
+    'removes links to the %s signal and already bound events after repeated failures',
+    (owner) => {
+      const controller = new AbortController();
+      const parent = new TComponent();
+      const signal = owner === 'external' ? controller.signal : parent.signal;
+      const params = owner === 'external' ? { signal } : { parent };
+      const add = vi.spyOn(signal, 'addEventListener');
+      const remove = vi.spyOn(signal, 'removeEventListener');
+      const click = vi.fn();
+      const destroy = vi.fn();
+      const failed: TComponent[] = [];
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- The original method is called with its context via apply below.
+      const build = BuildContext.prototype.build;
+      vi.spyOn(BuildContext.prototype, 'build').mockImplementation(function (
+        this: BuildContext,
+        ...args
+      ) {
+        if (!failed.includes(this.component as TComponent)) {
+          failed.push(this.component as TComponent);
+        }
+        return build.apply(this, args);
+      });
+
+      class Broken extends TComponent {
+        static template =
+          '<div><button id="ok" onclick="handleClick">OK</button><button onclick="bad() + 1">Bad</button></div>';
+        handleClick() {
+          click();
+        }
+        override destroy() {
+          destroy();
+        }
+      }
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        expect(() => new Broken(params)).toThrow(
+          'SecurityError: Invalid event handler signature',
+        );
+      }
+
+      expect(failed).toHaveLength(3);
+      expect(add).toHaveBeenCalledTimes(3);
+      expect(remove).toHaveBeenCalledTimes(3);
+      for (const [index, call] of add.mock.calls.entries()) {
+        expect(remove.mock.calls[index]).toEqual(['abort', call[1]]);
+      }
+      for (const component of failed) {
+        expect(component.element).toBeUndefined();
+        expect(component.signal.aborted).toBe(true);
+        component.getById('ok', HTMLButtonElement).click();
+      }
+      expect(click).not.toHaveBeenCalled();
+      expect(destroy).not.toHaveBeenCalled();
+      expect(signal.aborted).toBe(false);
+      expect(parent.signal.aborted).toBe(false);
+      parent.destroy();
+    },
+  );
+
+  it('aborts built descendants, including children whose signals are still lazy', () => {
+    const descendants: TComponent[] = [];
+    const click = vi.fn();
+    class Leaf extends TComponent<HTMLButtonElement> {
+      static template = '<button onclick="handleClick">Leaf</button>';
+      constructor(params: ComponentParams) {
+        super(params);
+        descendants.push(this);
+      }
+      handleClick() {
+        click();
+      }
+    }
+    class Child extends TComponent {
+      static uses = { Leaf };
+      static template = '<div><Leaf></Leaf></div>';
+      constructor(params: ComponentParams) {
+        super(params);
+        descendants.push(this);
+      }
+    }
+    class LazyChild extends TComponent {
+      constructor(params: ComponentParams) {
+        super(params);
+        descendants.push(this);
+      }
+    }
+    class Broken extends TComponent {
+      static uses = { Child, LazyChild };
+      static template =
+        '<div><Child></Child><LazyChild></LazyChild><button onclick="bad() + 1">Bad</button></div>';
+    }
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, 'addEventListener');
+    const remove = vi.spyOn(controller.signal, 'removeEventListener');
+
+    expect(() => new Broken({ signal: controller.signal })).toThrow(
+      'SecurityError: Invalid event handler signature',
+    );
+
+    expect(descendants).toHaveLength(3);
+    for (const component of descendants) {
+      expect(component.signal.aborted).toBe(true);
+    }
+    (descendants[0] as Leaf).element.click();
+    expect(click).not.toHaveBeenCalled();
+    expect(add).toHaveBeenCalledExactlyOnceWith('abort', expect.any(Function), {
+      once: true,
+    });
+    expect(remove).toHaveBeenCalledExactlyOnceWith(
+      'abort',
+      add.mock.calls[0]![1],
+    );
+    expect(controller.signal.aborted).toBe(false);
+  });
+
+  it('preserves the original ID resolution error and does not register the failed instance', () => {
+    const error = new Error('ID resolution failed');
+    const click = vi.fn();
+    let failed: TComponent | undefined;
+    vi.spyOn(BuildContext.prototype, 'resolveIdReferences').mockImplementation(
+      function (this: BuildContext) {
+        failed = this.component as TComponent;
+        throw error;
+      },
+    );
+    class Broken extends TComponent<HTMLButtonElement> {
+      static template = '<button onclick="handleClick">OK</button>';
+      handleClick() {
+        click();
+      }
+    }
+    const controller = new AbortController();
+    const remove = vi.spyOn(controller.signal, 'removeEventListener');
+
+    let caught: unknown;
+    try {
+      new Broken({ signal: controller.signal });
+    } catch (failure) {
+      caught = failure;
+    }
+    expect(caught).toBe(error);
+
+    expect(failed).toBeDefined();
+    expect(failed!.signal.aborted).toBe(true);
+    expect(TComponent.from(failed!.element)).toBeUndefined();
+    (failed!.element as HTMLButtonElement).click();
+    expect(click).not.toHaveBeenCalled();
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(controller.signal.aborted).toBe(false);
+  });
+
+  it('does not create an external link when construction fails before a signal is needed', () => {
+    const error = new Error('DOM build failed');
+    let failed: TComponent | undefined;
+    vi.spyOn(BuildContext.prototype, 'build').mockImplementation(function (
+      this: BuildContext,
+    ) {
+      failed = this.component as TComponent;
+      throw error;
+    });
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, 'addEventListener');
+
+    expect(() => new TComponent({ signal: controller.signal })).toThrow(error);
+
+    expect(failed).toBeDefined();
+    expect(failed!.signal.aborted).toBe(true);
+    expect(failed!.signal).toBe(failed!.signal);
+    expect(add).not.toHaveBeenCalled();
+  });
 });
 
 describe('TComponent - Native Templates', () => {
