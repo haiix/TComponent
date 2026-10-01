@@ -17,6 +17,7 @@ export abstract class AbstractComponent {
   abstract element: Element;
 
   #controller?: AbortController;
+  #destroyed = false;
   readonly #signal?: AbortSignal;
 
   /**
@@ -42,9 +43,14 @@ export abstract class AbstractComponent {
    */
   get signal(): AbortSignal {
     if (!this.#controller) {
-      this.#controller = createLinkedController(
-        this.#signal ?? this.parent?.signal,
-      );
+      if (this.#destroyed) {
+        this.#controller = new AbortController();
+        this.#controller.abort();
+      } else {
+        this.#controller = createLinkedController(
+          this.#signal ?? this.parent?.signal,
+        );
+      }
     }
     return this.#controller.signal;
   }
@@ -54,6 +60,7 @@ export abstract class AbstractComponent {
    * Aborts the internal controller (unbinding events) and removes the element from the DOM.
    */
   destroy(): void {
+    this.#destroyed = true;
     this.#controller?.abort();
     this.element.remove();
   }
