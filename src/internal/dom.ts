@@ -4,6 +4,41 @@ export const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 export const MATHML_NAMESPACE_URI = 'http://www.w3.org/1998/Math/MathML';
 
 /**
+ * Resolves a native child's namespace, including HTML integration boundaries.
+ *
+ * @param target - The parent element, with its attributes already applied.
+ * @param tagName - The child's tag name, when resolving MathML text exceptions.
+ * @param ns - The inherited namespace; defaults to the target's namespace.
+ * @returns The namespace for the child, or null to create an HTML element.
+ */
+export function getChildNamespace(
+  target: Element,
+  tagName?: string,
+  ns: string | null | undefined = target.namespaceURI,
+): string | null | undefined {
+  const name = target.localName.toLowerCase();
+  if (
+    target.namespaceURI === SVG_NAMESPACE_URI &&
+    ['foreignobject', 'desc', 'title'].includes(name)
+  ) {
+    return null;
+  }
+  if (target.namespaceURI === MATHML_NAMESPACE_URI) {
+    if (name === 'annotation-xml') {
+      const encoding = target.getAttribute('encoding');
+      if (/^(?:text\/html|application\/xhtml\+xml)$/iu.test(encoding ?? '')) {
+        return null;
+      }
+    } else if (['mi', 'mo', 'mn', 'ms', 'mtext'].includes(name)) {
+      return tagName === 'mglyph' || tagName === 'malignmark'
+        ? MATHML_NAMESPACE_URI
+        : null;
+    }
+  }
+  return ns;
+}
+
+/**
  * Checks whether the given string is a valid HTML/XML tag name.
  *
  * @param tagName - The tag name to check.
@@ -43,7 +78,10 @@ export function createNativeElement(
     ? document.createElementNS(elementNs, tagName)
     : document.createElement(tagName);
 
-  const childNs = tagName === 'foreignobject' ? null : elementNs;
+  const childNs =
+    tagName === 'foreignobject' && elementNs === SVG_NAMESPACE_URI
+      ? null
+      : elementNs;
 
   return { element, childNs };
 }

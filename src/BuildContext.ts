@@ -2,7 +2,7 @@ import type { ComponentParams, IDReferenceEntry, TNode } from './types';
 import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
 import { bindEvent } from './internal/event';
-import { createNativeElement } from './internal/dom';
+import { createNativeElement, getChildNamespace } from './internal/dom';
 import { lifecycleSignal, type ScopedComponentParams } from './internal/signal';
 
 /**
@@ -125,7 +125,8 @@ export class BuildContext {
    *
    * @param element - The parent element to append child nodes to.
    * @param children - The child nodes or text content to append.
-   * @param childNs - The namespace URI used when creating child elements.
+   * @param childNs - The inherited namespace URI, defaulting to the parent's namespace.
+   * HTML integration boundaries are resolved for each native child.
    * @param signal - Optional lifecycle signal for events and custom components.
    */
   appendChildren(
@@ -140,7 +141,11 @@ export class BuildContext {
           ? document.createTextNode(childNode)
           : this.uses[childNode.t]
             ? this.buildCustomComponent(childNode, signal)
-            : this.build(childNode, childNs, signal),
+            : this.build(
+                childNode,
+                getChildNamespace(element, childNode.t, childNs),
+                signal,
+              ),
       );
     }
   }
