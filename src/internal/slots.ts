@@ -9,13 +9,20 @@ import type { TNode } from '../types';
  * @param contextComponent - The component instance providing the build context.
  * @param target - The DOM element to append the child nodes to.
  * @param childNodes - The AST nodes or strings to append.
+ * @param signal - The receiving component's lifecycle signal.
  */
 export function appendSlots(
   contextComponent: TComponent,
   target: Element,
   childNodes: (TNode | string)[],
+  signal?: AbortSignal,
 ): void {
   if (!childNodes.length) return;
 
-  contextComponent.context.appendChildren(target, childNodes);
+  contextComponent.context.appendChildren(
+    target,
+    childNodes,
+    undefined,
+    signal,
+  );
 }

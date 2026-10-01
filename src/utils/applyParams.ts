@@ -11,6 +11,8 @@ import { bindEvent } from '../internal/event';
  *
  * It smartly handles merging of `class` and `style` attributes, bindings of events,
  * and safely ignores internal attributes like `id`.
+ * Slot methods, IDs, and custom components resolve in the parent's scope,
+ * while slot events and component cleanup follow the receiving component's lifecycle.
  *
  * @example
  * ```typescript
@@ -55,6 +57,6 @@ export function applyParams(
   }
 
   if (params.childNodes) {
-    appendSlots(contextComponent, target, params.childNodes);
+    appendSlots(contextComponent, target, params.childNodes, component.signal);
   }
 }

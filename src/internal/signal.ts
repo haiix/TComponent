@@ -1,3 +1,13 @@
+import type { ComponentParams } from '../types';
+
+/** Internal lifecycle override that preserves the template's parent scope. */
+export const lifecycleSignal = Symbol('lifecycleSignal');
+
+/** Parameters used internally when scope and lifecycle belong to different components. */
+export interface ScopedComponentParams extends ComponentParams {
+  [lifecycleSignal]?: AbortSignal;
+}
+
 /**
  * Creates a new AbortController that is automatically linked to a parent AbortSignal.
  * If the parent signal aborts, the newly created controller will also abort.

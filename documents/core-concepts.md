@@ -242,6 +242,8 @@ If you need to link a `<label>` in a parent component to an `<input>` managed by
 
 Because slot content is evaluated in the **parent's scope**, elements passed via slots share the same id as the parent. This ensures that their UUIDs resolve perfectly.
 
+Slot content passed through `applyParams()` also resolves event handler methods and `static uses` in the parent's scope. Its lifecycle follows the component receiving the slot: destroying that component unbinds slot events and aborts the signals of custom components inside the slot, including nested slots. The parent and sibling components remain active. Slotted custom components retain their `parent` reference for parameter resolution and error propagation.
+
 ```typescript
 import TComponent, {
   type ComponentParams,
