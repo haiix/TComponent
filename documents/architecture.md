@@ -18,7 +18,7 @@ Every TComponent instance comes with a built-in `destroy()` method. Calling this
 
 1. **Remove from DOM:** The component's root element is detached from the document (`this.element.remove()`).
 2. **Unbind Events:** Unbind all event listeners defined via `on*` attributes in your template.
-3. **Cascade Teardown:** Automatically cascade the teardown process to all nested child components, ensuring no memory leaks remain.
+3. **Cascade Signal Abort:** Abort linked child signals to unbind their template event listeners and run registered cleanup callbacks. Child `.destroy()` methods are not called; nested DOM is detached along with the root. A child mounted elsewhere needs an explicit `.destroy()` call to remove its element.
 
 ```typescript
 const app = new App();
@@ -26,7 +26,7 @@ document.body.appendChild(app.element);
 
 // Later, when the app needs to be entirely removed:
 // This will safely remove the app from the DOM, unbind its listeners,
-// and recursively destroy all child components inside it.
+// and abort linked child signals to run their registered cleanup callbacks.
 app.destroy();
 ```
 

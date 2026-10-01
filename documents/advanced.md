@@ -14,21 +14,25 @@ This document dives deep into advanced memory management using external `AbortSi
 
 As explained in [Component Lifecycle & Teardown](./architecture.md#component-lifecycle-teardown), calling `.destroy()` automatically cleans up a component and its children via internal `AbortController`s.
 
-However, if you are building a larger application (like an SPA router) where multiple components share the exact same lifecycle, manually calling `.destroy()` on every root component when a route changes can become tedious. To solve this, you can pass an external `AbortSignal` into the top-level component's constructor.
+If you are building a larger application (like an SPA router) where multiple components share the same lifecycle, you can pass an external `AbortSignal` into each top-level component's constructor to stop their event listeners and registered cleanup logic together. DOM removal still requires calling `.destroy()` on each root component.
 
 ### Passing an External Signal
 
-By passing a signal, you link the component's lifecycle to an external controller. When the controller aborts, the component is automatically destroyed.
+By passing a signal, you link the component's signal to an external controller. When the controller aborts, the abort propagates to the component and its linked children, unbinding template event listeners and running cleanup callbacks registered on their signals. It does not call `.destroy()` or remove their elements from the DOM. Call `.destroy()` explicitly to remove the page when navigating away.
 
 ```typescript
 const routerController = new AbortController();
 
 // Pass the router's signal to the top-level page component
 const page = new UserListApp({ signal: routerController.signal });
+document.body.appendChild(page.element);
 
-// When the user navigates away, aborting the router
-// automatically destroys the entire page tree and unbinds all events.
+// When the user navigates away, stop template event listeners
+// and run registered cleanup callbacks throughout the linked page tree.
 routerController.abort();
+
+// The page is still in the DOM after abort; remove it explicitly.
+page.destroy();
 ```
 
 ### Garbage Collection (GC) behavior
