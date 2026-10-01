@@ -1,4 +1,5 @@
 import { warnOnce } from './messages';
+import { SVG_NAMESPACE_URI } from './dom';
 
 /**
  * List of attributes that reference elements by their ID.
@@ -17,6 +18,91 @@ export const ID_REF_ATTRIBUTES = new Set([
   'headers',
   'list',
 ]);
+
+const FRAGMENT_REF_ATTRIBUTES = new Set(['href', 'xlink:href']);
+const SVG_URL_REF_ATTRIBUTES = new Set([
+  'fill',
+  'stroke',
+  'filter',
+  'clip-path',
+  'mask',
+  'marker',
+  'marker-start',
+  'marker-mid',
+  'marker-end',
+]);
+const LOCAL_FRAGMENT_PATTERN = /^(\s*#)([^\s]+)(\s*)$/u;
+const LOCAL_SVG_URL_PATTERN = /\b(url\(\s*(["']?)#)([^"'()\s]+)(\2\s*\))/giu;
+
+/**
+ * Checks whether an attribute supports ID references on the receiving element.
+ *
+ * @param name - The attribute name.
+ * @param element - The receiving DOM element.
+ * @returns Whether the attribute supports ID resolution.
+ */
+export function isIdReferenceAttribute(
+  name: string,
+  element: Element,
+): boolean {
+  return (
+    ID_REF_ATTRIBUTES.has(name) ||
+    FRAGMENT_REF_ATTRIBUTES.has(name) ||
+    (element.namespaceURI === SVG_NAMESPACE_URI &&
+      SVG_URL_REF_ATTRIBUTES.has(name))
+  );
+}
+
+/**
+ * Checks whether an attribute value needs ID resolution.
+ *
+ * @param name - The attribute name.
+ * @param value - The original attribute value.
+ * @param element - The receiving DOM element.
+ * @returns Whether an ID list or local fragment needs deferred resolution.
+ */
+export function hasIdReference(
+  name: string,
+  value: string,
+  element: Element,
+): boolean {
+  if (!isIdReferenceAttribute(name, element)) return false;
+  if (ID_REF_ATTRIBUTES.has(name)) return true;
+  return FRAGMENT_REF_ATTRIBUTES.has(name)
+    ? LOCAL_FRAGMENT_PATTERN.test(value)
+    : value.search(LOCAL_SVG_URL_PATTERN) !== -1;
+}
+
+/**
+ * Resolves ID lists, local fragments, or local SVG URL references.
+ * External URLs and unresolved fragments retain their original spelling.
+ *
+ * @param name - The attribute name.
+ * @param value - The original attribute value.
+ * @param resolveId - Resolves a template ID, returning the original if unknown.
+ * @returns The attribute value with resolved IDs.
+ */
+export function resolveIdReferenceValue(
+  name: string,
+  value: string,
+  resolveId: (id: string) => string,
+): string {
+  if (ID_REF_ATTRIBUTES.has(name)) {
+    return value.trim().split(/\s+/u).map(resolveId).join(' ');
+  }
+  if (FRAGMENT_REF_ATTRIBUTES.has(name)) {
+    return value.replace(
+      LOCAL_FRAGMENT_PATTERN,
+      (_match, prefix: string, id: string, suffix: string) =>
+        prefix + resolveId(id) + suffix,
+    );
+  }
+  return value.replace(
+    LOCAL_SVG_URL_PATTERN,
+    (_match, prefix: string, _quote: string, id: string, suffix: string) =>
+      prefix + resolveId(id) + suffix,
+  );
+}
 
 /**
  * Generates an identifier string.

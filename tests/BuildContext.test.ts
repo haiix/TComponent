@@ -4,6 +4,7 @@ import { AbstractComponent } from '../src/AbstractComponent';
 import { parseTemplate } from '../src/utils/parse';
 import { resetWarnings } from '../src/internal/messages';
 import type { ComponentParams } from '../src/types';
+import { TComponent } from '../src/TComponent';
 
 class DummyOwner extends AbstractComponent {
   element = document.createElement('div');
@@ -12,6 +13,168 @@ class DummyOwner extends AbstractComponent {
 }
 
 describe('BuildContext - DOM Building & ID Resolution', () => {
+  it('resolves page links and SVG use references with distinct IDs per instance', () => {
+    class Links extends TComponent {
+      static template = `
+        <div>
+          <a href="#section">Go</a>
+          <label for="section">Section</label>
+          <section id="section">Target</section>
+          <svg>
+            <defs><path id="shape" d="M0 0 L10 10"></path></defs>
+            <use href="#shape"></use>
+            <use xlink:href="#shape"></use>
+          </svg>
+        </div>
+      `;
+    }
+    const first = new Links();
+    const second = new Links();
+    for (const links of [first, second]) {
+      document.body.append(links.element);
+      try {
+        const section = links.getById('section', HTMLElement);
+        const shape = links.getById('shape', SVGElement);
+        expect(section.id).not.toBe('');
+        expect(shape.id).not.toBe('');
+        expect(links.element.querySelector('a')!.getAttribute('href')).toBe(
+          `#${section.id}`,
+        );
+        expect(links.element.querySelector('label')!.htmlFor).toBe(section.id);
+        expect(links.element.querySelector('use')!.getAttribute('href')).toBe(
+          `#${shape.id}`,
+        );
+        expect(
+          links.element
+            .querySelectorAll('use')[1]!
+            .getAttributeNS('http://www.w3.org/1999/xlink', 'href'),
+        ).toBe(`#${shape.id}`);
+        expect(document.getElementById(section.id)).toBe(section);
+        expect(document.getElementById(shape.id)).toBe(shape);
+        expect(links.context.idReferenceMap).toHaveLength(0);
+      } finally {
+        links.element.remove();
+      }
+    }
+    expect(first.getById('section', HTMLElement).id).not.toBe(
+      second.getById('section', HTMLElement).id,
+    );
+    expect(first.getById('shape', SVGElement).id).not.toBe(
+      second.getById('shape', SVGElement).id,
+    );
+  });
+
+  it.each(['href', 'xlink:href'])(
+    'preserves nonlocal and unresolved %s values',
+    (name) => {
+      const context = new BuildContext(new DummyOwner(), {});
+      const values = [
+        'https://example.com/page#target',
+        '/page#target',
+        'other.svg#target',
+        '#missing',
+        '#',
+        '',
+        '  #missing  ',
+      ];
+      const root = context.build({
+        t: 'svg',
+        a: {},
+        c: [
+          ...values.map((value) => ({ t: 'use', a: { [name]: value }, c: [] })),
+          { t: 'path', a: { id: 'target' }, c: [] },
+        ],
+      });
+      context.resolveIdReferences();
+      expect(
+        Array.from(root.querySelectorAll('use'), (el) => el.getAttribute(name)),
+      ).toEqual(values);
+      expect(root.querySelector('path')!.id).toBe('');
+    },
+  );
+
+  it.each([
+    'fill',
+    'stroke',
+    'filter',
+    'clip-path',
+    'mask',
+    'marker',
+    'marker-start',
+    'marker-mid',
+    'marker-end',
+  ])(
+    'resolves local SVG %s URLs while preserving syntax and other values',
+    (name) => {
+      const context = new BuildContext(new DummyOwner(), {});
+      const value = `url(#paint) url( '#paint' ) URL( "#paint" ) red url(#missing) url(other.svg#paint)`;
+      const root = context.build({
+        t: 'svg',
+        a: {},
+        c: [
+          { t: 'path', a: { [name]: value }, c: [] },
+          {
+            t: 'defs',
+            a: {},
+            c: [{ t: 'linearGradient', a: { id: 'paint' }, c: [] }],
+          },
+        ],
+      });
+      context.resolveIdReferences();
+      const paint = context.idMap.paint as Element;
+      expect(paint.id).not.toBe('');
+      expect(root.querySelector('path')!.getAttribute(name)).toBe(
+        `url(#${paint.id}) url( '#${paint.id}' ) URL( "#${paint.id}" ) red url(#missing) url(other.svg#paint)`,
+      );
+    },
+  );
+
+  it('keeps unsupported URL values and CSS intact without generating target IDs', () => {
+    const context = new BuildContext(new DummyOwner(), {});
+    const root = context.build(
+      parseTemplate(`
+      <div fill="url(#paint)">
+        <svg>
+          <defs><path id="paint"></path></defs>
+          <path fill="url('#paint&quot;)" stroke="url()" filter="url(#missing)" style="fill: url(#paint)"></path>
+          <style>path { fill: url(#paint); }</style>
+        </svg>
+      </div>
+    `),
+    );
+    context.resolveIdReferences();
+    const path = root.querySelectorAll('path')[1]!;
+    expect(root.getAttribute('fill')).toBe('url(#paint)');
+    expect(path.getAttribute('fill')).toBe(`url('#paint")`);
+    expect(path.getAttribute('stroke')).toBe('url()');
+    expect(path.getAttribute('filter')).toBe('url(#missing)');
+    expect(path.getAttribute('style')).toBe('fill: url(#paint)');
+    expect(root.querySelector('style')!.textContent).toBe(
+      'path { fill: url(#paint); }',
+    );
+    expect((context.idMap.paint as Element).id).toBe('');
+  });
+
+  it('preserves fragment references to custom components and uses the first duplicate native ID', () => {
+    const context = new BuildContext(new DummyOwner(), {});
+    context.idMap.child = new DummyOwner();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const root = context.build(
+      parseTemplate(`
+      <div><a href="#child">Child</a><a href="  #target  ">Target</a>
+      <section id="target"></section><section id="target"></section></div>
+    `),
+    );
+    context.resolveIdReferences();
+    const sections = root.querySelectorAll('section');
+    expect(root.querySelector('a')!.getAttribute('href')).toBe('#child');
+    expect(sections[0]!.id).not.toBe('');
+    expect(sections[1]!.id).toBe('');
+    expect(root.querySelectorAll('a')[1]!.getAttribute('href')).toBe(
+      `  #${sections[0]!.id}  `,
+    );
+  });
+
   it('appends native template children to content when building or adding children', () => {
     const context = new BuildContext(new DummyOwner(), {});
     const template = context.build({

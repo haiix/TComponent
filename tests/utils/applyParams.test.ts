@@ -4,6 +4,187 @@ import { TComponent } from '../../src/TComponent';
 import { applyParams } from '../../src/utils/applyParams';
 
 describe('applyParams', () => {
+  it.each([
+    'https://example.com/page#section',
+    '/page#section',
+    'other.svg#shape',
+    '#',
+    '',
+  ])(
+    'immediately applies nonlocal href "%s" in a standalone constructor',
+    (href) => {
+      class Link extends TComponent<HTMLAnchorElement> {
+        static template = '<a href="initial">Go</a>';
+        constructor(params: ComponentParams) {
+          super(params);
+          applyParams(this, this.element, params);
+        }
+      }
+      const attributes = Object.freeze({ href });
+      const link = new Link({ attributes });
+      expect(link.element.getAttribute('href')).toBe(href);
+      expect(link.context.idReferenceMap).toHaveLength(0);
+      expect(attributes.href).toBe(href);
+    },
+  );
+
+  it('immediately applies SVG values without local references in a standalone constructor', () => {
+    class Graphic extends TComponent {
+      static template = '<svg><path id="shape" fill="blue"></path></svg>';
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.getById('shape', SVGElement), params);
+      }
+    }
+    const attributes = Object.freeze({
+      href: 'other.svg#shape',
+      'xlink:href': 'other.svg#shape',
+      fill: 'red',
+      stroke: 'url("other.svg#paint") red',
+      filter: 'none',
+      'clip-path': 'url(https://example.com/image.svg#clip)',
+      mask: '',
+      marker: 'none',
+      'marker-start': 'none',
+      'marker-mid': 'none',
+      'marker-end': 'none',
+    });
+    const graphic = new Graphic({ attributes });
+    const target = graphic.getById('shape', SVGElement);
+    for (const [name, value] of Object.entries(attributes)) {
+      expect(target.getAttribute(name)).toBe(value);
+    }
+    expect(graphic.context.idReferenceMap).toHaveLength(0);
+    expect(target.id).toBe('');
+  });
+
+  it('only defers local references when mixed with immediately applied attributes', () => {
+    class Graphic extends TComponent {
+      static template = '<svg><path id="shape"></path></svg>';
+    }
+    const graphic = new Graphic();
+    const target = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'use',
+    );
+    const attributes = Object.freeze({
+      href: 'other.svg#shape',
+      fill: 'url("other.svg#paint") url( \'#shape\' ) red',
+      stroke: 'red',
+      filter: 'url(#missing)',
+      mask: 'url(#shape)',
+      'marker-start': 'url(#shape)',
+    });
+    applyParams(graphic, target, { attributes });
+    expect(target.getAttribute('href')).toBe(attributes.href);
+    expect(target.getAttribute('stroke')).toBe('red');
+    expect(target.hasAttribute('fill')).toBe(false);
+    expect(
+      graphic.context.idReferenceMap.map(({ attrName }) => attrName),
+    ).toEqual(['fill', 'filter', 'mask', 'marker-start']);
+    graphic.context.resolveIdReferences();
+    const shape = graphic.getById('shape', SVGElement);
+    expect(shape.id).not.toBe('');
+    expect(target.getAttribute('fill')).toBe(
+      `url("other.svg#paint") url( '#${shape.id}' ) red`,
+    );
+    expect(target.getAttribute('filter')).toBe('url(#missing)');
+    expect(target.getAttribute('mask')).toBe(`url(#${shape.id})`);
+    expect(target.getAttribute('marker-start')).toBe(`url(#${shape.id})`);
+    expect(attributes.fill).toBe(
+      'url("other.svg#paint") url( \'#shape\' ) red',
+    );
+  });
+
+  it.each(['before', 'after'] as const)(
+    'resolves forwarded href against a parent target %s the child, ignoring matching child IDs',
+    (position) => {
+      class Link extends TComponent {
+        static template =
+          '<div><a id="link"></a><span id="section"></span></div>';
+        constructor(params: ComponentParams) {
+          super(params);
+          applyParams(this, this.getById('link', HTMLAnchorElement), params);
+        }
+      }
+      const target = '<section id="section"></section>';
+      const link = '<link-view id="link" href="#section"></link-view>';
+      class App extends TComponent {
+        static uses = { 'link-view': Link };
+        static template = `<div>${position === 'before' ? target + link : link + target}</div>`;
+      }
+      const app = new App();
+      const child = app.getById('link', Link);
+      const section = app.getById('section', HTMLElement);
+      expect(section.id).not.toBe('');
+      expect(
+        child.getById('link', HTMLAnchorElement).getAttribute('href'),
+      ).toBe(`#${section.id}`);
+      expect(child.getById('section', HTMLElement).id).toBe('');
+      expect(child.element.hasAttribute('href')).toBe(false);
+      expect(app.context.idReferenceMap).toHaveLength(0);
+    },
+  );
+
+  it('resolves forwarded SVG fragments and URLs against parent siblings and slots', () => {
+    class Group extends TComponent {
+      static namespaceURI = 'http://www.w3.org/2000/svg';
+      static template = '<g><use id="use"></use><path id="shape"></path></g>';
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.getById('use', SVGElement), params);
+      }
+    }
+    class Graphic extends TComponent {
+      static uses = { Group };
+      static template = `<svg>
+        <group id="group" href="#shape" xlink:href="#shape" fill="url('#paint') red" filter="url(#private)">
+          <linearGradient id="paint"></linearGradient>
+        </group>
+        <path id="shape"></path>
+      </svg>`;
+    }
+    const graphic = new Graphic();
+    const group = graphic.getById('group', Group);
+    const use = group.getById('use', SVGElement);
+    const shape = graphic.getById('shape', SVGElement);
+    const paint = graphic.getById('paint', SVGElement);
+    expect(shape.id).not.toBe('');
+    expect(paint.id).not.toBe('');
+    expect(use.getAttribute('href')).toBe(`#${shape.id}`);
+    expect(use.getAttributeNS('http://www.w3.org/1999/xlink', 'href')).toBe(
+      `#${shape.id}`,
+    );
+    expect(use.getAttribute('fill')).toBe(`url('#${paint.id}') red`);
+    expect(use.getAttribute('filter')).toBe('url(#private)');
+    expect(use.contains(paint)).toBe(true);
+    expect(group.getById('shape', SVGElement).id).toBe('');
+  });
+
+  it('resolves own-context fragments explicitly without mutating parameters', () => {
+    class Graphic extends TComponent {
+      static template = '<svg><path id="shape"></path></svg>';
+    }
+    const graphic = new Graphic();
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    const attributes = Object.freeze({
+      href: '#shape',
+      'xlink:href': 'other.svg#shape',
+      fill: 'url(#shape)',
+      mask: 'url(#missing)',
+    });
+    applyParams(graphic, use, { attributes });
+    graphic.context.resolveIdReferences();
+    const shape = graphic.getById('shape', SVGElement);
+    expect(shape.id).not.toBe('');
+    expect(use.getAttribute('href')).toBe(`#${shape.id}`);
+    expect(use.getAttribute('fill')).toBe(`url(#${shape.id})`);
+    expect(use.getAttribute('xlink:href')).toBe('other.svg#shape');
+    expect(use.getAttribute('mask')).toBe('url(#missing)');
+    expect(attributes.href).toBe('#shape');
+    expect(attributes.fill).toBe('url(#shape)');
+  });
+
   it('builds circle slots in the SVG namespace of a receiving Group component', () => {
     class Group extends TComponent {
       static namespaceURI = 'http://www.w3.org/2000/svg';

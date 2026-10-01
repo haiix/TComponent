@@ -1,8 +1,17 @@
 import type { ComponentParams, IDReferenceEntry, TNode } from './types';
-import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
+import {
+  isIdReferenceAttribute,
+  resolveIdReferenceValue,
+  generateId,
+  registerId,
+} from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
 import { bindEvent } from './internal/event';
-import { createNativeElement, getChildNamespace } from './internal/dom';
+import {
+  createNativeElement,
+  getChildNamespace,
+  SVG_NAMESPACE_URI,
+} from './internal/dom';
 import { lifecycleSignal, type ScopedComponentParams } from './internal/signal';
 
 /**
@@ -57,22 +66,29 @@ export class BuildContext {
    */
   resolveIdReferences(): void {
     for (const { attrName, refId, element } of this.idReferenceMap) {
-      const resolvedIds = refId
-        .trim()
-        .split(/\s+/u)
-        .map((id) => {
-          const target = this.idMap[id];
-          if (target instanceof Element) {
-            target.id ||= generateId();
-            return target.id;
-          }
-          // For custom components (AbstractComponent) or unresolvable IDs,
-          // Leave the original string as-is and defer handling to the child component.
-          return id;
-        })
-        .join(' ');
+      const resolvedIds = resolveIdReferenceValue(attrName, refId, (id) => {
+        const target = this.idMap[id];
+        if (target instanceof Element) {
+          target.id ||= generateId();
+          return target.id;
+        }
+        // For custom components (AbstractComponent) or unresolvable IDs,
+        // Leave the original string as-is and defer handling to the child component.
+        return id;
+      });
 
-      element.setAttribute(attrName, resolvedIds);
+      if (
+        attrName === 'xlink:href' &&
+        element.namespaceURI === SVG_NAMESPACE_URI
+      ) {
+        element.setAttributeNS(
+          'http://www.w3.org/1999/xlink',
+          attrName,
+          resolvedIds,
+        );
+      } else {
+        element.setAttribute(attrName, resolvedIds);
+      }
     }
     this.idReferenceMap.length = 0;
   }
@@ -104,7 +120,7 @@ export class BuildContext {
     for (const [name, value] of Object.entries(attributes)) {
       if (name === 'id') {
         registerId(this.idMap, value, element);
-      } else if (ID_REF_ATTRIBUTES.has(name)) {
+      } else if (isIdReferenceAttribute(name, element)) {
         this.idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
         bindEvent(
