@@ -10,6 +10,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('TComponent - parseOptions Configuration', () => {
@@ -49,6 +50,28 @@ describe('TComponent - parseOptions Configuration', () => {
 });
 
 describe('TComponent - Template Integration (Events & Hierarchy)', () => {
+  it('does not register listeners with a signal first accessed after destroy', () => {
+    // Use a browser realm: Vitest's Node signal adapter misses prior aborts.
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    try {
+      const browserWindow = frame.contentWindow as Window & typeof globalThis;
+      vi.stubGlobal('AbortController', browserWindow.AbortController);
+      const component = new TComponent();
+      component.destroy();
+
+      const button = browserWindow.document.createElement('button');
+      const handler = vi.fn();
+      button.addEventListener('click', handler, { signal: component.signal });
+      button.click();
+
+      expect(component.signal.aborted).toBe(true);
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      frame.remove();
+    }
+  });
+
   it('unbinds event listeners defined in the template when destroyed', () => {
     class EventComp extends TComponent<HTMLButtonElement> {
       static template = `<button onclick="handleClick">Click Me</button>`;

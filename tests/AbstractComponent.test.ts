@@ -91,6 +91,53 @@ describe('AbstractComponent', () => {
         component.destroy();
       }).not.toThrow();
     });
+
+    it('returns a stable aborted signal when first accessed after destroy', () => {
+      const component = new TestComponent();
+
+      component.destroy();
+      component.destroy();
+      const signal = component.signal;
+
+      expect(signal.aborted).toBe(true);
+      expect(component.signal).toBe(signal);
+      component.destroy();
+      expect(component.signal).toBe(signal);
+    });
+
+    it('does not initialize the parent signal when an unused child is destroyed', () => {
+      const parent = new TestComponent();
+      const parentSignalSpy = vi.spyOn(parent, 'signal', 'get');
+      const child = new TestComponent({ parent });
+
+      child.destroy();
+
+      expect(parentSignalSpy).not.toHaveBeenCalled();
+      expect(child.signal.aborted).toBe(true);
+      expect(parentSignalSpy).not.toHaveBeenCalled();
+      expect(parent.signal.aborted).toBe(false);
+    });
+
+    it('aborts a lazily accessed child signal after its unused parent is destroyed', () => {
+      const parent = new TestComponent();
+      const child = new TestComponent({ parent });
+
+      parent.destroy();
+
+      expect(child.signal.aborted).toBe(true);
+    });
+
+    it('does not retain external signal listeners when first accessed after destroy', () => {
+      const controller = new AbortController();
+      const component = new TestComponent({ signal: controller.signal });
+      const addListenerSpy = vi.spyOn(controller.signal, 'addEventListener');
+
+      component.destroy();
+
+      expect(component.signal.aborted).toBe(true);
+      expect(addListenerSpy).not.toHaveBeenCalled();
+      expect(controller.signal.aborted).toBe(false);
+    });
   });
 
   describe('onerror', () => {
