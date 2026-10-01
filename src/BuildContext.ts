@@ -3,6 +3,7 @@ import { ID_REF_ATTRIBUTES, generateId, registerId } from './internal/id';
 import type { AbstractComponent } from './AbstractComponent';
 import { bindEvent } from './internal/event';
 import { createNativeElement } from './internal/dom';
+import { lifecycleSignal, type ScopedComponentParams } from './internal/signal';
 
 /**
  * Context object used during the recursive build process.
@@ -37,12 +38,13 @@ export class BuildContext {
    *
    * @param tNode - The current `TNode` to build.
    * @param ns - Namespace URI used when creating an element.
+   * @param signal - Optional lifecycle signal, independent of the template scope.
    * @returns The constructed DOM Element.
    */
-  build(tNode: TNode, ns?: string | null): Element {
+  build(tNode: TNode, ns?: string | null, signal?: AbortSignal): Element {
     const { element, childNs } = createNativeElement(tNode.t, ns);
-    this.processAttributes(element, tNode.a);
-    this.appendChildren(element, tNode.c, childNs);
+    this.processAttributes(element, tNode.a, signal);
+    this.appendChildren(element, tNode.c, childNs, signal);
 
     return element;
   }
@@ -72,15 +74,17 @@ export class BuildContext {
     this.idReferenceMap.length = 0;
   }
 
-  private buildCustomComponent(tNode: TNode): Element {
+  private buildCustomComponent(tNode: TNode, signal?: AbortSignal): Element {
     const Component = this.uses[tNode.t] as new (
       params: ComponentParams,
     ) => AbstractComponent;
-    const childComponent = new Component({
+    const params: ScopedComponentParams = {
       parent: this.component,
       attributes: tNode.a,
       childNodes: tNode.c,
-    });
+      [lifecycleSignal]: signal,
+    };
+    const childComponent = new Component(params);
 
     if (tNode.a.id) {
       registerId(this.idMap, tNode.a.id, childComponent);
@@ -92,6 +96,7 @@ export class BuildContext {
   private processAttributes(
     element: Element,
     attributes: Record<string, string>,
+    signal?: AbortSignal,
   ): void {
     for (const [name, value] of Object.entries(attributes)) {
       if (name === 'id') {
@@ -99,7 +104,13 @@ export class BuildContext {
       } else if (ID_REF_ATTRIBUTES.has(name)) {
         this.idReferenceMap.push({ attrName: name, refId: value, element });
       } else if (name.startsWith('on')) {
-        bindEvent(element, name, value, this.component, this.component.signal);
+        bindEvent(
+          element,
+          name,
+          value,
+          this.component,
+          signal ?? this.component.signal,
+        );
       } else {
         element.setAttribute(name, value);
       }
@@ -112,19 +123,21 @@ export class BuildContext {
    * @param element - The parent element to append child nodes to.
    * @param children - The child nodes or text content to append.
    * @param childNs - The namespace URI used when creating child elements.
+   * @param signal - Optional lifecycle signal for events and custom components.
    */
   appendChildren(
     element: Element,
     children: (TNode | string)[],
     childNs?: string | null,
+    signal?: AbortSignal,
   ): void {
     for (const childNode of children) {
       element.appendChild(
         typeof childNode === 'string'
           ? document.createTextNode(childNode)
           : this.uses[childNode.t]
-            ? this.buildCustomComponent(childNode)
-            : this.build(childNode, childNs),
+            ? this.buildCustomComponent(childNode, signal)
+            : this.build(childNode, childNs, signal),
       );
     }
   }

@@ -1,5 +1,9 @@
 import type { ComponentParams } from './types';
-import { createLinkedController } from './internal/signal';
+import {
+  createLinkedController,
+  lifecycleSignal,
+  type ScopedComponentParams,
+} from './internal/signal';
 import { throwError } from './internal/messages';
 
 /**
@@ -27,12 +31,14 @@ export abstract class AbstractComponent {
       );
     }
     this.parent = params?.parent;
-    this.#signal = params?.signal;
+    const scopedParams: ScopedComponentParams | undefined = params;
+    this.#signal = scopedParams?.[lifecycleSignal] ?? params?.signal;
   }
 
   /**
    * Lazily initializes and returns the AbortSignal for this component.
-   * Automatically links to the parent's signal to form a cascade of teardowns.
+   * Automatically links to the lifecycle owner's signal to form a cascade of teardowns.
+   * For slotted components, the lifecycle owner is the component receiving the slot.
    */
   get signal(): AbortSignal {
     if (!this.#controller) {
