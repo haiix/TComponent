@@ -12,6 +12,37 @@ class DummyOwner extends AbstractComponent {
 }
 
 describe('BuildContext - DOM Building & ID Resolution', () => {
+  it('appends native template children to content when building or adding children', () => {
+    const context = new BuildContext(new DummyOwner(), {});
+    const template = context.build({
+      t: 'template',
+      a: { class: 'row-template' },
+      c: ['Before', { t: 'span', a: {}, c: ['Row'] }],
+    }) as HTMLTemplateElement;
+    context.appendChildren(template, ['After']);
+
+    expect(template).toBeInstanceOf(HTMLTemplateElement);
+    expect(template.className).toBe('row-template');
+    expect(template.childNodes).toHaveLength(0);
+    expect(template.content.childNodes).toHaveLength(3);
+    expect(template.content.textContent).toBe('BeforeRowAfter');
+    expect(template.content.querySelector('span')?.namespaceURI).toBe(
+      'http://www.w3.org/1999/xhtml',
+    );
+  });
+
+  it('keeps ordinary children for a template tag in a non-HTML namespace', () => {
+    const context = new BuildContext(new DummyOwner(), {});
+    const template = context.build(
+      { t: 'template', a: {}, c: [{ t: 'child', a: {}, c: ['Row'] }] },
+      'urn:custom',
+    );
+
+    expect(template).not.toBeInstanceOf(HTMLTemplateElement);
+    expect(template.firstElementChild?.namespaceURI).toBe('urn:custom');
+    expect(template.textContent).toBe('Row');
+  });
+
   beforeEach(() => {
     resetWarnings();
   });

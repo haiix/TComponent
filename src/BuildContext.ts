@@ -135,8 +135,10 @@ export class BuildContext {
     childNs?: string | null,
     signal?: AbortSignal,
   ): void {
+    const target =
+      element instanceof HTMLTemplateElement ? element.content : element;
     for (const childNode of children) {
-      element.appendChild(
+      target.appendChild(
         typeof childNode === 'string'
           ? document.createTextNode(childNode)
           : this.uses[childNode.t]
