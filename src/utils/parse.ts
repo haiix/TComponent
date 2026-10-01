@@ -13,12 +13,16 @@ function parseTemplateRecur(
   options: ParseOptions,
 ): TNode | string | null {
   if (node instanceof Element) {
+    const childNodes =
+      node instanceof HTMLTemplateElement
+        ? node.content.childNodes
+        : node.childNodes;
     return {
       t: node.tagName.toLowerCase(),
       a: Object.fromEntries(
         Array.from(node.attributes, (attr) => [attr.name, attr.value]),
       ),
-      c: Array.from(node.childNodes, (childNode) =>
+      c: Array.from(childNodes, (childNode) =>
         parseTemplateRecur(childNode, options),
       ).filter((childNode): childNode is TNode | string => childNode != null),
     };

@@ -13,6 +13,47 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('TComponent - Native Templates', () => {
+  it.each(['div', 'template'])(
+    'preserves and clones native template contents with a %s root',
+    (rootTag) => {
+      class Example extends TComponent {
+        static template = `<${rootTag}><template id="row">Before<span class="row">Row</span><template id="nested"><b>Nested</b></template>After</template></${rootTag}>`;
+      }
+
+      const first = new Example();
+      const second = new Example();
+      const row = first.getById('row', HTMLTemplateElement);
+      const nested = first.getById('nested', HTMLTemplateElement);
+      expect(row.childNodes).toHaveLength(0);
+      expect(row.content.childNodes).toHaveLength(4);
+      expect(row.content.querySelector('span')?.outerHTML).toBe(
+        '<span class="row">Row</span>',
+      );
+      expect(row.content.querySelector('template')).toBe(nested);
+      expect(nested.childNodes).toHaveLength(0);
+      expect(nested.content.firstElementChild?.outerHTML).toBe('<b>Nested</b>');
+
+      const clone = row.content.cloneNode(true) as DocumentFragment;
+      expect(clone.childNodes).toHaveLength(4);
+      expect(
+        clone.querySelector('template')?.content.firstElementChild?.outerHTML,
+      ).toBe('<b>Nested</b>');
+      const clonedSpan = clone.querySelector('span')!;
+      expect(clonedSpan).not.toBe(row.content.querySelector('span'));
+      const target = document.createElement('div');
+      target.appendChild(clone);
+      expect(target.textContent).toBe('BeforeRowAfter');
+      clonedSpan.textContent = 'Changed';
+      expect(row.content.querySelector('span')?.textContent).toBe('Row');
+      expect(
+        second.getById('row', HTMLTemplateElement).content.querySelector('span')
+          ?.textContent,
+      ).toBe('Row');
+    },
+  );
+});
+
 describe('TComponent - External Form Controls', () => {
   it.each(['before', 'after'] as const)(
     'associates external controls when the form is %s them',
