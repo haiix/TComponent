@@ -3,6 +3,7 @@ import { TComponent } from '../TComponent';
 import { appendSlots } from '../internal/slots';
 import { applyAttributes } from '../internal/dom';
 import { bindEvent } from '../internal/event';
+import { ID_REF_ATTRIBUTES } from '../internal/id';
 
 /**
  * Applies component parameters (attributes and child nodes) to a specific target DOM element.
@@ -13,6 +14,10 @@ import { bindEvent } from '../internal/event';
  * and safely ignores internal attributes like `id`.
  * Slot methods, IDs, and custom components resolve in the parent's scope,
  * while slot events and component cleanup follow the receiving component's lifecycle.
+ * ID reference attributes also resolve in the parent's scope after its template is built.
+ * Without a TComponent parent, the current component's context is used.
+ * When called after that context's build-time resolution, explicitly call
+ * `context.resolveIdReferences()` after applying parameters and building reference targets.
  *
  * @example
  * ```typescript
@@ -36,24 +41,37 @@ export function applyParams(
   params: ComponentParams = {},
 ): void {
   // Resolve the context once.
-  // Slots and events passed from the outside should be evaluated in the parent's context.
+  // Slots, events, and ID references from the outside use the parent's context.
   const contextComponent =
     component.parent instanceof TComponent
       ? (component.parent as TComponent)
       : component;
 
   if (params.attributes) {
-    for (const [name, value] of Object.entries(params.attributes)) {
-      if (name.startsWith('on')) {
+    const entries = Object.entries(params.attributes);
+    for (const [name, value] of entries) {
+      if (ID_REF_ATTRIBUTES.has(name)) {
+        // Defer until the owning template (including later siblings and slots) is built.
+        contextComponent.context.idReferenceMap.push({
+          attrName: name,
+          refId: value,
+          element: target,
+        });
+      } else if (name.startsWith('on')) {
         // Bind events using the resolved context (usually the parent),
         // but strictly tie the event lifecycle (AbortSignal) to the current child component
         // so that memory is freed when the child is destroyed.
         bindEvent(target, name, value, contextComponent, component.signal);
       }
     }
-    // applyAttributes internally ignores 'id' and 'on*'
-    // so it safely handles the remaining standard attributes (class, style, data-*, etc.)
-    applyAttributes(target, params.attributes);
+    // Keep deferred references out of direct DOM assignment without mutating params.
+    // applyAttributes internally ignores 'id' and 'on*'.
+    applyAttributes(
+      target,
+      Object.fromEntries(
+        entries.filter(([name]) => !ID_REF_ATTRIBUTES.has(name)),
+      ),
+    );
   }
 
   if (params.childNodes) {

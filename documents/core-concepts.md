@@ -159,6 +159,8 @@ To easily route passed attributes (like `class` or `style`) and child nodes to a
 
 It handles appending child nodes, merges `class` and `style` strings, seamlessly binds events (`on*`) to the parent's methods, and safely ignores internal attributes like id.
 
+ID reference attributes such as `for` and `aria-labelledby` are resolved in the parent's template scope after the parent finishes building, including references to later siblings or slotted elements. Without a `TComponent` parent, they use the receiving component's context. If you call `applyParams()` after that context's build-time resolution, call its `context.resolveIdReferences()` after applying parameters and building the reference targets.
+
 ### Example: A Reusable Card Component
 
 ```typescript
@@ -235,6 +237,8 @@ _Note: If an ID reference contains multiple space-separated IDs, TComponent corr
 ### Component Boundaries and the Power of Slots
 
 In TComponent, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.
+
+This also applies to attributes passed to custom components through `applyParams()`: a parent template's `<label-comp for="input">` can reference the parent's native `<input id="input">`, even if the label attribute is applied to an internal child element. The reference still uses the parent's scope; it cannot access IDs defined in the child's own template. Unknown IDs and IDs assigned to custom component instances remain unchanged.
 
 If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-child">`), TComponent deliberately **does not** apply this ID to the child's root HTML element. This prevents unexpected DOM behaviors, such as a parent's `<label>` pointing to a layout wrapper `<div>` instead of the actual `<input>` hidden inside the child component.
 
