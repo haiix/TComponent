@@ -166,6 +166,72 @@ describe('TComponent - getById()', () => {
     expect(() => comp.getById('non-existent')).toThrow(/not found/);
   });
 
+  it.each(['toString', 'constructor', '__proto__'])(
+    'retrieves an element registered with ID "%s" without a duplicate warning',
+    (id) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      class SpecialIdComp extends TComponent {
+        static template = `<div><span id="${id}"></span></div>`;
+      }
+
+      const comp = new SpecialIdComp();
+      const span = comp.element.firstElementChild;
+
+      expect(comp.getById(id)).toBe(span);
+      expect(comp.getById(id, HTMLSpanElement)).toBe(span);
+      expect(warnSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['toString', 'constructor', '__proto__'])(
+    'throws a not found error for unregistered ID "%s"',
+    (id) => {
+      const comp = new TestComp();
+
+      expect(() => comp.getById(id)).toThrow(
+        `Element with id "${id}" not found.`,
+      );
+      expect(() => comp.getById(id, Element)).toThrow(
+        `Element with id "${id}" not found.`,
+      );
+    },
+  );
+
+  it.each(['toString', 'constructor', '__proto__'])(
+    'retrieves a sub-component registered with ID "%s"',
+    (id) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      class SpecialIdParent extends TComponent {
+        static uses = { ChildComp };
+        static template = `<div><childcomp id="${id}"></childcomp></div>`;
+      }
+
+      const parent = new SpecialIdParent();
+      const child = parent.getById(id, ChildComp);
+
+      expect(parent.getById(id)).toBe(child);
+      expect(child.element).toBe(parent.element.firstElementChild);
+      expect(warnSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['toString', 'constructor', '__proto__'])(
+    'keeps the first element when ID "%s" is duplicated',
+    (id) => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      class DuplicateIdComp extends TComponent {
+        static template = `<div><span id="${id}">First</span><span id="${id}">Second</span></div>`;
+      }
+
+      const comp = new DuplicateIdComp();
+
+      expect(comp.getById(id)).toBe(comp.element.firstElementChild);
+      expect(warnSpy).toHaveBeenCalledExactlyOnceWith(
+        `[TComponent] Duplicate id "${id}" found in template. Only the first instance will be mapped.`,
+      );
+    },
+  );
+
   it('validates the type at runtime and returns the typed element when ExpectedType is provided', () => {
     const comp = new TestComp();
     expect(comp.getById('my-input', HTMLInputElement)).toBeInstanceOf(
