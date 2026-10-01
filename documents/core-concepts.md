@@ -234,6 +234,10 @@ class AccessibleForm extends TComponent<HTMLFormElement> {
 
 _Note: If an ID reference contains multiple space-separated IDs, TComponent correctly resolves all of them._
 
+Local fragments in `href="#section"` and `xlink:href="#shape"` also resolve automatically. On SVG elements, local `url(#id)` references in `fill`, `stroke`, `filter`, `clip-path`, `mask`, `marker`, `marker-start`, `marker-mid`, and `marker-end` use the same ID mapping. Quoted forms such as `url("#shape")` and `url('#shape')` are supported; whitespace, quotes, and fallback values are preserved. External URLs and unresolved references remain unchanged. References inside `style` attributes or `<style>` content are not resolved.
+
+These fragment and SVG URL references also work through `applyParams()`, following the parent scope and deferred resolution rules described below.
+
 ### Component Boundaries and the Power of Slots
 
 In TComponent, ID generation and reference resolution (`for`, `aria-controls`, etc.) are strictly bounded to the **same component's template**.

@@ -3,7 +3,7 @@ import { TComponent } from '../TComponent';
 import { appendSlots } from '../internal/slots';
 import { applyAttributes } from '../internal/dom';
 import { bindEvent } from '../internal/event';
-import { ID_REF_ATTRIBUTES } from '../internal/id';
+import { hasIdReference } from '../internal/id';
 
 /**
  * Applies component parameters (attributes and child nodes) to a specific target DOM element.
@@ -50,7 +50,7 @@ export function applyParams(
   if (params.attributes) {
     const entries = Object.entries(params.attributes);
     for (const [name, value] of entries) {
-      if (ID_REF_ATTRIBUTES.has(name)) {
+      if (hasIdReference(name, value, target)) {
         // Defer until the owning template (including later siblings and slots) is built.
         contextComponent.context.idReferenceMap.push({
           attrName: name,
@@ -69,7 +69,7 @@ export function applyParams(
     applyAttributes(
       target,
       Object.fromEntries(
-        entries.filter(([name]) => !ID_REF_ATTRIBUTES.has(name)),
+        entries.filter(([name, value]) => !hasIdReference(name, value, target)),
       ),
     );
   }

@@ -68,9 +68,9 @@ export interface ParsedTemplateData {
  * Represents an entry for an ID reference that needs to be resolved after the element is built.
  */
 export interface IDReferenceEntry {
-  /** The attribute name to resolve (e.g. "for", "aria-labelledby") */
+  /** The attribute name to resolve (e.g. "for", "href", "fill") */
   attrName: string;
-  /** The ID string written in the original template (space-separated values allowed) */
+  /** The original attribute value (ID list, fragment, or SVG URL reference) */
   refId: string;
   /** The DOM element that holds the reference */
   element: Element;
