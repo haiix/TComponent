@@ -5,6 +5,7 @@ import { warnOnce } from './messages';
  */
 export const ID_REF_ATTRIBUTES = new Set([
   'for',
+  'form',
   'aria-labelledby',
   'aria-describedby',
   'aria-controls',

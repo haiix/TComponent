@@ -13,6 +13,57 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('TComponent - External Form Controls', () => {
+  it.each(['before', 'after'] as const)(
+    'associates external controls when the form is %s them',
+    (position) => {
+      const formTemplate = '<form id="f"></form>';
+      const controlsTemplate =
+        '<input id="i" name="q" value="query" form="f"><button id="save" type="submit" form="f">Save</button>';
+      class Example extends TComponent {
+        static template = `<div>${
+          position === 'before'
+            ? formTemplate + controlsTemplate
+            : controlsTemplate + formTemplate
+        }</div>`;
+      }
+
+      const first = new Example();
+      const second = new Example();
+      document.body.append(first.element, second.element);
+      try {
+        for (const component of [first, second]) {
+          const form = component.getById('f', HTMLFormElement);
+          const input = component.getById('i', HTMLInputElement);
+          const button = component.getById('save', HTMLButtonElement);
+          expect(form.id).toMatch(/^uid-|^[0-9a-f-]{36}$/);
+          expect(input.getAttribute('form')).toBe(form.id);
+          expect(button.getAttribute('form')).toBe(form.id);
+          expect(input.form).toBe(form);
+          expect(button.form).toBe(form);
+          expect(Array.from(form.elements)).toEqual([input, button]);
+          expect(new FormData(form).get('q')).toBe('query');
+
+          const submit = vi.fn((event: Event) => {
+            event.preventDefault();
+          });
+          form.addEventListener('submit', submit);
+          button.click();
+          expect(submit).toHaveBeenCalledExactlyOnceWith(
+            expect.objectContaining({ submitter: button }),
+          );
+        }
+        expect(first.getById('f', HTMLFormElement).id).not.toBe(
+          second.getById('f', HTMLFormElement).id,
+        );
+      } finally {
+        first.element.remove();
+        second.element.remove();
+      }
+    },
+  );
+});
+
 describe('TComponent - parseOptions Configuration', () => {
   it('applies parseOptions.preserveWhitespace implicitly and inherits to subclasses', () => {
     class PreservedComp extends TComponent<HTMLDivElement> {
