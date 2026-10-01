@@ -9,6 +9,7 @@ import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './utils/parse';
 import { throwError } from './internal/messages';
+import { abortLifecycle } from './internal/signal';
 
 /**
  * Global registry mapping root DOM elements to their respective TComponent instances.
@@ -56,8 +57,13 @@ export class TComponent<
     const parsed = Component.getParsed();
 
     this.context = new BuildContext(this, parsed.uses);
-    this.element = this.context.build(parsed.template, parsed.ns) as T;
-    this.context.resolveIdReferences();
+    try {
+      this.element = this.context.build(parsed.template, parsed.ns) as T;
+      this.context.resolveIdReferences();
+    } catch (error) {
+      this[abortLifecycle]();
+      throw error;
+    }
 
     componentRegistry.set(this.element, this as TComponent);
   }

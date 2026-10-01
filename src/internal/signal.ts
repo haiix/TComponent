@@ -3,6 +3,9 @@ import type { ComponentParams } from '../types';
 /** Internal lifecycle override that preserves the template's parent scope. */
 export const lifecycleSignal = Symbol('lifecycleSignal');
 
+/** Internal teardown that does not require a constructed DOM element. */
+export const abortLifecycle = Symbol('abortLifecycle');
+
 /** Parameters used internally when scope and lifecycle belong to different components. */
 export interface ScopedComponentParams extends ComponentParams {
   [lifecycleSignal]?: AbortSignal;
