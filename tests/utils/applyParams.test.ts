@@ -13,6 +13,141 @@ describe('applyParams', () => {
     }
   }
 
+  class Label extends TComponent<HTMLLabelElement> {
+    static template = '<label></label>';
+
+    constructor(params: ComponentParams) {
+      super(params);
+      applyParams(this, this.element, params);
+    }
+  }
+
+  it.each(['before', 'after'] as const)(
+    'resolves a forwarded for attribute when the parent input is %s the label',
+    (position) => {
+      const inputTemplate = '<input id="input">';
+      const labelTemplate = '<label-comp for="input">Name</label-comp>';
+      class Form extends TComponent {
+        static uses = { 'label-comp': Label };
+        static template = `<div>${
+          position === 'before'
+            ? inputTemplate + labelTemplate
+            : labelTemplate + inputTemplate
+        }</div>`;
+      }
+
+      const first = new Form();
+      const second = new Form();
+      for (const form of [first, second]) {
+        const label = form.element.querySelector('label')!;
+        const input = form.getById('input', HTMLInputElement);
+        expect(input.id).toMatch(/^uid-|^[0-9a-f-]{36}$/);
+        expect(label.htmlFor).toBe(input.id);
+        expect(label.textContent).toBe('Name');
+        expect(form.context.idReferenceMap).toHaveLength(0);
+      }
+      expect(first.getById('input', HTMLInputElement).id).not.toBe(
+        second.getById('input', HTMLInputElement).id,
+      );
+      expect(Form.getParsed().template.c).toContainEqual(
+        expect.objectContaining({ a: { for: 'input' } }),
+      );
+    },
+  );
+
+  it.each([
+    'aria-labelledby',
+    'aria-describedby',
+    'aria-controls',
+    'aria-owns',
+    'aria-activedescendant',
+    'aria-flowto',
+    'aria-errormessage',
+    'aria-details',
+    'headers',
+    'list',
+  ])('resolves forwarded %s attributes on an internal target', (attribute) => {
+    class App extends TComponent {
+      static uses = { Wrapper };
+      static template = `
+        <div>
+          <wrapper id="wrapper" ${attribute}="  title   description unknown  " class="custom" style="color: red" data-info="info">
+            <span id="title">Title</span>
+          </wrapper>
+          <p id="description">Description</p>
+        </div>
+      `;
+    }
+
+    const app = new App();
+    const wrapper = app.getById('wrapper', Wrapper);
+    const target = wrapper.getById('body', HTMLElement);
+    const title = app.getById('title', HTMLSpanElement);
+    const description = app.getById('description', HTMLParagraphElement);
+
+    expect(title.id).not.toBe('');
+    expect(description.id).not.toBe('');
+    expect(target.getAttribute(attribute)).toBe(
+      `${title.id} ${description.id} unknown`,
+    );
+    expect(target.id).toBe('');
+    expect(target.className).toBe('custom');
+    expect(target.style.color).toBe('red');
+    expect(target.getAttribute('data-info')).toBe('info');
+    expect(wrapper.element.hasAttribute(attribute)).toBe(false);
+  });
+
+  it('keeps forwarded references in the parent scope even when child IDs match', () => {
+    class Field extends TComponent {
+      static template =
+        '<section><input id="input"><span id="private">Private</span></section>';
+
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.element, params);
+      }
+    }
+    class App extends TComponent {
+      static uses = { Field };
+      static template =
+        '<div><field id="field" aria-labelledby="input private field unknown"></field><input id="input"></div>';
+    }
+
+    const app = new App();
+    const field = app.getById('field', Field);
+    const input = app.getById('input', HTMLInputElement);
+    expect(input.id).not.toBe('');
+    expect(field.element.getAttribute('aria-labelledby')).toBe(
+      `${input.id} private field unknown`,
+    );
+    expect(field.getById('input', HTMLInputElement).id).toBe('');
+    expect(field.getById('private', HTMLSpanElement).id).toBe('');
+    expect(field.element.id).toBe('');
+  });
+
+  it('queues references in its own context when no TComponent parent is available', () => {
+    class Form extends TComponent {
+      static template = '<div><input id="input"></div>';
+    }
+    const form = new Form();
+    const target = document.createElement('label');
+    const attributes = Object.freeze({
+      for: 'input',
+      'aria-labelledby': 'missing',
+    });
+
+    applyParams(form, target, { attributes });
+    expect(form.context.idReferenceMap).toHaveLength(2);
+    expect(target.hasAttribute('for')).toBe(false);
+    form.context.resolveIdReferences();
+
+    const input = form.getById('input', HTMLInputElement);
+    expect(input.id).not.toBe('');
+    expect(target.htmlFor).toBe(input.id);
+    expect(target.getAttribute('aria-labelledby')).toBe('missing');
+    expect(attributes.for).toBe('input');
+  });
+
   it.each(['wrapper', 'parent'] as const)(
     'unbinds nested slot events when the %s is destroyed while preserving parent scope',
     (destroyTarget) => {
