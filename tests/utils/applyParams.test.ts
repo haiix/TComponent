@@ -23,6 +23,62 @@ describe('applyParams', () => {
   }
 
   it.each(['before', 'after'] as const)(
+    'resolves forwarded form attributes when the parent form is %s the controls',
+    (position) => {
+      class Controls extends TComponent {
+        static template =
+          '<section><input id="input" name="q" value="query"><button id="save" type="submit">Save</button><form id="f"></form></section>';
+
+        constructor(params: ComponentParams) {
+          super(params);
+          applyParams(this, this.getById('input', HTMLInputElement), params);
+          applyParams(this, this.getById('save', HTMLButtonElement), params);
+        }
+      }
+      const formTemplate = '<form id="f"></form>';
+      const controlsTemplate = '<controls id="controls" form="f"></controls>';
+      class App extends TComponent {
+        static uses = { Controls };
+        static template = `<div>${
+          position === 'before'
+            ? formTemplate + controlsTemplate
+            : controlsTemplate + formTemplate
+        }</div>`;
+      }
+
+      const app = new App();
+      document.body.append(app.element);
+      try {
+        const form = app.getById('f', HTMLFormElement);
+        const controls = app.getById('controls', Controls);
+        const input = controls.getById('input', HTMLInputElement);
+        const button = controls.getById('save', HTMLButtonElement);
+        expect(form.id).toMatch(/^uid-|^[0-9a-f-]{36}$/);
+        expect(input.getAttribute('form')).toBe(form.id);
+        expect(button.getAttribute('form')).toBe(form.id);
+        expect(input.form).toBe(form);
+        expect(button.form).toBe(form);
+        expect(Array.from(form.elements)).toEqual([input, button]);
+        expect(new FormData(form).get('q')).toBe('query');
+        expect(controls.getById('f', HTMLFormElement).id).toBe('');
+        expect(controls.element.hasAttribute('form')).toBe(false);
+        expect(app.context.idReferenceMap).toHaveLength(0);
+
+        const submit = vi.fn((event: Event) => {
+          event.preventDefault();
+        });
+        form.addEventListener('submit', submit);
+        button.click();
+        expect(submit).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ submitter: button }),
+        );
+      } finally {
+        app.element.remove();
+      }
+    },
+  );
+
+  it.each(['before', 'after'] as const)(
     'resolves a forwarded for attribute when the parent input is %s the label',
     (position) => {
       const inputTemplate = '<input id="input">';
