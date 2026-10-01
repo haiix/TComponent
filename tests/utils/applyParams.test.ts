@@ -4,6 +4,55 @@ import { TComponent } from '../../src/TComponent';
 import { applyParams } from '../../src/utils/applyParams';
 
 describe('applyParams', () => {
+  it('builds circle slots in the SVG namespace of a receiving Group component', () => {
+    class Group extends TComponent {
+      static namespaceURI = 'http://www.w3.org/2000/svg';
+      static template = '<g></g>';
+
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.element, params);
+      }
+    }
+    class Graphic extends TComponent {
+      static uses = { Group };
+      static template =
+        '<svg><group><circle cx="10" cy="10" r="5"></circle></group></svg>';
+    }
+    const graphic = new Graphic();
+    const group = graphic.element.firstElementChild;
+    const circle = group?.firstElementChild;
+    expect(group?.namespaceURI).toBe(Group.namespaceURI);
+    expect(circle?.namespaceURI).toBe(Group.namespaceURI);
+    expect(circle).toBeInstanceOf(SVGElement);
+    expect(circle?.getAttribute('cx')).toBe('10');
+    expect(circle?.getAttribute('cy')).toBe('10');
+    expect(circle?.getAttribute('r')).toBe('5');
+  });
+
+  it('uses forwarded encoding when inserting slots into MathML annotation-xml', () => {
+    class Annotation extends TComponent {
+      static namespaceURI = 'http://www.w3.org/1998/Math/MathML';
+      static template = '<annotation-xml></annotation-xml>';
+
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.element, params);
+      }
+    }
+    class Formula extends TComponent {
+      static uses = { 'annotation-view': Annotation };
+      static template =
+        '<div><annotation-view encoding="text/html"><span>Label</span></annotation-view></div>';
+    }
+    const formula = new Formula();
+    const annotation = formula.element.firstElementChild;
+    expect(annotation?.namespaceURI).toBe(Annotation.namespaceURI);
+    expect(annotation?.getAttribute('encoding')).toBe('text/html');
+    expect(annotation?.firstElementChild).toBeInstanceOf(HTMLSpanElement);
+    expect(annotation?.textContent).toBe('Label');
+  });
+
   class Wrapper extends TComponent {
     static template = '<div><section id="body"></section></div>';
 

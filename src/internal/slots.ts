@@ -22,7 +22,7 @@ export function appendSlots(
   contextComponent.context.appendChildren(
     target,
     childNodes,
-    undefined,
+    target.namespaceURI,
     signal,
   );
 }

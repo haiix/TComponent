@@ -51,6 +51,8 @@ By default, TComponent automatically infers the correct namespace when the root 
 
 To ensure these elements are created with the correct internal representation, you can explicitly define the `static namespaceURI` property on your component.
 
+Native children inherit the receiving element's namespace. HTML integration boundaries apply to both template children and slots inserted with `applyParams`: SVG `foreignObject`, `desc`, and `title` use HTML children; MathML `annotation-xml` uses HTML children when its `encoding` is `text/html` or `application/xhtml+xml` (case-insensitive). MathML `mi`, `mo`, `mn`, `ms`, and `mtext` also use HTML children, except for `mglyph` and `malignmark`, which remain MathML. Nested `<svg>` and `<math>` elements start their respective namespaces again. Custom sub-components still declare their own root namespace with `static namespaceURI`.
+
 ### Example: Creating an interactive SVG Polyline
 
 ```typescript
