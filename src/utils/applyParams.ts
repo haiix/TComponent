@@ -51,8 +51,10 @@ export function applyParams(
   if (params.attributes) {
     const entries = Object.entries(params.attributes);
     const references = new Map<string, string>();
+    const attributeNames = new Set<string>();
     for (const [originalName, value] of entries) {
       const name = normalizeAttributeName(target, originalName);
+      attributeNames.add(name);
       // A later value for the same DOM attribute supersedes a deferred reference.
       references.delete(name);
       if (hasIdReference(name, value, target)) {
@@ -64,6 +66,18 @@ export function applyParams(
         bindEvent(target, name, value, contextComponent, component.signal);
       }
     }
+    // Cancel earlier applications for these attributes, preserving other pending references.
+    const pendingReferences = contextComponent.context.idReferenceMap;
+    let retainedCount = 0;
+    for (const reference of pendingReferences) {
+      if (
+        reference.element !== target ||
+        !attributeNames.has(normalizeAttributeName(target, reference.attrName))
+      ) {
+        pendingReferences[retainedCount++] = reference;
+      }
+    }
+    pendingReferences.length = retainedCount;
     // Only defer references that have not been superseded by a later attribute.
     for (const [attrName, refId] of references) {
       contextComponent.context.idReferenceMap.push({
