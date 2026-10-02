@@ -126,7 +126,6 @@ class WrapperComponent extends TComponent {
 
 TComponent parses HTML strings natively using `document.createElement('template').innerHTML` to keep the library zero-dependency and tiny.
 
-However, the browser's HTML parser **forces all tags to lowercase**. While TComponent correctly assigns the SVG/MathML namespaces, certain SVG tags that require camelCase (e.g., `<linearGradient>`, `<clipPath>`) will be parsed as `<lineargradient>`.
+Inside `<svg>`, the browser's HTML parser adjusts recognized SVG tag names to their canonical case (e.g., `<linearGradient>`, `<clipPath>`, and `<foreignObject>`). TComponent preserves these parsed names when rebuilding the DOM. HTML children inside `<foreignObject>` are created in the HTML namespace.
 
-Because of this browser limitation, **complex SVGs with camelCase tags might not render correctly when written directly inside `static template`**.
-For complex SVGs, it is recommended to insert them manually via DOM manipulation in the constructor, or load them externally.
+The remaining limitation concerns SVG tags parsed **outside `<svg>`**, such as a standalone `<linearGradient>` root with `static namespaceURI` set to the SVG namespace. The HTML parser lowercases these names before TComponent rebuilds the DOM; setting `namespaceURI` only affects reconstruction, not parsing. Use an `<svg>` wrapper for such templates, or create the elements manually with `document.createElementNS()` and their canonical names. MathML templates likewise need `<math>` to establish the parser's namespace; assigning `namespaceURI` does not change how the HTML parser interprets the template.

@@ -18,7 +18,7 @@ function parseTemplateRecur(
         ? node.content.childNodes
         : node.childNodes;
     return {
-      t: node.tagName.toLowerCase(),
+      t: node.localName,
       a: Object.fromEntries(
         Array.from(node.attributes, (attr) => [attr.name, attr.value]),
       ),

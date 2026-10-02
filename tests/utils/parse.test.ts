@@ -52,6 +52,22 @@ describe('parseTemplate', () => {
     });
   });
 
+  it('preserves canonical SVG tag names and lowercases HTML children of foreignObject', () => {
+    expect(
+      parseTemplate(
+        '<svg><lineargradient></lineargradient><clipPath></clipPath><foreignObject><DIV>HTML</DIV></foreignObject></svg>',
+      ),
+    ).toEqual({
+      t: 'svg',
+      a: {},
+      c: [
+        { t: 'linearGradient', a: {}, c: [] },
+        { t: 'clipPath', a: {}, c: [] },
+        { t: 'foreignObject', a: {}, c: [{ t: 'div', a: {}, c: ['HTML'] }] },
+      ],
+    });
+  });
+
   it('throws an error if there is not exactly one root element', () => {
     expect(() => parseTemplate(`<div></div><span></span>`)).toThrow(
       '[TComponent] ParseError: The template must have exactly one root element.',

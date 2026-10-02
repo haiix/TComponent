@@ -44,6 +44,19 @@ describe.each(['slots', 'template'] as const)('%s namespaces', (mode) => {
     expect(target.firstElementChild?.firstElementChild?.namespaceURI).toBe(ns);
   });
 
+  it('preserves camelCase SVG names when appending children', () => {
+    const target = buildChildren('svg', SVG_NAMESPACE_URI, {}, [
+      { t: 'linearGradient', a: {}, c: [] },
+      { t: 'clipPath', a: {}, c: [] },
+    ]);
+    expect(target.children[0]?.localName).toBe('linearGradient');
+    expect(target.children[1]?.localName).toBe('clipPath');
+    for (const child of target.children) {
+      expect(child).toBeInstanceOf(SVGElement);
+      expect(child.namespaceURI).toBe(SVG_NAMESPACE_URI);
+    }
+  });
+
   it.each(['foreignObject', 'foreignobject', 'desc', 'title'])(
     'switches SVG %s children to HTML and can re-enter SVG or MathML',
     (tag) => {

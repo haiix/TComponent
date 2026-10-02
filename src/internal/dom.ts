@@ -105,7 +105,7 @@ export function createNativeElement(
     : document.createElement(tagName);
 
   const childNs =
-    tagName === 'foreignobject' && elementNs === SVG_NAMESPACE_URI
+    tagName.toLowerCase() === 'foreignobject' && elementNs === SVG_NAMESPACE_URI
       ? null
       : elementNs;
 
