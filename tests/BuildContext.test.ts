@@ -89,6 +89,17 @@ describe('BuildContext - DOM Building & ID Resolution', () => {
       expect(
         Array.from(root.querySelectorAll('use'), (el) => el.getAttribute(name)),
       ).toEqual(values);
+      for (const el of root.querySelectorAll('use')) {
+        expect(el.getAttributeNode(name)?.namespaceURI).toBe(
+          name === 'xlink:href' ? 'http://www.w3.org/1999/xlink' : null,
+        );
+        expect(
+          el.getAttributeNS(
+            name === 'xlink:href' ? 'http://www.w3.org/1999/xlink' : null,
+            'href',
+          ),
+        ).toBe(el.getAttribute(name));
+      }
       expect(root.querySelector('path')!.id).toBe('');
     },
   );

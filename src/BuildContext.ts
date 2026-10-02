@@ -10,7 +10,7 @@ import { bindEvent } from './internal/event';
 import {
   createNativeElement,
   getChildNamespace,
-  SVG_NAMESPACE_URI,
+  setAttribute,
 } from './internal/dom';
 import { lifecycleSignal, type ScopedComponentParams } from './internal/signal';
 
@@ -77,18 +77,7 @@ export class BuildContext {
         return id;
       });
 
-      if (
-        attrName === 'xlink:href' &&
-        element.namespaceURI === SVG_NAMESPACE_URI
-      ) {
-        element.setAttributeNS(
-          'http://www.w3.org/1999/xlink',
-          attrName,
-          resolvedIds,
-        );
-      } else {
-        element.setAttribute(attrName, resolvedIds);
-      }
+      setAttribute(element, attrName, resolvedIds);
     }
     this.idReferenceMap.length = 0;
   }
@@ -131,7 +120,7 @@ export class BuildContext {
           signal ?? this.component.signal,
         );
       } else {
-        element.setAttribute(name, value);
+        setAttribute(element, name, value);
       }
     }
   }

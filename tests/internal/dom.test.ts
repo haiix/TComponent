@@ -106,6 +106,36 @@ describe('mergeStyle', () => {
 });
 
 describe('applyAttributes', () => {
+  it.each(['sprite.svg#icon', '#icon', ''])(
+    'sets SVG xlink:href "%s" in the XLink namespace and keeps href separate',
+    (value) => {
+      const el = document.createElementNS(SVG_NAMESPACE_URI, 'use');
+      applyAttributes(el, { 'xlink:href': value, href: 'other.svg#icon' });
+
+      expect(el.getAttributeNS('http://www.w3.org/1999/xlink', 'href')).toBe(
+        value,
+      );
+      expect(el.getAttributeNode('xlink:href')?.namespaceURI).toBe(
+        'http://www.w3.org/1999/xlink',
+      );
+      expect(el.getAttributeNS(null, 'href')).toBe('other.svg#icon');
+    },
+  );
+
+  it.each([HTML_NAMESPACE_URI, MATHML_NAMESPACE_URI, 'urn:custom'])(
+    'keeps xlink:href unnamespaced on elements in "%s"',
+    (namespace) => {
+      const el = document.createElementNS(namespace, 'use');
+      applyAttributes(el, { 'xlink:href': 'sprite.svg#icon' });
+
+      expect(el.getAttribute('xlink:href')).toBe('sprite.svg#icon');
+      expect(el.getAttributeNode('xlink:href')?.namespaceURI).toBeNull();
+      expect(
+        el.getAttributeNS('http://www.w3.org/1999/xlink', 'href'),
+      ).toBeNull();
+    },
+  );
+
   it.each(['OnClick', 'ONCLICK', 'ID', 'Id'])(
     'skips the HTML attribute "%s" without changing the DOM ID',
     (name) => {
