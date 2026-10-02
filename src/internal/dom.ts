@@ -15,6 +15,21 @@ export function normalizeAttributeName(target: Element, name: string): string {
 }
 
 /**
+ * Sets an attribute, preserving the XLink namespace for SVG xlink:href.
+ */
+export function setAttribute(
+  target: Element,
+  name: string,
+  value: string,
+): void {
+  if (name === 'xlink:href' && target.namespaceURI === SVG_NAMESPACE_URI) {
+    target.setAttributeNS('http://www.w3.org/1999/xlink', name, value);
+  } else {
+    target.setAttribute(name, value);
+  }
+}
+
+/**
  * Resolves a native child's namespace, including HTML integration boundaries.
  *
  * @param target - The parent element, with its attributes already applied.
@@ -155,7 +170,7 @@ export function applyAttributes(
     } else if (name === 'style') {
       mergeStyle(target, value);
     } else {
-      target.setAttribute(name, value);
+      setAttribute(target, name, value);
     }
   }
 }

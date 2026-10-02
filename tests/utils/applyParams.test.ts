@@ -4,6 +4,68 @@ import { TComponent } from '../../src/TComponent';
 import { applyParams } from '../../src/utils/applyParams';
 
 describe('applyParams', () => {
+  it.each([
+    'sprite.svg#icon',
+    'https://example.com/sprite.svg#icon',
+    '#icon',
+    '#missing',
+    '#',
+    '',
+  ])('sets SVG xlink:href "%s" with the XLink namespace', (value) => {
+    class SvgUse extends TComponent {
+      static namespaceURI = 'http://www.w3.org/2000/svg';
+      static template = '<use></use>';
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.element, params);
+      }
+    }
+    const attributes = Object.freeze({ 'xlink:href': value });
+    const component = new SvgUse({ attributes });
+    const icon = document.createElementNS(SvgUse.namespaceURI, 'path');
+    component.context.idMap.icon = icon;
+    const deferred = value === '#icon' || value === '#missing';
+    expect(component.context.idReferenceMap).toHaveLength(deferred ? 1 : 0);
+    expect(
+      component.element.getAttributeNS('http://www.w3.org/1999/xlink', 'href'),
+    ).toBe(deferred ? null : value);
+
+    component.context.resolveIdReferences();
+
+    const expected = value === '#icon' ? `#${icon.id}` : value;
+    expect(Boolean(icon.id)).toBe(value === '#icon');
+    expect(component.element.getAttribute('xlink:href')).toBe(expected);
+    expect(
+      component.element.getAttributeNS('http://www.w3.org/1999/xlink', 'href'),
+    ).toBe(expected);
+    expect(component.element.getAttributeNode('xlink:href')?.namespaceURI).toBe(
+      'http://www.w3.org/1999/xlink',
+    );
+    expect(component.context.idReferenceMap).toHaveLength(0);
+    expect(attributes['xlink:href']).toBe(value);
+  });
+
+  it('updates an existing namespaced SVG reference with an external URL', () => {
+    class Graphic extends TComponent {
+      static template =
+        '<svg><path id="icon"></path><use xlink:href="#icon"></use></svg>';
+    }
+    const component = new Graphic();
+    const target = component.element.querySelector('use')!;
+    applyParams(component, target, {
+      attributes: { 'xlink:href': 'sprite.svg#icon' },
+    });
+    component.context.resolveIdReferences();
+
+    expect(target.getAttributeNS('http://www.w3.org/1999/xlink', 'href')).toBe(
+      'sprite.svg#icon',
+    );
+    expect(target.getAttributeNode('xlink:href')?.namespaceURI).toBe(
+      'http://www.w3.org/1999/xlink',
+    );
+    expect(target.attributes).toHaveLength(1);
+  });
+
   it.each(['OnClick', 'ONCLICK'])(
     'binds "%s" in the parent scope and unbinds it when the child is destroyed',
     (name) => {
