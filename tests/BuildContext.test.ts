@@ -336,6 +336,56 @@ describe('BuildContext - Event Binding', () => {
 });
 
 describe('BuildContext - Custom Components (uses)', () => {
+  it.each(['constructor', 'toString', 'hasOwnProperty'])(
+    'builds unregistered %s children as native DOM elements',
+    (tag) => {
+      const context = new BuildContext(new DummyOwner(), {});
+      const root = context.build({
+        t: 'div',
+        a: {},
+        c: [{ t: tag, a: { id: 'child', class: 'native' }, c: ['Content'] }],
+      });
+
+      const child = context.idMap.child;
+      expect(child).toBeInstanceOf(HTMLElement);
+      expect(root.firstElementChild).toBe(child);
+      expect(root.firstElementChild!.localName).toBe(tag);
+      expect(root.firstElementChild!.className).toBe('native');
+      expect(root.firstElementChild!.textContent).toBe('Content');
+    },
+  );
+
+  it('ignores custom components inherited from the uses dictionary prototype', () => {
+    const uses = {};
+    Object.setPrototypeOf(uses, { inherited: DummyOwner });
+    const context = new BuildContext(new DummyOwner(), uses);
+    const root = context.build(
+      parseTemplate('<div><inherited id="child">Content</inherited></div>'),
+    );
+
+    expect(context.idMap.child).toBeInstanceOf(HTMLElement);
+    expect(root.firstElementChild!.localName).toBe('inherited');
+    expect(root.firstElementChild!.textContent).toBe('Content');
+  });
+
+  it.each(['constructor', 'toString', 'hasOwnProperty'])(
+    'instantiates an explicitly registered %s child component',
+    (tag) => {
+      const owner = new DummyOwner();
+      const context = new BuildContext(owner, { [tag]: DummyOwner });
+      const root = context.build({
+        t: 'div',
+        a: {},
+        c: [{ t: tag, a: { id: 'child' }, c: [] }],
+      });
+
+      const child = context.idMap.child as DummyOwner;
+      expect(child).toBeInstanceOf(DummyOwner);
+      expect(child.parent).toBe(owner);
+      expect(root.firstElementChild).toBe(child.element);
+    },
+  );
+
   it('instantiates custom components and registers them in idMap', () => {
     class ChildComp extends AbstractComponent {
       element = document.createElement('span');

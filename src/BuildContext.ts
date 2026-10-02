@@ -157,7 +157,7 @@ export class BuildContext {
       target.appendChild(
         typeof childNode === 'string'
           ? document.createTextNode(childNode)
-          : this.uses[childNode.t]
+          : Object.hasOwn(this.uses, childNode.t)
             ? this.buildCustomComponent(childNode, signal)
             : this.build(
                 childNode,

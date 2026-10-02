@@ -560,6 +560,31 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
     }
   }
 
+  it('builds an unregistered constructor child as a native DOM element', () => {
+    class Parent extends TComponent {
+      static template =
+        '<div><constructor id="child">Content</constructor></div>';
+    }
+
+    const parent = new Parent();
+    const child = parent.getById('child', HTMLElement);
+    expect(parent.element.firstElementChild).toBe(child);
+    expect(child.localName).toBe('constructor');
+    expect(child.textContent).toBe('Content');
+  });
+
+  it('instantiates an explicitly registered constructor child component', () => {
+    class Parent extends TComponent {
+      static uses = { constructor: ChildComponent };
+      static template = '<div><constructor id="child"></constructor></div>';
+    }
+
+    const parent = new Parent();
+    const child = parent.getById('child', ChildComponent);
+    expect(parent.element.firstElementChild).toBe(child.element);
+    expect(child.parent).toBe(parent);
+  });
+
   it('expands child components, passes Props and Slots, and maps child instances in idMap', () => {
     class ParentComponent extends TComponent<HTMLDivElement> {
       static uses = { Child: ChildComponent };
@@ -623,6 +648,29 @@ describe('TComponent - Composition (uses) & Error Boundaries', () => {
 });
 
 describe('TComponent - Root Element Validation', () => {
+  it('builds an unregistered constructor root as a native DOM element', () => {
+    class NativeRoot extends TComponent {
+      static template = '<constructor class="native">Content</constructor>';
+    }
+
+    const component = new NativeRoot();
+    expect(component.element).toBeInstanceOf(HTMLElement);
+    expect(component.element.localName).toBe('constructor');
+    expect(component.element.className).toBe('native');
+    expect(component.element.textContent).toBe('Content');
+  });
+
+  it('rejects an explicitly registered constructor root component', () => {
+    class InvalidRoot extends TComponent {
+      static uses = { constructor: TComponent };
+      static template = '<constructor></constructor>';
+    }
+
+    expect(() => new InvalidRoot()).toThrow(
+      /The root element of a template cannot be a custom component/,
+    );
+  });
+
   it('throws an error if the root element of the template is a custom component', () => {
     class SubComponent extends TComponent {
       static template = `<div class="sub"></div>`;
