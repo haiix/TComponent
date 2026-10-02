@@ -106,6 +106,59 @@ describe('mergeStyle', () => {
 });
 
 describe('applyAttributes', () => {
+  it.each(['OnClick', 'ONCLICK', 'ID', 'Id'])(
+    'skips the HTML attribute "%s" without changing the DOM ID',
+    (name) => {
+      const el = document.createElement('div');
+      el.id = 'original-id';
+      applyAttributes(el, Object.freeze({ [name]: 'window.inlineRan = true' }));
+
+      expect(el.id).toBe('original-id');
+      expect(el.hasAttribute('onclick')).toBe(false);
+    },
+  );
+
+  it('merges mixed-case HTML class and style attributes in input order', () => {
+    const el = document.createElement('div');
+    el.className = 'base';
+    el.setAttribute('style', 'color: blue;');
+    applyAttributes(el, {
+      CLASS: 'first',
+      class: 'second',
+      STYLE: 'margin: 10px;',
+      'DATA-Custom': 'value',
+    });
+
+    expect(el.className).toBe('base first second');
+    expect(el.getAttribute('style')).toBe('color: blue; margin: 10px;');
+    expect(el.getAttribute('data-custom')).toBe('value');
+  });
+
+  it.each([SVG_NAMESPACE_URI, MATHML_NAMESPACE_URI])(
+    'preserves attribute case in namespace "%s"',
+    (namespace) => {
+      const el = document.createElementNS(namespace, 'svg');
+      applyAttributes(el, { viewBox: '0 0 10 10', 'DATA-Custom': 'value' });
+
+      expect(el.getAttribute('viewBox')).toBe('0 0 10 10');
+      expect(el.hasAttribute('viewbox')).toBe(false);
+      expect(el.getAttribute('DATA-Custom')).toBe('value');
+      expect(el.hasAttribute('data-custom')).toBe(false);
+    },
+  );
+
+  it('preserves attribute case on XHTML elements in an XML document', () => {
+    const xml = document.implementation.createDocument(
+      HTML_NAMESPACE_URI,
+      'div',
+    );
+    const el = xml.documentElement;
+    applyAttributes(el, { CLASS: 'value' });
+
+    expect(el.getAttribute('CLASS')).toBe('value');
+    expect(el.hasAttribute('class')).toBe(false);
+  });
+
   it('applies general attributes and routes class/style to merge functions', () => {
     const el = document.createElement('div');
     applyAttributes(el, {
