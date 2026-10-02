@@ -4,6 +4,17 @@ export const SVG_NAMESPACE_URI = 'http://www.w3.org/2000/svg';
 export const MATHML_NAMESPACE_URI = 'http://www.w3.org/1998/Math/MathML';
 
 /**
+ * Normalizes attribute names where the DOM treats them as ASCII case-insensitive.
+ * Preserves case for SVG, MathML, and XML documents.
+ */
+export function normalizeAttributeName(target: Element, name: string): string {
+  return target.namespaceURI === 'http://www.w3.org/1999/xhtml' &&
+    target.ownerDocument.contentType === 'text/html'
+    ? name.replace(/[A-Z]/gu, (letter) => letter.toLowerCase())
+    : name;
+}
+
+/**
  * Resolves a native child's namespace, including HTML integration boundaries.
  *
  * @param target - The parent element, with its attributes already applied.
@@ -132,7 +143,8 @@ export function applyAttributes(
   target: Element,
   attributes: Readonly<Record<string, string>>,
 ): void {
-  for (const [name, value] of Object.entries(attributes)) {
+  for (const [originalName, value] of Object.entries(attributes)) {
+    const name = normalizeAttributeName(target, originalName);
     if (name === 'id' || name.startsWith('on')) {
       // Skip specific attributes
       continue;

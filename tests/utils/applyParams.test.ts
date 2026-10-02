@@ -4,6 +4,131 @@ import { TComponent } from '../../src/TComponent';
 import { applyParams } from '../../src/utils/applyParams';
 
 describe('applyParams', () => {
+  it.each(['OnClick', 'ONCLICK'])(
+    'binds "%s" in the parent scope and unbinds it when the child is destroyed',
+    (name) => {
+      class Parent extends TComponent {
+        handleEvent = vi.fn();
+      }
+      const parent = new Parent();
+      const child = new TComponent({ parent });
+      const attributes = Object.freeze({ [name]: 'handleEvent' });
+
+      applyParams(child, child.element, { attributes });
+      expect(child.element.hasAttribute('onclick')).toBe(false);
+      child.element.dispatchEvent(new MouseEvent('click'));
+      expect(parent.handleEvent).toHaveBeenCalledExactlyOnceWith(
+        expect.any(MouseEvent),
+      );
+      child.destroy();
+      child.element.dispatchEvent(new MouseEvent('click'));
+      expect(parent.handleEvent).toHaveBeenCalledTimes(1);
+      expect(attributes[name]).toBe('handleEvent');
+    },
+  );
+
+  it.each(['OnClick', 'ONCLICK'])(
+    'rejects inline code in "%s" before setting an event attribute',
+    (name) => {
+      const component = new TComponent();
+      expect(() => {
+        applyParams(component, component.element, {
+          attributes: { [name]: 'window.inlineRan = true' },
+        });
+      }).toThrow(/SecurityError: Invalid event handler signature/);
+      expect(component.element.hasAttribute('onclick')).toBe(false);
+    },
+  );
+
+  it.each(['ID', 'Id'])(
+    'ignores "%s" without overwriting the existing DOM ID',
+    (name) => {
+      const component = new TComponent();
+      component.element.id = 'original-id';
+      applyParams(component, component.element, {
+        attributes: { [name]: 'shared-id' },
+      });
+      expect(component.element.id).toBe('original-id');
+    },
+  );
+
+  it('normalizes HTML references and merges attributes without mutating the input', () => {
+    class Form extends TComponent {
+      static template = '<div><input id="input"></div>';
+    }
+    const form = new Form();
+    const target = document.createElement('label');
+    target.className = 'base';
+    target.setAttribute('style', 'color: blue;');
+    const attributes = Object.freeze({
+      FOR: 'input',
+      'ARIA-LABELLEDBY': 'input',
+      CLASS: 'first',
+      class: 'second',
+      STYLE: 'margin: 10px;',
+    });
+
+    applyParams(form, target, { attributes });
+    expect(target.hasAttribute('for')).toBe(false);
+    expect(target.hasAttribute('aria-labelledby')).toBe(false);
+    expect(form.context.idReferenceMap.map(({ attrName }) => attrName)).toEqual(
+      ['for', 'aria-labelledby'],
+    );
+    form.context.resolveIdReferences();
+    const input = form.getById('input', HTMLInputElement);
+    expect(input.id).not.toBe('');
+    expect(target.htmlFor).toBe(input.id);
+    expect(target.getAttribute('aria-labelledby')).toBe(input.id);
+    expect(target.className).toBe('base first second');
+    expect(target.getAttribute('style')).toBe('color: blue; margin: 10px;');
+    expect(attributes.FOR).toBe('input');
+    expect(attributes['ARIA-LABELLEDBY']).toBe('input');
+  });
+
+  it.each([
+    ['#first', 'https://example.com/'],
+    ['https://example.com/', '#second'],
+    ['#first', '#second'],
+  ])(
+    'uses the later normalized href when applying "%s" followed by "%s"',
+    (earlier, later) => {
+      class Links extends TComponent {
+        static template =
+          '<div><span id="first"></span><span id="second"></span></div>';
+      }
+      const component = new Links();
+      const target = document.createElement('a');
+      const attributes = Object.freeze({ HREF: earlier, href: later });
+
+      applyParams(component, target, { attributes });
+      expect(component.context.idReferenceMap).toHaveLength(
+        later === '#second' ? 1 : 0,
+      );
+      component.context.resolveIdReferences();
+      const first = component.getById('first', HTMLSpanElement);
+      const second = component.getById('second', HTMLSpanElement);
+      expect(first.id).toBe('');
+      expect(Boolean(second.id)).toBe(later === '#second');
+      expect(target.getAttribute('href')).toBe(
+        later === '#second' ? `#${second.id}` : later,
+      );
+      expect(attributes).toEqual({ HREF: earlier, href: later });
+    },
+  );
+
+  it('preserves SVG attribute case when applying parameters', () => {
+    const component = new TComponent();
+    const target = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'svg',
+    );
+    const attributes = Object.freeze({ viewBox: '0 0 10 10' });
+    applyParams(component, target, { attributes });
+
+    expect(target.getAttribute('viewBox')).toBe(attributes.viewBox);
+    expect(target.hasAttribute('viewbox')).toBe(false);
+  });
+
   it.each([
     'https://example.com/page#section',
     '/page#section',

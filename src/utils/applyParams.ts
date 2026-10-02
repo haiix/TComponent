@@ -1,7 +1,7 @@
 import type { ComponentParams } from '../types';
 import { TComponent } from '../TComponent';
 import { appendSlots } from '../internal/slots';
-import { applyAttributes } from '../internal/dom';
+import { applyAttributes, normalizeAttributeName } from '../internal/dom';
 import { bindEvent } from '../internal/event';
 import { hasIdReference } from '../internal/id';
 
@@ -50,14 +50,13 @@ export function applyParams(
 
   if (params.attributes) {
     const entries = Object.entries(params.attributes);
-    for (const [name, value] of entries) {
+    const references = new Map<string, string>();
+    for (const [originalName, value] of entries) {
+      const name = normalizeAttributeName(target, originalName);
+      // A later value for the same DOM attribute supersedes a deferred reference.
+      references.delete(name);
       if (hasIdReference(name, value, target)) {
-        // Defer until the owning template (including later siblings and slots) is built.
-        contextComponent.context.idReferenceMap.push({
-          attrName: name,
-          refId: value,
-          element: target,
-        });
+        references.set(name, value);
       } else if (name.startsWith('on')) {
         // Bind events using the resolved context (usually the parent),
         // but strictly tie the event lifecycle (AbortSignal) to the current child component
@@ -65,12 +64,27 @@ export function applyParams(
         bindEvent(target, name, value, contextComponent, component.signal);
       }
     }
+    // Only defer references that have not been superseded by a later attribute.
+    for (const [attrName, refId] of references) {
+      contextComponent.context.idReferenceMap.push({
+        attrName,
+        refId,
+        element: target,
+      });
+    }
     // Keep deferred references out of direct DOM assignment without mutating params.
     // applyAttributes internally ignores 'id' and 'on*'.
     applyAttributes(
       target,
       Object.fromEntries(
-        entries.filter(([name, value]) => !hasIdReference(name, value, target)),
+        entries.filter(
+          ([name, value]) =>
+            !hasIdReference(
+              normalizeAttributeName(target, name),
+              value,
+              target,
+            ),
+        ),
       ),
     );
   }
