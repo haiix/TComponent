@@ -153,7 +153,7 @@ export class TComponent<
         ]),
       );
 
-      if (template.t in uses) {
+      if (Object.hasOwn(uses, template.t)) {
         throwError(
           `ParseError: The root element of a template cannot be a custom component ("<${template.t}>"). ` +
             `To extend or alter a component's root behavior, use class inheritance (extends) instead of composition.`,
