@@ -130,7 +130,7 @@ export function mergeStyle(target: Element, styleValue: string): void {
  */
 export function applyAttributes(
   target: Element,
-  attributes: Record<string, string>,
+  attributes: Readonly<Record<string, string>>,
 ): void {
   for (const [name, value] of Object.entries(attributes)) {
     if (name === 'id' || name.startsWith('on')) {

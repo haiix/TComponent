@@ -153,6 +153,23 @@ When you pass attributes (props) or child nodes (slots) to a custom component in
 
 This is an intentional design choice: a component might need to apply certain attributes or inject slot content into a specific internal element rather than the outer wrapper, giving you full, explicit control over the DOM.
 
+### Read-only Template Inputs
+
+Attributes and slots are read-only inputs. `getParsed()` recursively freezes the shared template AST once per component class: every `TNode`, attribute dictionary (`a`), and child array (`c`) is frozen. The returned cache object and its `uses` dictionary are also frozen; registered component classes and their prototypes remain mutable. Repeated construction reads the same AST without copying it.
+
+To consume a custom attribute, copy the dictionary before deleting it and forward the copy:
+
+```typescript
+const attributes = { ...params.attributes };
+const value = attributes.value;
+delete attributes.value;
+applyParams(this, this.element, { ...params, attributes });
+```
+
+Copying a slot array with `[...params.childNodes]` lets you add or remove array entries, but its nested nodes still belong to the frozen template. Copy each node, attribute dictionary, and child array you intend to change. See [Explicit Copies for AST Changes](./advanced.md#explicit-copies-for-ast-changes) for a recursive example.
+
+Only library-owned caches are frozen. Caller-supplied parameter objects, external `AbortSignal`s, manually constructed ASTs, and component instances are not frozen by the library; the public input types still describe read-only usage.
+
 ### The `applyParams` Utility
 
 To easily route passed attributes (like `class` or `style`) and child nodes to a specific target element inside your component, TComponent provides the `applyParams` utility.

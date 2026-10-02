@@ -29,7 +29,7 @@ export class BuildContext {
   /** The component instance that owns the template being built. */
   readonly component: AbstractComponent;
   /** A dictionary of custom components to be used within the template. */
-  readonly uses: Record<string, typeof AbstractComponent>;
+  readonly uses: Readonly<Record<string, typeof AbstractComponent>>;
 
   /**
    * Builds a DOM tree from a parsed template (`TNode`) and resolves ID references.
@@ -39,7 +39,7 @@ export class BuildContext {
    */
   constructor(
     component: AbstractComponent,
-    uses: Record<string, typeof AbstractComponent>,
+    uses: Readonly<Record<string, typeof AbstractComponent>>,
   ) {
     this.component = component;
     this.uses = uses;
@@ -114,7 +114,7 @@ export class BuildContext {
 
   private processAttributes(
     element: Element,
-    attributes: Record<string, string>,
+    attributes: Readonly<Record<string, string>>,
     signal?: AbortSignal,
   ): void {
     for (const [name, value] of Object.entries(attributes)) {
@@ -147,7 +147,7 @@ export class BuildContext {
    */
   appendChildren(
     element: Element,
-    children: (TNode | string)[],
+    children: readonly (TNode | string)[],
     childNs?: string | null,
     signal?: AbortSignal,
   ): void {

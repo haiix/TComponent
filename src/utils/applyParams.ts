@@ -12,6 +12,7 @@ import { hasIdReference } from '../internal/id';
  *
  * It smartly handles merging of `class` and `style` attributes, bindings of events,
  * and safely ignores internal attributes like `id`.
+ * Attributes and child nodes are read-only inputs and are never modified.
  * Slot methods, IDs, and custom components resolve in the parent's scope,
  * while slot events and component cleanup follow the receiving component's lifecycle.
  * ID reference attributes also resolve in the parent's scope after its template is built.

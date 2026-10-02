@@ -14,7 +14,7 @@ import type { TNode } from '../types';
 export function appendSlots(
   contextComponent: TComponent,
   target: Element,
-  childNodes: (TNode | string)[],
+  childNodes: readonly (TNode | string)[],
   signal?: AbortSignal,
 ): void {
   if (!childNodes.length) return;
