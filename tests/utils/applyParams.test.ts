@@ -5,6 +5,165 @@ import { applyParams } from '../../src/utils/applyParams';
 
 describe('applyParams', () => {
   it.each([
+    ['html', 'HREF', 'href', '#first', 'https://example.com/'],
+    ['html', 'href', 'HREF', '#first', ''],
+    ['html', 'HREF', 'href', '#first', '#'],
+    ['svg', 'href', 'href', '#first', 'other.svg#first'],
+    ['svg', 'xlink:href', 'xlink:href', '#first', 'other.svg#first'],
+    ['svg', 'xlink:href', 'xlink:href', '#first', ''],
+    ['svg', 'fill', 'fill', 'url(#first)', 'red'],
+    ['svg', 'stroke', 'stroke', 'url(#first)', 'url(other.svg#first) red'],
+    ['svg', 'filter', 'filter', 'url(#first)', 'none'],
+    ['svg', 'clip-path', 'clip-path', 'url(#first)', 'none'],
+    ['svg', 'mask', 'mask', 'url(#first)', ''],
+    ['svg', 'marker', 'marker', 'url(#first)', 'none'],
+    ['svg', 'marker-start', 'marker-start', 'url(#first)', 'none'],
+    ['svg', 'marker-mid', 'marker-mid', 'url(#first)', 'none'],
+    ['svg', 'marker-end', 'marker-end', 'url(#first)', 'none'],
+  ])(
+    'keeps reapplied %s %s/%s after resolution (%s → %s)',
+    (namespace, originalName, name, earlier, later) => {
+      class Graphic extends TComponent {
+        static template = '<svg><path id="first"></path></svg>';
+      }
+      const component = new Graphic();
+      const target =
+        namespace === 'html'
+          ? document.createElement('a')
+          : document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      const initial = Object.freeze({ [originalName]: earlier });
+      const replacement = Object.freeze({ [name]: later });
+
+      applyParams(component, target, { attributes: initial });
+      expect(component.context.idReferenceMap).toHaveLength(1);
+      applyParams(component, target, { attributes: replacement });
+      expect(target.getAttribute(name)).toBe(later);
+      expect(component.context.idReferenceMap).toHaveLength(0);
+
+      component.context.resolveIdReferences();
+      expect(target.getAttribute(name)).toBe(later);
+      expect(component.getById('first', SVGElement).id).toBe('');
+      expect(target.getAttributeNode(name)?.namespaceURI).toBe(
+        name === 'xlink:href' ? 'http://www.w3.org/1999/xlink' : null,
+      );
+      expect(initial[originalName]).toBe(earlier);
+      expect(replacement[name]).toBe(later);
+    },
+  );
+
+  it.each([
+    ['href', '#first', '#second', 'https://example.com/'],
+    ['xlink:href', '#first', '#second', 'other.svg#first'],
+    ['fill', 'url(#first)', 'url("#second") red', 'blue'],
+    ['aria-labelledby', 'first', 'second', 'unknown'],
+  ])(
+    'replaces pending %s references across repeated applications',
+    (name, firstValue, secondValue, ordinaryValue) => {
+      class Graphic extends TComponent {
+        static template =
+          '<svg><path id="first"></path><path id="second"></path></svg>';
+      }
+      const component = new Graphic();
+      const target = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'use',
+      );
+      for (const value of [
+        firstValue,
+        secondValue,
+        ordinaryValue,
+        secondValue,
+        secondValue,
+      ]) {
+        applyParams(component, target, { attributes: { [name]: value } });
+        expect(component.context.idReferenceMap).toHaveLength(
+          value === ordinaryValue && name !== 'aria-labelledby' ? 0 : 1,
+        );
+      }
+      component.context.resolveIdReferences();
+      const second = component.getById('second', SVGElement);
+      expect(second.id).not.toBe('');
+      expect(target.getAttribute(name)).toBe(
+        secondValue.replace('second', second.id),
+      );
+      expect(component.getById('first', SVGElement).id).toBe('');
+      expect(component.context.idReferenceMap).toHaveLength(0);
+    },
+  );
+
+  it('preserves pending references for other elements and omitted attributes', () => {
+    class Links extends TComponent {
+      static template = '<div><span id="first"></span></div>';
+    }
+    const component = new Links();
+    const target = component.context.build({
+      t: 'a',
+      a: { href: '#first', 'aria-labelledby': 'first' },
+      c: [],
+    });
+    const other = document.createElement('a');
+    applyParams(component, other, { attributes: { href: '#first' } });
+    applyParams(component, target, { attributes: {} });
+    applyParams(component, target, { childNodes: ['Link'] });
+    expect(component.context.idReferenceMap).toHaveLength(3);
+    applyParams(component, target, {
+      attributes: { HREF: 'https://example.com/' },
+    });
+    expect(component.context.idReferenceMap).toHaveLength(2);
+    component.context.resolveIdReferences();
+    const first = component.getById('first', HTMLSpanElement);
+    expect(first.id).not.toBe('');
+    expect(target.getAttribute('href')).toBe('https://example.com/');
+    expect(target.getAttribute('aria-labelledby')).toBe(first.id);
+    expect(other.getAttribute('href')).toBe(`#${first.id}`);
+  });
+
+  it('keeps case-distinct SVG attributes independent across applications', () => {
+    class Graphic extends TComponent {
+      static template = '<svg><path id="first"></path></svg>';
+    }
+    const component = new Graphic();
+    const target = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'use',
+    );
+    applyParams(component, target, { attributes: { href: '#first' } });
+    applyParams(component, target, {
+      attributes: { HREF: 'https://example.com/' },
+    });
+    expect(component.context.idReferenceMap).toHaveLength(1);
+    component.context.resolveIdReferences();
+    const first = component.getById('first', SVGElement);
+    expect(first.id).not.toBe('');
+    expect(target.getAttribute('href')).toBe(`#${first.id}`);
+    expect(target.getAttribute('HREF')).toBe('https://example.com/');
+  });
+
+  it('cancels forwarded references before the parent finishes building', () => {
+    class Link extends TComponent {
+      static template = '<a></a>';
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.element, params);
+        applyParams(this, this.element, {
+          attributes: { HREF: 'https://example.com/' },
+        });
+      }
+    }
+    class App extends TComponent {
+      static uses = { 'link-comp': Link };
+      static template =
+        '<div><link-comp href="#first"></link-comp><span id="first"></span></div>';
+    }
+    const component = new App();
+    expect(component.element.querySelector('a')?.getAttribute('href')).toBe(
+      'https://example.com/',
+    );
+    expect(component.getById('first', HTMLSpanElement).id).toBe('');
+    expect(component.context.idReferenceMap).toHaveLength(0);
+  });
+
+  it.each([
     'sprite.svg#icon',
     'https://example.com/sprite.svg#icon',
     '#icon',
