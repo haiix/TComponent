@@ -22,16 +22,20 @@ export interface ErrorBoundary {
  *
  * The provided `fn` is invoked with `thisArg` as its `this` context.
  * Any synchronous errors are caught and forwarded to `thisArg.onerror`.
- * If `fn` returns a Promise, rejected errors are also forwarded to `onerror`.
+ * If `fn` returns a Promise or thenable, rejected errors are also forwarded to `onerror`,
+ * regardless of the realm in which the value was created.
  *
  * Additionally, if `fn` returns `false`, `event.preventDefault()` is called,
  * mirroring common DOM event handler behavior.
  *
  * @param thisArg - The execution context for `fn`, and the error boundary that receives all errors.
- * @param methodName - The event handler method name to wrap. It may return `void`, `boolean`, or a `Promise`.
+ * @param methodName - The event handler method name to wrap. It may return `void`, `boolean`, a Promise, or a thenable.
  * @returns A new event handler function with error forwarding and default prevention handling.
  */
-export function createEventHandler(thisArg: ErrorBoundary, methodName: string) {
+export function createEventHandler(
+  thisArg: ErrorBoundary,
+  methodName: string,
+): (event: Event) => void {
   return (event: Event): void => {
     try {
       const fn = (thisArg as ErrorBoundary & Record<string, unknown>)[
@@ -46,12 +50,16 @@ export function createEventHandler(thisArg: ErrorBoundary, methodName: string) {
       }
 
       const result = fn.call(thisArg, event) as unknown;
-      if (result instanceof Promise) {
-        result.catch((error: unknown) => {
+      if (result === false) {
+        event.preventDefault();
+      } else if (
+        (typeof result === 'object' && result !== null) ||
+        typeof result === 'function'
+      ) {
+        // Let Promise.resolve read `then` once and capture getter/call errors.
+        Promise.resolve(result).catch((error: unknown) => {
           thisArg.onerror(error);
         });
-      } else if (result === false) {
-        event.preventDefault();
       }
     } catch (error) {
       thisArg.onerror(error);

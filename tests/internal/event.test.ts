@@ -100,6 +100,110 @@ describe('createEventHandler', () => {
       'is not a function',
     );
   });
+
+  it('forwards a promise rejection from another window exactly once', async () => {
+    const frame = document.createElement('iframe');
+    document.body.append(frame);
+    try {
+      const otherWindow = frame.contentWindow as Window & typeof globalThis;
+      const error = new Error('Cross-realm rejection');
+      const result = otherWindow.Promise.reject(error);
+      expect(result).not.toBeInstanceOf(Promise);
+      const thisArg = { onerror: vi.fn(), handleClick: () => result };
+
+      createEventHandler(thisArg, 'handleClick')(new Event('click'));
+      // Allow promise assimilation and rejection handling to finish.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      expect(thisArg.onerror).toHaveBeenCalledExactlyOnceWith(error);
+    } finally {
+      frame.remove();
+    }
+  });
+
+  it.each(['object', 'function'] as const)(
+    'forwards a rejection from a %s thenable exactly once',
+    async (kind) => {
+      const error = new Error('Thenable rejection');
+      const then = vi.fn(
+        (
+          _resolve: (value: unknown) => void,
+          reject: (reason: unknown) => void,
+        ) => {
+          reject(error);
+          reject(new Error('Repeated rejection'));
+        },
+      );
+      const result =
+        kind === 'object' ? { then } : Object.assign(() => {}, { then });
+      const thisArg = { onerror: vi.fn(), handleClick: () => result };
+
+      createEventHandler(thisArg, 'handleClick')(new Event('click'));
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+      expect(then).toHaveBeenCalledTimes(1);
+      expect(then.mock.contexts[0]).toBe(result);
+      expect(thisArg.onerror).toHaveBeenCalledExactlyOnceWith(error);
+    },
+  );
+
+  it('forwards an error thrown while reading then and reads it only once', async () => {
+    const error = new Error('Then getter error');
+    const getThen = vi.fn(() => {
+      throw error;
+    });
+    const result: object = Object.defineProperty({}, 'then', { get: getThen });
+    const thisArg = { onerror: vi.fn(), handleClick: () => result };
+
+    createEventHandler(thisArg, 'handleClick')(new Event('click'));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(getThen).toHaveBeenCalledTimes(1);
+    expect(thisArg.onerror).toHaveBeenCalledExactlyOnceWith(error);
+  });
+
+  it('forwards an error thrown by a thenable', async () => {
+    const error = new Error('Then error');
+    const thisArg = {
+      onerror: vi.fn(),
+      handleClick: () => ({
+        then() {
+          throw error;
+        },
+      }),
+    };
+
+    createEventHandler(thisArg, 'handleClick')(new Event('click'));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(thisArg.onerror).toHaveBeenCalledExactlyOnceWith(error);
+  });
+
+  it.each([
+    undefined,
+    null,
+    true,
+    0,
+    '',
+    {},
+    { then: true },
+    () => {},
+    Promise.resolve(false),
+    {
+      then: (resolve: (value: boolean) => void) => {
+        resolve(false);
+      },
+    },
+  ])('ignores a non-rejecting return value (%j)', async (result) => {
+    const thisArg = { onerror: vi.fn(), handleClick: () => result };
+    const event = new Event('click', { cancelable: true });
+
+    createEventHandler(thisArg, 'handleClick')(event);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(thisArg.onerror).not.toHaveBeenCalled();
+  });
 });
 
 describe('bindEvent', () => {
