@@ -10,6 +10,7 @@ import { BuildContext } from './BuildContext';
 import { parseTemplate } from './utils/parse';
 import { throwError } from './internal/messages';
 import { abortLifecycle } from './internal/signal';
+import { freezeTemplate } from './internal/template';
 
 /**
  * Global registry mapping root DOM elements to their respective TComponent instances.
@@ -135,6 +136,8 @@ export class TComponent<
   /**
    * Retrieves the class-specific parsed templates and their dependent components (uses).
    * If they have not been parsed yet, parses them and caches the results.
+   * The cache and uses dictionary are frozen; the template is recursively frozen.
+   * Registered component classes remain mutable.
    *
    * @returns The parsed templates and their dependencies.
    */
@@ -157,7 +160,12 @@ export class TComponent<
         );
       }
 
-      this._parsed = { template, ns: this.namespaceURI, uses };
+      freezeTemplate(template);
+      this._parsed = Object.freeze({
+        template,
+        ns: this.namespaceURI,
+        uses: Object.freeze(uses),
+      });
     }
     return this._parsed;
   }

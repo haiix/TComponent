@@ -288,6 +288,37 @@ class ManualComponent extends AbstractComponent {
 
 Because TComponent compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
 
+### Explicit Copies for AST Changes
+
+`TNode` is recursively read-only, and cached templates are recursively frozen at runtime. `BuildContext` reads this shared input without modifying it. To transform an entire subtree, explicitly copy its nodes, attributes, and child arrays first:
+
+```typescript
+import type { TNode } from '@haiix/tcomponent';
+
+interface MutableNode {
+  t: string;
+  a: Record<string, string>;
+  c: (MutableNode | string)[];
+}
+
+function copyNode(node: TNode): MutableNode {
+  return {
+    t: node.t,
+    a: { ...node.a },
+    c: node.c.map((child) =>
+      typeof child === 'string' ? child : copyNode(child),
+    ),
+  };
+}
+
+const copied = copyNode(MyComponent.getParsed().template);
+copied.a.class = 'customized';
+copied.c.push('Extra content');
+// Pass the copy to context.build(copied) to create DOM from it.
+```
+
+A shallow node or array copy still shares nested attributes and nodes. Copy only the parts you will change, or use a recursive copy when modifying arbitrary descendants. Newly constructed mutable objects remain valid inputs to `BuildContext`; merely annotating them as `TNode` exposes a read-only view.
+
 ### Example: A Generic Dynamic List
 
 In this advanced example, a `DynamicList` component captures its first child as an AST template (e.g., an `<li>`), and re-evaluates that AST whenever a new item is added.
@@ -320,11 +351,12 @@ class DynamicList extends AbstractComponent {
 
     // 1. Dynamically create the root element's AST (defaulting to <ul>) and build it.
     const tagName = params.attributes?.tagname || 'ul';
-    const rootAst: TNode = { t: tagName, a: { ...params.attributes }, c: [] };
-    delete rootAst.a.tagname; // Clean up custom props
+    const attributes = { ...params.attributes };
+    delete attributes.tagname; // Clean up custom props on our own copy
+    const rootAst: TNode = { t: tagName, a: attributes, c: [] };
 
     // Safely retrieve custom components registered in the parent
-    let parentUses: Record<string, typeof AbstractComponent> = {};
+    let parentUses: Readonly<Record<string, typeof AbstractComponent>> = {};
     if (params.parent instanceof TComponent) {
       const ParentClass = params.parent.constructor as typeof TComponent;
       parentUses = ParentClass.getParsed().uses;

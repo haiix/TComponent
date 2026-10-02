@@ -24,15 +24,16 @@ export interface ParseOptions {
 }
 
 /**
- * Represents an Abstract Syntax Tree (AST) node of a parsed template.
+ * Represents a read-only Abstract Syntax Tree (AST) node of a parsed template.
+ * Templates cached by `TComponent.getParsed()` are recursively frozen at runtime.
  */
 export interface TNode {
   /** The tag name of the element (converted to lowercase). */
-  t: string;
+  readonly t: string;
   /** A dictionary of the element's attributes. */
-  a: Record<string, string>;
+  readonly a: Readonly<Record<string, string>>;
   /** An array of child nodes, which can be either `TNode` objects or plain text strings. */
-  c: (TNode | string)[];
+  readonly c: readonly (TNode | string)[];
 }
 
 /**
@@ -41,10 +42,10 @@ export interface TNode {
 export interface ComponentParams {
   /** The parent component instance, if any. */
   parent?: AbstractComponent;
-  /** Attributes passed down to the component. */
-  attributes?: Record<string, string>;
-  /** Child nodes passed to the component. */
-  childNodes?: (TNode | string)[];
+  /** Read-only template attributes. Copy before modifying. */
+  readonly attributes?: Readonly<Record<string, string>>;
+  /** Read-only template child nodes. Copy nested nodes before modifying them. */
+  readonly childNodes?: readonly (TNode | string)[];
   /** An `AbortSignal` used to manage event listeners and component teardown. */
   signal?: AbortSignal;
 }
@@ -56,12 +57,13 @@ export interface ComponentParams {
 export type DefaultIDMap = Record<string, Element | AbstractComponent>;
 
 /**
- * The interface that aggregates the parsing results of templates and subcomponents.
+ * The read-only cache of parsed templates and subcomponents.
+ * `TComponent.getParsed()` freezes this object and uses dictionary, and recursively freezes the template.
  */
 export interface ParsedTemplateData {
-  template: TNode;
-  ns?: string;
-  uses: Record<string, typeof AbstractComponent>;
+  readonly template: TNode;
+  readonly ns?: string;
+  readonly uses: Readonly<Record<string, typeof AbstractComponent>>;
 }
 
 /**
