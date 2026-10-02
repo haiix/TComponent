@@ -688,6 +688,60 @@ describe('TComponent - Root Element Validation', () => {
 });
 
 describe('TComponent - Custom Namespace URI', () => {
+  it('rebuilds canonical SVG tags and preserves the foreignObject HTML boundary', () => {
+    class Graphic extends TComponent<SVGSVGElement> {
+      static template = `<svg>
+        <defs>
+          <linearGradient id="paint"><stop offset="0" /></linearGradient>
+          <radialGradient id="radial"></radialGradient>
+          <clipPath id="clip"><rect /></clipPath>
+          <filter><feGaussianBlur id="blur" /></filter>
+        </defs>
+        <foreignObject id="content"><DIV id="html">Hello<svg><linearGradient id="nested" /></svg></DIV></foreignObject>
+      </svg>`;
+    }
+
+    const graphic = new Graphic();
+    expect(graphic.element).toBeInstanceOf(SVGSVGElement);
+    const native = document.createElement('template');
+    native.innerHTML = Graphic.template;
+    for (const [id, tag] of [
+      ['paint', 'linearGradient'],
+      ['radial', 'radialGradient'],
+      ['clip', 'clipPath'],
+      ['blur', 'feGaussianBlur'],
+      ['content', 'foreignObject'],
+      ['nested', 'linearGradient'],
+    ] as const) {
+      const element = graphic.getById(id, SVGElement);
+      const parsedElement = native.content.querySelector(`[id="${id}"]`);
+      expect(element.localName).toBe(tag);
+      expect(element.namespaceURI).toBe('http://www.w3.org/2000/svg');
+      expect(element.constructor).toBe(parsedElement?.constructor);
+    }
+    const html = graphic.getById('html', HTMLDivElement);
+    expect(html.localName).toBe('div');
+    expect(html.namespaceURI).toBe('http://www.w3.org/1999/xhtml');
+    expect(html.parentElement).toBe(graphic.getById('content', SVGElement));
+  });
+
+  it('matches canonical SVG tags against lowercased uses keys', () => {
+    class Gradient extends TComponent<SVGSVGElement> {
+      static template = '<svg class="replacement"></svg>';
+    }
+    class Graphic extends TComponent<SVGSVGElement> {
+      static uses = { LinearGradient: Gradient };
+      static template =
+        '<svg><linearGradient id="paint"></linearGradient></svg>';
+    }
+
+    const graphic = new Graphic();
+    const gradient = graphic.getById('paint', Gradient);
+    expect(graphic.element.firstElementChild).toBe(gradient.element);
+    expect(gradient.element.classList.contains('replacement')).toBe(true);
+    expect(Graphic.getParsed().uses).toHaveProperty('lineargradient', Gradient);
+  });
+
   it('creates the root element with the specified custom namespace URI', () => {
     class PolyLineComponent extends TComponent<SVGPolylineElement> {
       static namespaceURI = 'http://www.w3.org/2000/svg';

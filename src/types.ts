@@ -28,7 +28,7 @@ export interface ParseOptions {
  * Templates cached by `TComponent.getParsed()` are recursively frozen at runtime.
  */
 export interface TNode {
-  /** The tag name of the element (converted to lowercase). */
+  /** The element's local name; parsed HTML names are lowercase and SVG names preserve canonical case. */
   readonly t: string;
   /** A dictionary of the element's attributes. */
   readonly a: Readonly<Record<string, string>>;

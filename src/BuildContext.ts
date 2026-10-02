@@ -82,8 +82,12 @@ export class BuildContext {
     this.idReferenceMap.length = 0;
   }
 
-  private buildCustomComponent(tNode: TNode, signal?: AbortSignal): Element {
-    const Component = this.uses[tNode.t] as new (
+  private buildCustomComponent(
+    tNode: TNode,
+    componentName: string,
+    signal?: AbortSignal,
+  ): Element {
+    const Component = this.uses[componentName] as new (
       params: ComponentParams,
     ) => AbstractComponent;
     const params: ScopedComponentParams = {
@@ -143,16 +147,22 @@ export class BuildContext {
     const target =
       element instanceof HTMLTemplateElement ? element.content : element;
     for (const childNode of children) {
+      if (typeof childNode === 'string') {
+        target.appendChild(document.createTextNode(childNode));
+        continue;
+      }
+      // Keep exact keys for manually supplied ASTs; parsed uses keys are lowercase.
+      const componentName = Object.hasOwn(this.uses, childNode.t)
+        ? childNode.t
+        : childNode.t.toLowerCase();
       target.appendChild(
-        typeof childNode === 'string'
-          ? document.createTextNode(childNode)
-          : Object.hasOwn(this.uses, childNode.t)
-            ? this.buildCustomComponent(childNode, signal)
-            : this.build(
-                childNode,
-                getChildNamespace(element, childNode.t, childNs),
-                signal,
-              ),
+        Object.hasOwn(this.uses, componentName)
+          ? this.buildCustomComponent(childNode, componentName, signal)
+          : this.build(
+              childNode,
+              getChildNamespace(element, childNode.t, childNs),
+              signal,
+            ),
       );
     }
   }

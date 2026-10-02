@@ -89,7 +89,7 @@ class DrawingBoard extends TComponent<SVGSVGElement> {
 }
 ```
 
-_Note: Keep in mind the browser parser limitation regarding camelCase SVG tags as mentioned in the [Best Practices & Caveats](./best-practices.md#svg-mathml-camelcase-tags-limitation) document. Standard lowercase tags like `polyline` or `path` work perfectly._
+_Note: CamelCase SVG names are preserved inside `<svg>`. Standalone SVG roots with camelCase names still have an HTML parsing limitation even when `namespaceURI` is set; see [Best Practices & Caveats](./best-practices.md#svg-mathml-camelcase-tags-limitation). Lowercase roots such as `polyline` or `path` work as shown above._
 
 ---
 

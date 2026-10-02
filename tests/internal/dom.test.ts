@@ -44,16 +44,16 @@ describe('createNativeElement', () => {
     expect(childNs).toBe(MATHML_NAMESPACE_URI);
   });
 
-  it('resets the child namespace to HTML when creating a foreignObject inside SVG', () => {
-    // Parent namespace is passed down as SVG
-    const { element, childNs } = createNativeElement(
-      'foreignobject',
-      SVG_NAMESPACE_URI,
-    );
+  it.each(['foreignObject', 'foreignobject'])(
+    'resets the child namespace to HTML when creating %s inside SVG',
+    (tag) => {
+      // Parent namespace is passed down as SVG
+      const { element, childNs } = createNativeElement(tag, SVG_NAMESPACE_URI);
 
-    expect(element.namespaceURI).toBe(SVG_NAMESPACE_URI);
-    expect(childNs).toBe(null); // Children of foreignObject should revert to HTML
-  });
+      expect(element.namespaceURI).toBe(SVG_NAMESPACE_URI);
+      expect(childNs).toBe(null); // Children of foreignObject should revert to HTML
+    },
+  );
 
   it('throws an error for invalid tag names', () => {
     expect(() => createNativeElement('<invalid>')).toThrow(
