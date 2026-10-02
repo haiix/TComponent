@@ -44,11 +44,13 @@
     "format": "prettier --write .",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:types": "tsc --ignoreConfig --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck false dist/index.d.ts",
     "test:coverage": "vitest run --coverage",
     "docs": "typedoc"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@microsoft/api-extractor": "^7.59.3",
     "@vitest/coverage-v8": "^5.0.0",
     "@vitest/eslint-plugin": "^1.6.11",
     "eslint": "^10.0.3",
