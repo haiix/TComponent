@@ -7,11 +7,28 @@ import { hasIdReference } from '../internal/id';
 
 /**
  * Applies component parameters (attributes and child nodes) to a specific target DOM element.
- * This utility drastically simplifies routing "Props" (attributes) and "Slots" (childNodes)
+ * Its primary use is to forward received attributes and slots once during initialization
  * to either the component's root element or a specific internal element.
  *
- * It smartly handles merging of `class` and `style` attributes, bindings of events,
- * and safely ignores internal attributes like `id`.
+ * Applying parameters after construction is also supported, with these behaviors on each call:
+ *
+ * - Ordinary attributes overwrite the supplied attributes; omitted attributes are not removed.
+ * - `class` adds tokens to `classList` without duplicates or removing existing classes.
+ * - `style` appends declarations without removing previous declarations; CSS precedence applies.
+ * - Event attributes add listeners without replacing earlier listeners. Reapplying the same
+ *   event attribute, even with the same method name, invokes the method multiple times per event.
+ * - Child nodes are appended without replacing existing children.
+ *
+ * Internal attributes like `id` are ignored.
+ *
+ * Reapplying the same parameters does not preserve the same state, so do not use whole-params
+ * reapplication for state updates. Instead, explicitly update DOM attributes, `classList`,
+ * styles, or children, or use the component's public methods.
+ * Event wrappers resolve methods at execution time: replace the handler method's implementation
+ * on the component providing the handler, or branch on state within that method, without reapplying
+ * parameters. In subclasses, avoid forwarding the same parameters to a target already handled
+ * by the base class.
+ *
  * Attributes and child nodes are read-only inputs and are never modified.
  * Slot methods, IDs, and custom components resolve in the parent's scope,
  * while slot events and component cleanup follow the receiving component's lifecycle.
