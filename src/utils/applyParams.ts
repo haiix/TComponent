@@ -21,6 +21,13 @@ import { hasIdReference } from '../internal/id';
  *
  * Internal attributes like `id` are ignored.
  *
+ * Forwarded attribute names are normalized for the target's namespace and document:
+ * ASCII uppercase letters become lowercase on HTML elements in HTML documents;
+ * case is preserved for SVG, MathML, and XML documents. For example, `viewBox`
+ * becomes `viewbox` on an HTML target but stays `viewBox` on an SVG target.
+ * This differs from `BuildContext`, which expects AST names in the correct form
+ * for construction. Slot child ASTs still follow the `TNode` name format.
+ *
  * Reapplying the same parameters does not preserve the same state, so do not use whole-params
  * reapplication for state updates. Instead, explicitly update DOM attributes, `classList`,
  * styles, or children, or use the component's public methods.
