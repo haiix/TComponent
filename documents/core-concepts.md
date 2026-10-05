@@ -176,6 +176,8 @@ The `applyParams` utility primarily forwards received attributes (like `class` o
 
 It appends child nodes, adds classes and style declarations, binds events (`on*`) to the parent's methods, and ignores internal attributes like `id`.
 
+Forwarded attribute names are normalized for the receiving element's namespace and document: HTML elements in HTML documents use lowercase names, while SVG, MathML, and XML documents preserve case. For example, `viewBox` becomes `viewbox` on an HTML target and stays `viewBox` on an SVG target. This differs from `BuildContext`, where manually created or copied ASTs must already use the correct names. Slot child ASTs also follow that input contract. See [Names in Manual ASTs](./advanced.md#names-in-manual-asts) for details and examples.
+
 ID reference attributes such as `for` and `aria-labelledby` are resolved in the parent's template scope after the parent finishes building, including references to later siblings or slotted elements. Without a `TComponent` parent, they use the receiving component's context. If you call `applyParams()` after that context's build-time resolution, call its `context.resolveIdReferences()` after applying parameters and building the reference targets.
 
 #### Reapplying Parameters and Updating State

@@ -288,6 +288,46 @@ class ManualComponent extends AbstractComponent {
 
 Because TComponent compiles templates into a lightweight AST (`TNode`), you don't have to render child nodes immediately. You can capture a child node's AST and use it as a **reusable template** to generate new DOM nodes dynamically.
 
+### Names in Manual ASTs
+
+`TNode` is a DOM construction AST whose tag and attribute names use the same format as HTML parser output. `parseTemplate()` parses HTML with `template.innerHTML` and copies the resulting names into the AST. The browser lowercases HTML names and adjusts known SVG names to canonical case; TComponent does not add an independent normalization step. Cached HTML templates already have this format.
+
+When creating an AST manually or modifying a copy of a cached AST, maintain this format throughout the tree:
+
+- Use lowercase HTML tag and attribute names, such as `button`, `id`, `onclick`, and `aria-labelledby`.
+- For SVG, MathML, or XML, use the correct case for the namespace being built. SVG examples include the attribute `viewBox` and tags `linearGradient` and `foreignObject`. Do not lowercase all names.
+
+`BuildContext.build()` and `appendChildren()` read the supplied AST without modifying it or providing HTML-style case correction. Correct names allow the existing ID management, ID reference resolution, event method resolution, and lifecycle cleanup to work:
+
+```typescript
+import TComponent, { type TNode } from '@haiix/tcomponent';
+
+class ManualButton extends TComponent {
+  static template = '<div></div>';
+
+  clicked() {
+    this.element.classList.toggle('clicked');
+  }
+}
+
+const component = new ManualButton();
+const node: TNode = {
+  t: 'button',
+  a: { id: 'manual', onclick: 'clicked', 'aria-labelledby': 'manual' },
+  c: ['Click me'],
+};
+
+const button = component.context.build(node);
+component.context.resolveIdReferences();
+component.element.append(button);
+```
+
+The HTML string `<button ID="manual" ONCLICK="clicked">` gets lowercase attribute names during browser parsing. A manual AST with `{ ID: 'manual', ONCLICK: 'clicked' }` is outside the input contract. Even if DOM assignment lowercases the resulting attribute names, it does not retroactively register the ID or bind the component's event method.
+
+Manual ASTs follow the existing [namespace selection and inheritance rules](#custom-namespace-uris). For example, `{ t: 'svg', a: { viewBox: '0 0 10 10' }, c: [{ t: 'linearGradient', a: {}, c: [] }] }` uses correctly cased SVG names. For a standalone `linearGradient`, pass `'http://www.w3.org/2000/svg'` as the namespace argument to `build()`. A component's `namespaceURI` affects DOM reconstruction, not HTML string parsing, so the existing parsing limitation still applies to string templates.
+
+Attribute forwarding with `applyParams()` has a different contract: it normalizes attribute names according to the receiving element's namespace and document. The same `{ viewBox: '0 0 10 10' }` becomes `viewbox` on an HTML element in an HTML document, but remains `viewBox` on an SVG element. Even cached attributes need this treatment because the component chooses the receiving element, which can differ from the source template. Slot child ASTs still follow the `TNode` name format; attribute forwarding does not normalize their names.
+
 ### Explicit Copies for AST Changes
 
 `TNode` is recursively read-only, and cached templates are recursively frozen at runtime. `BuildContext` reads this shared input without modifying it. To transform an entire subtree, explicitly copy its nodes, attributes, and child arrays first:
@@ -318,6 +358,8 @@ copied.c.push('Extra content');
 ```
 
 A shallow node or array copy still shares nested attributes and nodes. Copy only the parts you will change, or use a recursive copy when modifying arbitrary descendants. Newly constructed mutable objects remain valid inputs to `BuildContext`; merely annotating them as `TNode` exposes a read-only view.
+
+Copies must preserve the [manual AST name format](#names-in-manual-asts) too. When changing `t` or adding attribute keys in `a`, use lowercase HTML names or the correct SVG, MathML, or XML case for the namespace being built.
 
 ### Example: A Generic Dynamic List
 

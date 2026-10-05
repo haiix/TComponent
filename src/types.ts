@@ -24,13 +24,29 @@ export interface ParseOptions {
 }
 
 /**
- * Represents a read-only Abstract Syntax Tree (AST) node of a parsed template.
+ * Represents a read-only Abstract Syntax Tree (AST) node for DOM construction,
+ * with tag and attribute names in the same form as HTML parser output.
+ * `parseTemplate()` copies names from the browser's HTML parser; the library does
+ * not independently normalize them. Manually created nodes and modified copies
+ * must maintain the same name format for the namespace being built.
+ * `BuildContext` reads these names without providing HTML-style case correction.
+ *
  * Templates cached by `TComponent.getParsed()` are recursively frozen at runtime.
  */
 export interface TNode {
-  /** The element's local name; parsed HTML names are lowercase and SVG names preserve canonical case. */
+  /**
+   * The element's local name. Use lowercase for HTML (e.g. `button`) and the
+   * correct case for SVG, MathML, or XML (e.g. `linearGradient`, `foreignObject`).
+   * Do not lowercase case-sensitive names when creating or modifying nodes.
+   */
   readonly t: string;
-  /** A dictionary of the element's attributes. */
+  /**
+   * A dictionary of the element's attributes. Use lowercase HTML names such as
+   * `id`, `onclick`, and `aria-labelledby`. For SVG, MathML, or XML, use the
+   * correct case for the namespace (e.g. SVG `viewBox`). These requirements also
+   * apply to modified copies; DOM attribute assignment does not retroactively
+   * trigger ID registration or event binding for incorrectly cased names.
+   */
   readonly a: Readonly<Record<string, string>>;
   /** An array of child nodes, which can be either `TNode` objects or plain text strings. */
   readonly c: readonly (TNode | string)[];

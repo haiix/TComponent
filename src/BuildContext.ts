@@ -48,7 +48,16 @@ export class BuildContext {
   /**
    * Recursively builds a DOM tree from a `TNode` and stores the states in `idMap` and `idReferenceMap`.
    *
-   * @param tNode - The current `TNode` to build.
+   * Manually created ASTs and modified copies must follow the `TNode` name format:
+   * lowercase HTML tag and attribute names, and correctly cased names for SVG,
+   * MathML, or XML. This method reads the AST without modifying it or providing
+   * HTML-style case correction. Correct names enable ID registration, ID reference
+   * resolution, and event method binding with lifecycle cleanup.
+   * Unlike `applyParams()` attribute forwarding, names must already be appropriate
+   * for the namespace being built. Call `resolveIdReferences()` after building
+   * reference targets to resolve stored references.
+   *
+   * @param tNode - The current `TNode` to build, including correctly formatted names in descendants.
    * @param ns - Namespace URI used when creating an element.
    * @param signal - Optional lifecycle signal, independent of the template scope.
    * @returns The constructed DOM Element.
@@ -132,8 +141,13 @@ export class BuildContext {
   /**
    * Builds child nodes and appends them to the specified element.
    *
+   * Manually created child ASTs and modified copies must follow the same `TNode`
+   * name format as `build()`: lowercase HTML names and correctly cased SVG,
+   * MathML, or XML names. Nodes are read without modification or HTML-style
+   * case correction, using the existing namespace inheritance rules.
+   *
    * @param element - The parent element to append child nodes to.
-   * @param children - The child nodes or text content to append.
+   * @param children - The child nodes with correctly formatted names, or text content to append.
    * @param childNs - The inherited namespace URI, defaulting to the parent's namespace.
    * HTML integration boundaries are resolved for each native child.
    * @param signal - Optional lifecycle signal for events and custom components.
