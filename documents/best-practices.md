@@ -105,6 +105,8 @@ class ValidComponent extends CustomButton {
 }
 ```
 
+When adding attribute forwarding in a subclass, check whether the base constructor already calls `applyParams()` with the same params and target. Forwarding them again adds event listeners, style declarations, and child nodes instead of replacing them. For updates after construction, use explicit DOM operations or the component's public methods. See [Reapplying Parameters and Updating State](./core-concepts.md#reapplying-parameters-and-updating-state) for the behavior of each input and ways to change an existing handler without reapplication.
+
 If you purely want to add a layout wrapper around a custom component, you must wrap it in a native HTML element (like a `<div>` or `<section>`).
 
 ```typescript

@@ -172,11 +172,29 @@ Only library-owned caches are frozen. Caller-supplied parameter objects, externa
 
 ### The `applyParams` Utility
 
-To easily route passed attributes (like `class` or `style`) and child nodes to a specific target element inside your component, TComponent provides the `applyParams` utility.
+The `applyParams` utility primarily forwards received attributes (like `class` or `style`) and child nodes (slots) once during initialization, usually in the constructor. The target can be the component's root element or a specific internal element.
 
-It handles appending child nodes, merges `class` and `style` strings, seamlessly binds events (`on*`) to the parent's methods, and safely ignores internal attributes like id.
+It appends child nodes, adds classes and style declarations, binds events (`on*`) to the parent's methods, and ignores internal attributes like `id`.
 
 ID reference attributes such as `for` and `aria-labelledby` are resolved in the parent's template scope after the parent finishes building, including references to later siblings or slotted elements. Without a `TComponent` parent, they use the receiving component's context. If you call `applyParams()` after that context's build-time resolution, call its `context.resolveIdReferences()` after applying parameters and building the reference targets.
+
+#### Reapplying Parameters and Updating State
+
+You can also call `applyParams()` after construction. Each call applies the following operations to the target:
+
+| Input                    | Behavior on reapplication                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Ordinary attributes      | Overwrite supplied attributes. Omitted attributes are not removed.                                                 |
+| `class`                  | Add tokens to `classList`. Identical tokens do not duplicate; existing classes are not removed.                    |
+| `style`                  | Append style declarations. Previous declarations are not removed; the resulting appearance follows CSS precedence. |
+| Event attributes (`on*`) | Add new listeners. Previous listeners are not replaced.                                                            |
+| Child nodes              | Append children. Existing children are not replaced.                                                               |
+
+Reapplying the same event attribute to the same element adds another listener even if the method name is unchanged. A single event then invokes the method multiple times. Styles and children also accumulate, so applying the same params repeatedly does not preserve the same state. **Do not use whole-params reapplication as a state update mechanism.**
+
+For updates after construction, explicitly manipulate DOM attributes, `classList`, `style`, and child nodes, or call the component's public methods. To change an existing event handler's behavior, replace the implementation of the named method on the component providing the handler (usually the parent), or let that method branch on the component's current state. Event wrappers resolve the method at execution time, so neither approach requires reapplying `applyParams()`.
+
+When extending a component, avoid forwarding the same params again to a target that the base class already handled. See [Best Practices: Root Element Constraints](./best-practices.md#root-element-constraints-composition-vs-inheritance) for the inheritance context.
 
 ### Example: A Reusable Card Component
 
@@ -202,7 +220,7 @@ class UiCard extends TComponent<HTMLDivElement> {
     // 1. Get the target internal element using its ID
     const target = this.getById('card-body', HTMLDivElement);
 
-    // 2. Safely apply all passed attributes and child nodes (slots) to it
+    // 2. Forward the received attributes and slots once during initialization
     applyParams(this, target, params);
   }
 }
