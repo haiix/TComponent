@@ -29,10 +29,12 @@ Unlike reactive frameworks, TComponent **does not** use a virtual DOM and does n
 When building a component, you will mainly work with the following three core features:
 
 - **`static template`**: A standard HTML string defining your component's structure. It is parsed once per component class and cached for maximum performance.
-- **`this.getById(id, ExpectedType?)`**: Any element assigned an `id` in your template is mapped internally and intentionally removed from the DOM to prevent collisions. You can safely access these inner nodes via `this.getById()`.
+- **`this.getById(id, ExpectedType?)`**: Any element assigned an `id` in your template is mapped internally. The original `id` attribute is intentionally omitted from the DOM to prevent collisions. You can safely access these inner nodes via `this.getById()`.
 - **`this.element`**: Every component instance exposes its root DOM node via the `.element` property. Because it is a native `Element`, you mount it to the page using standard methods like `document.body.appendChild()`.
 
-Only registered IDs are returned; an unregistered ID causes `getById()` to throw an error. If an ID appears more than once in the same template, the first target is kept and a warning is logged once.
+Only registered IDs are returned; an unregistered ID causes `getById()` to throw an error. Optional chaining such as `this.getById('missing', HTMLElement)?.textContent` does not suppress this error: the call throws before the property access. If an ID appears more than once in the same context, the first target is kept and a warning is logged once.
+
+The ID map stores references to targets built from the template, regardless of their DOM connection state. `getById()` still returns a child after `child.destroy()` and an element after DOM removal. Destruction does not unregister or replace these targets. See [Component Lifecycle & Teardown](./architecture.md#component-lifecycle-teardown) for reference retention and garbage collection.
 
 ### Example: A Simple Counter
 
@@ -287,9 +289,50 @@ If you assign an `id` to a custom sub-component (e.g., `<custom-input id="my-chi
 
 If you need to link a `<label>` in a parent component to an `<input>` managed by a child component, the most robust approach is to use **Slots**.
 
-Because slot content is evaluated in the **parent's scope**, elements passed via slots share the same id as the parent. This ensures that their UUIDs resolve perfectly.
+Because slot content is evaluated in the **scope of the component defining the template**, its IDs are registered in that component's context (usually the parent), alongside the other IDs in that template. This allows their UUID references to resolve in the same scope.
 
 Slot content passed through `applyParams()` also resolves event handler methods and `static uses` in the parent's scope. Its lifecycle follows the component receiving the slot: destroying that component unbinds slot events and aborts the signals of custom components inside the slot, including nested slots. The parent and sibling components remain active. Slotted custom components retain their `parent` reference for parameter resolution and error propagation.
+
+Destroying the receiving component does not delete the slot IDs from the defining component's context. Detached slot elements remain accessible through that component's `getById()`, as this example shows:
+
+```typescript
+import TComponent, {
+  applyParams,
+  kebabKeys,
+  type ComponentParams,
+} from '@haiix/tcomponent';
+
+class SubComp extends TComponent {
+  static template = '<section></section>';
+
+  constructor(params: ComponentParams = {}) {
+    super(params);
+    applyParams(this, this.element, params);
+  }
+}
+
+class App extends TComponent {
+  static uses = kebabKeys({ SubComp });
+  static template = `
+    <div>
+      <sub-comp id="subComp">
+        <span id="slot">Slot Text</span>
+      </sub-comp>
+    </div>
+  `;
+
+  foo() {
+    this.getById('subComp', SubComp).destroy();
+    console.log(this.getById('slot', HTMLElement).textContent); // Slot Text
+  }
+}
+
+const app = new App();
+document.body.append(app.element);
+app.foo();
+```
+
+The following example uses the shared template scope to link a label and a slotted input:
 
 ```typescript
 import TComponent, {

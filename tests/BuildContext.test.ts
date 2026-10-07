@@ -13,6 +13,55 @@ class DummyOwner extends AbstractComponent {
 }
 
 describe('BuildContext - DOM Building & ID Resolution', () => {
+  it('retains distinct IDs across repeated builds after DOM removal', () => {
+    const owner = new DummyOwner();
+    const context = new BuildContext(owner, {});
+    const targets = ['first', 'second', 'third'].map((id) => {
+      const target = context.build({ t: 'span', a: { id }, c: [] });
+      owner.element.append(target);
+      target.remove();
+      return target;
+    });
+
+    owner.destroy();
+
+    expect(Object.keys(context.idMap)).toEqual(['first', 'second', 'third']);
+    expect(Object.values(context.idMap)).toEqual(targets);
+    expect(owner.element.children).toHaveLength(0);
+  });
+
+  it('keeps the first child registration when its ID is rebuilt after destruction', () => {
+    resetWarnings();
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const owner = new DummyOwner();
+      const context = new BuildContext(owner, { child: TComponent });
+      const template = parseTemplate(
+        '<div><child id="reused-child"></child></div>',
+      );
+      const firstRoot = context.build(template);
+      const firstChild = context.idMap['reused-child'] as TComponent;
+      firstChild.destroy();
+      expect(firstRoot.children).toHaveLength(0);
+
+      const secondRoot = context.build(template);
+      const secondChild = TComponent.from(secondRoot.firstElementChild);
+
+      expect(secondChild).toBeInstanceOf(TComponent);
+      expect(secondChild).not.toBe(firstChild);
+      expect(context.idMap['reused-child']).toBe(firstChild);
+      expect(firstChild.signal.aborted).toBe(true);
+      expect(secondChild?.signal.aborted).toBe(false);
+      expect(warnSpy).toHaveBeenCalledExactlyOnceWith(
+        '[TComponent] Duplicate id "reused-child" found in template. Only the first instance will be mapped.',
+      );
+      owner.destroy();
+    } finally {
+      warnSpy.mockRestore();
+      resetWarnings();
+    }
+  });
+
   it('resolves page links and SVG use references with distinct IDs per instance', () => {
     class Links extends TComponent {
       static template = `

@@ -14,7 +14,7 @@ import { freezeTemplate } from './internal/template';
 
 /**
  * Global registry mapping root DOM elements to their respective TComponent instances.
- * Using a WeakMap ensures that components are garbage-collected when their DOM elements are removed.
+ * The WeakMap does not itself keep otherwise unreachable elements and components alive.
  */
 const componentRegistry = new WeakMap<Element, TComponent<Element, unknown>>();
 
@@ -72,19 +72,24 @@ export class TComponent<
   /**
    * Retrieves an internal element or sub-component by its original template ID.
    * Leverages the IDMap generic for strict type inference.
+   * Returns registered targets even after DOM removal or component destruction.
    *
    * @param id - The original ID defined in the static template.
    * @returns The element, strongly typed based on the IDMap.
+   * @throws Error if the ID is unregistered; optional chaining does not suppress this error.
    */
   getById<K extends keyof IDMap>(id: K): IDMap[K];
 
   /**
    * Retrieves an internal element or sub-component by its original template ID,
    * and asserts its type at runtime.
+   * Returns registered targets even after DOM removal or component destruction.
    *
    * @param id - The original ID defined in the static template.
    * @param ExpectedType - The expected class (e.g., HTMLInputElement, ChildComponent).
    * @returns The element, strongly typed to the ExpectedType.
+   * @throws Error if the ID is unregistered; optional chaining does not suppress this error.
+   * @throws TypeError if the registered target does not match the expected class.
    */
   getById<
     /* eslint-disable @typescript-eslint/no-unnecessary-type-parameters */

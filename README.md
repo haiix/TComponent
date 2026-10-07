@@ -19,7 +19,7 @@ Just components with explicit, direct DOM control.
 - **Smart ID Management**: Element `id` attributes are securely mapped to internal properties (accessible via `this.getById()`) and are **intentionally removed from the DOM** to keep it clean and prevent global collisions.
 - **Automatic ID Reference Resolution**: Attributes like `for`, `aria-labelledby`, and `aria-controls` resolve automatically. TComponent intelligently generates and injects UUIDs into the DOM _only when necessary_ to perfectly maintain accessibility.
 - **Component Composition**: Compose reusable sub-components using the `static uses` property.
-- **Lifecycle Cleanup**: Call `.destroy()` to safely remove the component from the DOM and automatically unbind all event listeners. The cleanup process automatically cascades to all nested child components, preventing memory leaks.
+- **Lifecycle Cleanup**: Call `.destroy()` to remove the component from the DOM and unbind template event listeners. Signal abort propagates to linked children. ID registrations remain available; see [Component Lifecycle & Teardown](./documents/architecture.md#component-lifecycle-teardown) for reference retention details.
 
 ## Installation
 

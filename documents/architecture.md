@@ -30,7 +30,9 @@ document.body.appendChild(app.element);
 app.destroy();
 ```
 
-Calling `.destroy()` ensures that your application remains fast and memory-safe, without needing to manually call `removeEventListener` for every single element.
+Calling `.destroy()` stops the component's lifecycle and removes its root from the DOM without needing to manually call `removeEventListener` for each template event listener. It does **not** unregister IDs from any `BuildContext`. The ID map records targets built from a template, rather than listing targets currently connected to the DOM. `getById()` therefore still returns destroyed children and detached elements, including slot content.
+
+An ID map strongly references its registered targets for as long as the registering context is reachable. If the parent, context, and targets are no longer reachable, these references alone do not prevent garbage collection. Destroying a component does not automatically release all references held by the application.
 
 _(For advanced use cases like SPA routers or external signals, see [Advanced Memory Management: External AbortSignals](./advanced.md#advanced-memory-management-external-abortsignals).)_
 
@@ -129,6 +131,8 @@ Instead of defining components statically in the template using `uses`, you will
 When manually instantiating a child component, it is highly recommended to pass down the `parent`.
 
 - Passing `parent: this`: Links the child to the parent's lifecycle (So if the parent is destroyed, the dynamically created child will automatically clean up its own event listeners.) and Error Boundary (so if the child throws an error, the parent's `onerror` catches it).
+
+Creating a child with `new Child({ parent: this })` and appending its element does not register that child in the parent's ID map. For dynamic lists, use this approach and manage any needed references yourself, for example through `Child.from(element)` as below or an application-owned collection. Remove references from such collections when they are no longer needed. Each child still has its own template context and ID map. For the constraints of repeatedly building ASTs in one context, see [ID Retention in Repeated Builds](./advanced.md#id-retention-in-repeated-builds).
 
 ### Example: Rendering a Dynamic List
 

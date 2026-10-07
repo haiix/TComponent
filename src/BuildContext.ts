@@ -18,7 +18,11 @@ import { lifecycleSignal, type ScopedComponentParams } from './internal/signal';
  * Context object used during the recursive build process.
  */
 export class BuildContext {
-  /** Prototype-free dictionary of original IDs to elements or sub-components. */
+  /**
+   * Prototype-free dictionary of original IDs to elements or sub-components.
+   * Strongly retains registered targets regardless of DOM connection or destruction.
+   * Registrations persist across builds; duplicate IDs keep the first target.
+   */
   readonly idMap = Object.create(null) as Record<
     string,
     Element | AbstractComponent

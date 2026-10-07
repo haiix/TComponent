@@ -59,6 +59,7 @@ export abstract class AbstractComponent {
   /**
    * Destroys the component.
    * Aborts the internal controller (unbinding events) and removes the element from the DOM.
+   * Does not unregister IDs from build contexts or release application-held references.
    */
   destroy(): void {
     this[abortLifecycle]();
