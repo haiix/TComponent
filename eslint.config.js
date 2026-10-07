@@ -8,7 +8,15 @@ import tsdoc from 'eslint-plugin-tsdoc';
 
 export default defineConfig(
   {
-    ignores: ['dist', 'coverage', 'docs', 'eslint.config.js', 'vite.config.ts'],
+    // Consumer type fixtures require dist, which is generated after CI linting.
+    ignores: [
+      'dist',
+      'coverage',
+      'docs',
+      'tests/types/**',
+      'eslint.config.js',
+      'vite.config.ts',
+    ],
   },
 
   js.configs.recommended,

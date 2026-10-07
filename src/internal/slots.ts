@@ -12,7 +12,7 @@ import type { TNode } from '../types';
  * @param signal - The receiving component's lifecycle signal.
  */
 export function appendSlots(
-  contextComponent: TComponent,
+  contextComponent: TComponent<Element, unknown>,
   target: Element,
   childNodes: readonly (TNode | string)[],
   signal?: AbortSignal,

@@ -16,7 +16,7 @@ import { freezeTemplate } from './internal/template';
  * Global registry mapping root DOM elements to their respective TComponent instances.
  * Using a WeakMap ensures that components are garbage-collected when their DOM elements are removed.
  */
-const componentRegistry = new WeakMap<Element, TComponent>();
+const componentRegistry = new WeakMap<Element, TComponent<Element, unknown>>();
 
 /**
  * A practical base component class that automatically parses its template,
@@ -66,7 +66,7 @@ export class TComponent<
       throw error;
     }
 
-    componentRegistry.set(this.element, this as TComponent);
+    componentRegistry.set(this.element, this);
   }
 
   /**
@@ -119,7 +119,15 @@ export class TComponent<
    * @param element - The root DOM element of the component.
    * @returns The component instance, or undefined if not found or type mismatch.
    */
-  static from<C extends TComponent>(
+  static from(
+    this: typeof TComponent,
+    element: Element | null | undefined,
+  ): TComponent | undefined;
+  static from<C extends TComponent<Element, unknown>>(
+    this: ConstructorOf<C>,
+    element: Element | null | undefined,
+  ): C | undefined;
+  static from<C extends TComponent<Element, unknown>>(
     this: ConstructorOf<C>,
     element: Element | null | undefined,
   ): C | undefined {

@@ -44,7 +44,7 @@
     "format": "prettier --write .",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:types": "tsc --ignoreConfig --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck false dist/index.d.ts",
+    "test:types": "tsc --ignoreConfig --noEmit --strict --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck false dist/index.d.ts tests/types/strict-id-map.ts",
     "test:coverage": "vitest run --coverage",
     "docs": "typedoc"
   },
