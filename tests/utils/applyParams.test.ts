@@ -4,6 +4,81 @@ import { TComponent } from '../../src/TComponent';
 import { applyParams } from '../../src/utils/applyParams';
 
 describe('applyParams', () => {
+  it.each(['absent', 'before', 'after'])(
+    'replaces unnamespaced XML attributes when namespaced attributes are %s',
+    (namespaced) => {
+      class Graphic extends TComponent {
+        static template = '<svg><text></text></svg>';
+      }
+      const graphic = new Graphic();
+      const target = graphic.element.querySelector('text')!;
+      const xmlNS = 'http://www.w3.org/XML/1998/namespace';
+
+      for (const value of ['ja', '']) {
+        for (const name of ['xml:lang', 'xml:space']) {
+          target.removeAttributeNS(xmlNS, name.slice(4));
+          if (namespaced === 'before') {
+            target.setAttributeNS(xmlNS, name, 'old-namespaced');
+          }
+          const unnamespaced = document.createAttribute(name);
+          unnamespaced.value = 'old-unnamespaced';
+          target.setAttributeNodeNS(unnamespaced);
+          if (namespaced === 'after') {
+            target.setAttributeNS(xmlNS, name, 'old-namespaced');
+          }
+          applyParams(graphic, target, { attributes: { [name]: value } });
+
+          const attribute = target.getAttributeNode(name)!;
+          expect(attribute.namespaceURI).toBe(xmlNS);
+          expect(attribute.localName).toBe(name.slice(4));
+          expect(target.getAttributeNS(xmlNS, name.slice(4))).toBe(value);
+          expect(target.getAttributeNS(null, name)).toBeNull();
+          expect(target.getAttribute(name)).toBe(value);
+          expect(
+            Array.from(target.attributes).filter((attr) => attr.name === name),
+          ).toHaveLength(1);
+        }
+      }
+    },
+  );
+
+  it('forwards and updates XML attributes on an internal SVG element', () => {
+    class Graphic extends TComponent {
+      static template =
+        '<svg><text xml:lang="en" xml:space="default"></text></svg>';
+      constructor(params: ComponentParams) {
+        super(params);
+        applyParams(this, this.element.querySelector('text')!, params);
+      }
+    }
+    const xmlNS = 'http://www.w3.org/XML/1998/namespace';
+    const attributes = Object.freeze({
+      'xml:lang': 'ja',
+      'xml:space': 'preserve',
+    });
+    const graphic = new Graphic({ attributes });
+    const target = graphic.element.querySelector('text')!;
+
+    for (const values of [
+      attributes,
+      { 'xml:lang': '', 'xml:space': 'default' },
+    ]) {
+      if (values !== attributes) {
+        applyParams(graphic, target, { attributes: values });
+      }
+      for (const [name, value] of Object.entries(values)) {
+        const attribute = target.getAttributeNode(name)!;
+        const localName = name.slice(4);
+        expect(attribute.namespaceURI).toBe(xmlNS);
+        expect(attribute.localName).toBe(localName);
+        expect(target.getAttributeNS(xmlNS, localName)).toBe(value);
+        expect(target.getAttribute(name)).toBe(value);
+      }
+      expect(target.attributes).toHaveLength(2);
+    }
+    expect(attributes).toEqual({ 'xml:lang': 'ja', 'xml:space': 'preserve' });
+  });
+
   it.each([
     ['html', 'HREF', 'href', '#first', 'https://example.com/'],
     ['html', 'href', 'HREF', '#first', ''],

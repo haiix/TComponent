@@ -821,6 +821,35 @@ describe('TComponent - Root Element Validation', () => {
 });
 
 describe('TComponent - Custom Namespace URI', () => {
+  it('preserves XML attribute namespaces when rebuilding an SVG template', () => {
+    class Graphic extends TComponent {
+      static template =
+        '<svg xml:lang="en"><text xml:lang="ja" xml:space="preserve"> A B </text></svg>';
+    }
+    const native = document.createElement('template');
+    native.innerHTML = Graphic.template;
+    const graphic = new Graphic();
+    const xmlNS = 'http://www.w3.org/XML/1998/namespace';
+
+    for (const selector of ['svg', 'text']) {
+      const parsed = native.content.querySelector(selector)!;
+      const rebuilt =
+        selector === 'svg'
+          ? graphic.element
+          : graphic.element.querySelector(selector)!;
+      for (const attribute of parsed.attributes) {
+        const actual = rebuilt.getAttributeNode(attribute.name)!;
+        expect(actual.namespaceURI).toBe(xmlNS);
+        expect(actual.localName).toBe(attribute.localName);
+        expect(rebuilt.getAttributeNS(xmlNS, attribute.localName)).toBe(
+          attribute.value,
+        );
+      }
+      expect(rebuilt.attributes).toHaveLength(parsed.attributes.length);
+    }
+    expect(graphic.element.querySelector('text')?.textContent).toBe(' A B ');
+  });
+
   it('rebuilds canonical SVG tags and preserves the foreignObject HTML boundary', () => {
     class Graphic extends TComponent<SVGSVGElement> {
       static template = `<svg>
