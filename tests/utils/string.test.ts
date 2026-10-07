@@ -34,4 +34,26 @@ describe('kebabKeys utility', () => {
     const result = kebabKeys({ DynamicList2Item });
     expect(result).toHaveProperty('dynamic-list2-item', DynamicList2Item);
   });
+
+  it.each(['__proto__', '__PROTO__'])(
+    'preserves %s as an own kebab-cased property without changing the prototype',
+    (key) => {
+      const component = class {};
+      const input = Object.fromEntries([[key, component]]);
+
+      const result = kebabKeys(input);
+
+      expect(Object.hasOwn(result, '__proto__')).toBe(true);
+      expect(Object.keys(result)).toEqual(['__proto__']);
+      expect(Object.getOwnPropertyDescriptor(result, '__proto__')).toEqual({
+        value: component,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+      expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+      expect(Object.getPrototypeOf(input)).toBe(Object.prototype);
+      expect(Object.keys(input)).toEqual([key]);
+    },
+  );
 });

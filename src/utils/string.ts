@@ -33,9 +33,7 @@ export function toKebabCase(str: string): string {
  * @returns A new object with kebab-cased keys.
  */
 export function kebabKeys<T>(obj: Record<string, T>): Record<string, T> {
-  const result: Record<string, T> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    result[toKebabCase(key)] = value;
-  }
-  return result;
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [toKebabCase(key), value]),
+  );
 }
