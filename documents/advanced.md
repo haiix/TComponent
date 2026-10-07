@@ -41,7 +41,7 @@ When linking lifecycles via external signals, a common issue in vanilla JavaScri
 
 TComponent is designed to prevent this. If a child component is manually destroyed using `.destroy()` before its parent (for example, a user deletes a single item from a list), TComponent automatically removes the child's abort listener from the parent's signal.
 
-This ensures proper Garbage Collection (GC) and guarantees that no memory leaks or hanging references remain attached to the parent, even in highly dynamic, long-lived applications.
+This removes the reference held through the parent's abort listener. Other strong references still matter: a `BuildContext` ID map retains registered elements and child components even after `.destroy()` or DOM removal. While that context is reachable, its registered targets remain reachable too. Once the parent, context, and targets are no longer reachable, the ID map's references alone do not prevent garbage collection. Application-owned collections also need to release references when they are no longer needed.
 
 ---
 
@@ -361,9 +361,21 @@ A shallow node or array copy still shares nested attributes and nodes. Copy only
 
 Copies must preserve the [manual AST name format](#names-in-manual-asts) too. When changing `t` or adding attribute keys in `a`, use lowercase HTML names or the correct SVG, MathML, or XML case for the namespace being built.
 
+### ID Retention in Repeated Builds
+
+`BuildContext.build()` and `appendChildren()` register IDs in the context used to build the AST. These registrations persist across builds; removing an element or destroying a child does not unregister its ID.
+
+- Repeatedly building ASTs with new IDs in the same long-lived context accumulates registrations and strong references to their targets, even after those targets are removed from the DOM.
+- Reusing an ID in that context keeps the first registered target and emits a duplicate-ID warning once. The newly built target does not replace it, even if the earlier target has been destroyed.
+- Building a static template once per component instance does not repeatedly grow that instance's registrations. Its registered targets are still retained while its context remains reachable.
+
+For dynamic lists, prefer creating children with `new Child({ parent })` and appending their elements. This creation method itself does not register children in the parent's ID map; manage needed references in application code and release them when finished. See [Dynamic Component Creation](./architecture.md#dynamic-component-creation) for an example. There is currently no registration-removal API; any need for one should be considered separately based on a concrete use case.
+
 ### Example: A Generic Dynamic List
 
 In this advanced example, a `DynamicList` component captures its first child as an AST template (e.g., an `<li>`), and re-evaluates that AST whenever a new item is added.
+
+The repeated `<li>` template below has no IDs. If you add IDs to it or its descendants, all items use the same `DynamicList` build context and are subject to the retention and duplicate-ID constraints above. This custom example creates a separate context owned by the parent; its registrations are not the parent's `TComponent.context.idMap`.
 
 ```typescript
 import TComponent, {

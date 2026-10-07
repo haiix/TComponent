@@ -454,6 +454,85 @@ describe('TComponent - getById()', () => {
   it('throws an Error if the ID does not exist in the template', () => {
     const comp = new TestComp();
     expect(() => comp.getById('non-existent')).toThrow(/not found/);
+    expect(
+      // Intentionally demonstrate that optional chaining cannot suppress a lookup error.
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      () => comp.getById('non-existent', HTMLElement)?.textContent,
+    ).toThrow(/not found/);
+  });
+
+  it('retains registered children and slot elements after the receiver is destroyed', () => {
+    class SubComp extends TComponent {
+      static template = '<section></section>';
+
+      constructor(params: ComponentParams = {}) {
+        super(params);
+        applyParams(this, this.element, params);
+      }
+    }
+
+    class App extends TComponent {
+      static uses = { 'sub-comp': SubComp };
+      static template = `
+        <div>
+          <sub-comp id="subComp">
+            <span id="slot">Slot Text</span>
+          </sub-comp>
+        </div>
+      `;
+    }
+
+    const app = new App();
+    document.body.append(app.element);
+    try {
+      const child = app.getById('subComp', SubComp);
+      const slot = app.getById('slot', HTMLElement);
+      expect(slot.isConnected).toBe(true);
+      expect(() => child.getById('slot')).toThrow(/not found/);
+
+      child.destroy();
+
+      expect(child.signal.aborted).toBe(true);
+      expect(child.element.isConnected).toBe(false);
+      expect(slot.isConnected).toBe(false);
+      expect(app.getById('subComp')).toBe(child);
+      expect(app.getById('subComp', SubComp)).toBe(child);
+      expect(app.getById('slot')).toBe(slot);
+      expect(app.getById('slot', HTMLElement).textContent).toBe('Slot Text');
+
+      app.destroy();
+
+      expect(app.getById('subComp', SubComp)).toBe(child);
+      expect(app.getById('slot', HTMLElement)).toBe(slot);
+    } finally {
+      app.destroy();
+    }
+  });
+
+  it('retains a registered native element after it is removed from the DOM', () => {
+    const comp = new TestComp();
+    const title = comp.getById('title', HTMLHeadingElement);
+    title.remove();
+
+    expect(comp.element.contains(title)).toBe(false);
+    expect(comp.getById('title')).toBe(title);
+    expect(comp.getById('title', HTMLHeadingElement)).toBe(title);
+    comp.destroy();
+  });
+
+  it('does not register a manually created child in its parent ID map', () => {
+    const parent = new TComponent();
+    const child = new TestComp({ parent });
+    parent.element.append(child.element);
+
+    expect(child.parent).toBe(parent);
+    expect(TComponent.from(parent.element.firstElementChild)).toBe(child);
+    expect(Object.keys(parent.context.idMap)).toEqual([]);
+    expect(child.getById('title')).toBeInstanceOf(HTMLHeadingElement);
+
+    child.destroy();
+    expect(Object.keys(parent.context.idMap)).toEqual([]);
+    parent.destroy();
   });
 
   it.each(['toString', 'constructor', '__proto__'])(
