@@ -15,14 +15,21 @@ export function normalizeAttributeName(target: Element, name: string): string {
 }
 
 /**
- * Sets an attribute, preserving the XLink namespace for SVG xlink:href.
+ * Sets an attribute, preserving XML namespaces and the XLink namespace for SVG xlink:href.
  */
 export function setAttribute(
   target: Element,
   name: string,
   value: string,
 ): void {
-  if (name === 'xlink:href' && target.namespaceURI === SVG_NAMESPACE_URI) {
+  if (name.startsWith('xml:')) {
+    target.setAttributeNS('http://www.w3.org/XML/1998/namespace', name, value);
+    // Namespaced assignment does not replace an existing unnamespaced attribute.
+    target.removeAttributeNS(null, name);
+  } else if (
+    name === 'xlink:href' &&
+    target.namespaceURI === SVG_NAMESPACE_URI
+  ) {
     target.setAttributeNS('http://www.w3.org/1999/xlink', name, value);
   } else {
     target.setAttribute(name, value);

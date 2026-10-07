@@ -106,6 +106,31 @@ describe('mergeStyle', () => {
 });
 
 describe('applyAttributes', () => {
+  it.each([
+    SVG_NAMESPACE_URI,
+    MATHML_NAMESPACE_URI,
+    HTML_NAMESPACE_URI,
+    'urn:custom',
+  ])(
+    'sets xml:* attributes in the XML namespace on elements in "%s"',
+    (namespace) => {
+      const el = document.createElementNS(namespace, 'text');
+      const xmlNS = 'http://www.w3.org/XML/1998/namespace';
+      const attributes = {
+        'xml:lang': 'ja',
+        'xml:space': 'preserve',
+        'xml:base': 'images/',
+      };
+      applyAttributes(el, attributes);
+
+      for (const [name, value] of Object.entries(attributes)) {
+        expect(el.getAttributeNode(name)?.namespaceURI).toBe(xmlNS);
+        expect(el.getAttributeNode(name)?.localName).toBe(name.slice(4));
+        expect(el.getAttributeNS(xmlNS, name.slice(4))).toBe(value);
+      }
+    },
+  );
+
   it.each(['sprite.svg#icon', '#icon', ''])(
     'sets SVG xlink:href "%s" in the XLink namespace and keeps href separate',
     (value) => {
