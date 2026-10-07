@@ -61,7 +61,7 @@ import { hasIdReference } from '../internal/id';
  * @param params - The ComponentParams object containing attributes and childNodes.
  */
 export function applyParams(
-  component: TComponent,
+  component: TComponent<Element, unknown>,
   target: Element,
   params: ComponentParams = {},
 ): void {
@@ -69,7 +69,7 @@ export function applyParams(
   // Slots, events, and ID references from the outside use the parent's context.
   const contextComponent =
     component.parent instanceof TComponent
-      ? (component.parent as TComponent)
+      ? (component.parent as TComponent<Element, unknown>)
       : component;
 
   if (params.attributes) {

@@ -755,6 +755,27 @@ describe('TComponent - Custom Namespace URI', () => {
 });
 
 describe('TComponent.from (Global Registry Mapping)', () => {
+  it('recovers a component with a strict IDMap after forwarding parameters', () => {
+    interface IDs {
+      input: HTMLInputElement;
+    }
+    class Typed extends TComponent<HTMLDivElement, IDs> {
+      static template = '<div><input id="input"></div>';
+    }
+
+    const component = new Typed();
+    applyParams(component, component.element);
+    applyParams(component, component.getById('input'), {
+      attributes: { class: 'forwarded', value: 'typed input' },
+    });
+
+    const recovered = Typed.from(component.element);
+    expect(recovered).toBe(component);
+    expect(recovered?.getById('input').value).toBe('typed input');
+    expect(recovered?.getById('input').className).toBe('forwarded');
+    expect(Typed.from(new TComponent().element)).toBeUndefined();
+  });
+
   class ListItem extends TComponent<HTMLLIElement> {
     static template = `<li class="list-item">Item</li>`;
   }
