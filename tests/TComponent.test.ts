@@ -229,6 +229,60 @@ describe('TComponent - Native Templates', () => {
   );
 });
 
+describe('TComponent - Declarative Button Targets', () => {
+  describe.each(['popovertarget', 'commandfor'])('%s', (attribute) => {
+    it.each(['before', 'after'] as const)(
+      'resolves a target placed %s the button with separate IDs per instance',
+      (position) => {
+        const targetTemplate =
+          attribute === 'popovertarget'
+            ? '<div id="target" popover>Menu</div>'
+            : '<dialog id="target">Dialog</dialog>';
+        const buttonTemplate = `<button id="button" type="button" ${attribute}="target" ${
+          attribute === 'popovertarget'
+            ? 'popovertargetaction="show"'
+            : 'command="show-modal"'
+        }>Open</button>`;
+        class Example extends TComponent {
+          static template = `<div>${
+            position === 'before'
+              ? targetTemplate + buttonTemplate
+              : buttonTemplate + targetTemplate
+          }</div>`;
+        }
+
+        const first = new Example();
+        const second = new Example();
+        document.body.append(first.element, second.element);
+        try {
+          for (const component of [first, second]) {
+            const target = component.getById('target', HTMLElement);
+            const button = component.getById('button', HTMLButtonElement);
+            expect(target.id).not.toBe('');
+            expect(target.id).not.toBe('target');
+            expect(button.getAttribute(attribute)).toBe(target.id);
+            expect(document.getElementById(target.id)).toBe(target);
+            expect(
+              button.getAttribute(
+                attribute === 'popovertarget'
+                  ? 'popovertargetaction'
+                  : 'command',
+              ),
+            ).toBe(attribute === 'popovertarget' ? 'show' : 'show-modal');
+            expect(component.context.idReferenceMap).toHaveLength(0);
+          }
+          expect(first.getById('target', HTMLElement).id).not.toBe(
+            second.getById('target', HTMLElement).id,
+          );
+        } finally {
+          first.element.remove();
+          second.element.remove();
+        }
+      },
+    );
+  });
+});
+
 describe('TComponent - External Form Controls', () => {
   it.each(['before', 'after'] as const)(
     'associates external controls when the form is %s them',

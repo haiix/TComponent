@@ -598,6 +598,65 @@ describe('applyParams', () => {
     }
   }
 
+  describe.each(['popovertarget', 'commandfor'])(
+    '%s forwarding',
+    (attribute) => {
+      it.each(['before', 'after'] as const)(
+        'resolves the parent target placed %s the child with separate IDs per instance',
+        (position) => {
+          class Controls extends TComponent {
+            static template =
+              '<section><button id="button" type="button">Open</button><div id="target"></div></section>';
+
+            constructor(params: ComponentParams) {
+              super(params);
+              applyParams(
+                this,
+                this.getById('button', HTMLButtonElement),
+                params,
+              );
+            }
+          }
+          const targetTemplate =
+            attribute === 'popovertarget'
+              ? '<div id="target" popover>Menu</div>'
+              : '<dialog id="target">Dialog</dialog>';
+          const controlsTemplate = `<controls id="controls" ${attribute}="target"></controls>`;
+          class App extends TComponent {
+            static uses = { Controls };
+            static template = `<div>${
+              position === 'before'
+                ? targetTemplate + controlsTemplate
+                : controlsTemplate + targetTemplate
+            }</div>`;
+          }
+
+          const first = new App();
+          const second = new App();
+          for (const app of [first, second]) {
+            const target = app.getById('target', HTMLElement);
+            const controls = app.getById('controls', Controls);
+            const button = controls.getById('button', HTMLButtonElement);
+            expect(target.id).not.toBe('');
+            expect(target.id).not.toBe('target');
+            expect(button.getAttribute(attribute)).toBe(target.id);
+            expect(controls.getById('target', HTMLElement).id).toBe('');
+            expect(controls.element.hasAttribute(attribute)).toBe(false);
+            expect(app.context.idReferenceMap).toHaveLength(0);
+          }
+          expect(first.getById('target', HTMLElement).id).not.toBe(
+            second.getById('target', HTMLElement).id,
+          );
+          expect(App.getParsed().template.c).toContainEqual(
+            expect.objectContaining({
+              a: { id: 'controls', [attribute]: 'target' },
+            }),
+          );
+        },
+      );
+    },
+  );
+
   it.each(['before', 'after'] as const)(
     'resolves forwarded form attributes when the parent form is %s the controls',
     (position) => {

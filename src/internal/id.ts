@@ -7,6 +7,8 @@ import { SVG_NAMESPACE_URI } from './dom';
 export const ID_REF_ATTRIBUTES = new Set([
   'for',
   'form',
+  'popovertarget',
+  'commandfor',
   'aria-labelledby',
   'aria-describedby',
   'aria-controls',
