@@ -35,6 +35,22 @@ routerController.abort();
 page.destroy();
 ```
 
+Construction errors propagate to the caller without automatic cleanup. To handle them, pass an external signal and abort its controller in an outer `catch`. This runs cleanup already registered on the linked signals, whether the error occurs while building the template or in a derived constructor after `super()` returns. A failed `new` expression does not return an instance on which to call `destroy()`.
+
+```typescript
+const controller = new AbortController();
+
+try {
+  const page = new UserListApp({ signal: controller.signal });
+  document.body.appendChild(page.element);
+} catch (error) {
+  controller.abort();
+  throw error;
+}
+```
+
+Abort does not remove DOM; if initialization mounts elements, register their removal as cleanup as well.
+
 ### Garbage Collection (GC) behavior
 
 When linking lifecycles via external signals, a common issue in vanilla JavaScript is accidentally creating memory leaks by leaving references to destroyed child components inside a long-lived parent's `AbortSignal`.

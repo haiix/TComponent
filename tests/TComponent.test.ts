@@ -14,9 +14,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('TComponent - Construction Failure Cleanup', () => {
+describe('TComponent - Caller-managed Construction Failure Cleanup', () => {
   it.each(['external', 'parent'] as const)(
-    'removes links to the %s signal and already bound events after repeated failures',
+    'cleans up repeated construction failures when the %s owner aborts',
     (owner) => {
       const controller = new AbortController();
       const parent = new TComponent();
@@ -25,7 +25,7 @@ describe('TComponent - Construction Failure Cleanup', () => {
       const add = vi.spyOn(signal, 'addEventListener');
       const remove = vi.spyOn(signal, 'removeEventListener');
       const click = vi.fn();
-      const destroy = vi.fn();
+      const cleanup = vi.fn();
       const failed: TComponent[] = [];
       // eslint-disable-next-line @typescript-eslint/unbound-method -- The original method is called with its context via apply below.
       const build = BuildContext.prototype.build;
@@ -35,6 +35,9 @@ describe('TComponent - Construction Failure Cleanup', () => {
       ) {
         if (!failed.includes(this.component as TComponent)) {
           failed.push(this.component as TComponent);
+          this.component.signal.addEventListener('abort', cleanup, {
+            once: true,
+          });
         }
         return build.apply(this, args);
       });
@@ -45,15 +48,20 @@ describe('TComponent - Construction Failure Cleanup', () => {
         handleClick() {
           click();
         }
-        override destroy() {
-          destroy();
-        }
       }
 
       for (let attempt = 0; attempt < 3; attempt++) {
         expect(() => new Broken(params)).toThrow(
           'SecurityError: Invalid event handler signature',
         );
+      }
+
+      expect(remove).not.toHaveBeenCalled();
+      expect(cleanup).not.toHaveBeenCalled();
+      if (owner === 'external') {
+        controller.abort();
+      } else {
+        parent.destroy();
       }
 
       expect(failed).toHaveLength(3);
@@ -68,21 +76,23 @@ describe('TComponent - Construction Failure Cleanup', () => {
         component.getById('ok', HTMLButtonElement).click();
       }
       expect(click).not.toHaveBeenCalled();
-      expect(destroy).not.toHaveBeenCalled();
-      expect(signal.aborted).toBe(false);
-      expect(parent.signal.aborted).toBe(false);
+      expect(cleanup).toHaveBeenCalledTimes(3);
+      expect(signal.aborted).toBe(true);
+      expect(parent.signal.aborted).toBe(owner === 'parent');
       parent.destroy();
     },
   );
 
-  it('aborts built descendants, including children whose signals are still lazy', () => {
+  it('aborts built descendants, including lazy signals, when the caller aborts', () => {
     const descendants: TComponent[] = [];
     const click = vi.fn();
+    const cleanup = vi.fn();
     class Leaf extends TComponent<HTMLButtonElement> {
       static template = '<button onclick="handleClick">Leaf</button>';
       constructor(params: ComponentParams) {
         super(params);
         descendants.push(this);
+        this.signal.addEventListener('abort', cleanup, { once: true });
       }
       handleClick() {
         click();
@@ -115,12 +125,17 @@ describe('TComponent - Construction Failure Cleanup', () => {
       'SecurityError: Invalid event handler signature',
     );
 
+    expect(remove).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
+    controller.abort();
+
     expect(descendants).toHaveLength(3);
     for (const component of descendants) {
       expect(component.signal.aborted).toBe(true);
     }
     (descendants[0] as Leaf).element.click();
     expect(click).not.toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalledTimes(1);
     expect(add).toHaveBeenCalledExactlyOnceWith('abort', expect.any(Function), {
       once: true,
     });
@@ -128,10 +143,10 @@ describe('TComponent - Construction Failure Cleanup', () => {
       'abort',
       add.mock.calls[0]![1],
     );
-    expect(controller.signal.aborted).toBe(false);
+    expect(controller.signal.aborted).toBe(true);
   });
 
-  it('preserves the original ID resolution error and does not register the failed instance', () => {
+  it('propagates ID resolution errors and lets the caller abort the failed instance', () => {
     const error = new Error('ID resolution failed');
     const click = vi.fn();
     let failed: TComponent | undefined;
@@ -157,6 +172,9 @@ describe('TComponent - Construction Failure Cleanup', () => {
       caught = failure;
     }
     expect(caught).toBe(error);
+    expect(remove).not.toHaveBeenCalled();
+    expect(failed!.signal.aborted).toBe(false);
+    controller.abort();
 
     expect(failed).toBeDefined();
     expect(failed!.signal.aborted).toBe(true);
@@ -164,27 +182,49 @@ describe('TComponent - Construction Failure Cleanup', () => {
     (failed!.element as HTMLButtonElement).click();
     expect(click).not.toHaveBeenCalled();
     expect(remove).toHaveBeenCalledTimes(1);
-    expect(controller.signal.aborted).toBe(false);
+    expect(controller.signal.aborted).toBe(true);
   });
 
-  it('does not create an external link when construction fails before a signal is needed', () => {
-    const error = new Error('DOM build failed');
-    let failed: TComponent | undefined;
-    vi.spyOn(BuildContext.prototype, 'build').mockImplementation(function (
-      this: BuildContext,
-    ) {
-      failed = this.component as TComponent;
-      throw error;
-    });
+  it('cleans up a derived constructor failure through an external controller', () => {
+    const error = new Error('App initialization failed');
+    const cleanup = vi.fn();
+    const click = vi.fn();
+    let element: HTMLButtonElement | undefined;
+    class Broken extends TComponent<HTMLButtonElement> {
+      static template = '<button onclick="handleClick">OK</button>';
+      constructor(params: ComponentParams) {
+        super(params);
+        element = this.element;
+        this.signal.addEventListener('abort', cleanup, { once: true });
+        throw error;
+      }
+      handleClick() {
+        click();
+      }
+    }
     const controller = new AbortController();
     const add = vi.spyOn(controller.signal, 'addEventListener');
+    const remove = vi.spyOn(controller.signal, 'removeEventListener');
 
-    expect(() => new TComponent({ signal: controller.signal })).toThrow(error);
+    expect(() => {
+      try {
+        new Broken({ signal: controller.signal });
+      } catch (failure) {
+        controller.abort();
+        throw failure;
+      }
+    }).toThrow(error);
 
-    expect(failed).toBeDefined();
-    expect(failed!.signal.aborted).toBe(true);
-    expect(failed!.signal).toBe(failed!.signal);
-    expect(add).not.toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledExactlyOnceWith(
+      'abort',
+      add.mock.calls[0]![1],
+    );
+    expect(element).toBeInstanceOf(HTMLButtonElement);
+    element!.click();
+    expect(click).not.toHaveBeenCalled();
+    controller.abort();
+    expect(cleanup).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,6 +1,5 @@
 import type { ComponentParams } from './types';
 import {
-  abortLifecycle,
   createLinkedController,
   lifecycleSignal,
   type ScopedComponentParams,
@@ -60,16 +59,12 @@ export abstract class AbstractComponent {
    * Destroys the component.
    * Aborts the internal controller (unbinding events) and removes the element from the DOM.
    * Does not unregister IDs from build contexts or release application-held references.
+   * Do not override this method. Register custom cleanup on the signal's abort event instead.
    */
   destroy(): void {
-    this[abortLifecycle]();
-    this.element.remove();
-  }
-
-  /** Internally aborts the lifecycle, including when construction is incomplete. */
-  [abortLifecycle](): void {
     this.#destroyed = true;
     this.#controller?.abort();
+    this.element.remove();
   }
 
   /**
