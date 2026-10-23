@@ -3,14 +3,271 @@ import { BuildContext } from '../src/BuildContext';
 import { AbstractComponent } from '../src/AbstractComponent';
 import { parseTemplate } from '../src/utils/parse';
 import { resetWarnings } from '../src/internal/messages';
-import type { ComponentParams } from '../src/types';
+import type { ComponentParams, TNode } from '../src/types';
 import { TComponent } from '../src/TComponent';
+import { SVG_NAMESPACE_URI, MATHML_NAMESPACE_URI } from '../src/internal/dom';
+
+const HTML_NAMESPACE_URI = 'http://www.w3.org/1999/xhtml';
 
 class DummyOwner extends AbstractComponent {
   element = document.createElement('div');
 
   handleClick() {}
 }
+
+describe('BuildContext - Namespace selection', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([[], [undefined], [null]] as const)(
+    'uses default creation APIs for HTML descendants with namespace arguments %j',
+    (...args) => {
+      const context = new BuildContext(new DummyOwner(), {});
+      const create = vi.spyOn(document, 'createElement');
+      const createNS = vi.spyOn(document, 'createElementNS');
+      const root = context.build(
+        {
+          t: 'div',
+          a: {},
+          c: [{ t: 'span', a: {}, c: [{ t: 'b', a: {}, c: [] }] }],
+        },
+        ...args,
+      );
+
+      expect(create.mock.calls).toEqual([['div']]);
+      expect(createNS.mock.calls).toEqual([
+        [HTML_NAMESPACE_URI, 'span'],
+        [HTML_NAMESPACE_URI, 'b'],
+      ]);
+      expect(
+        [root, ...root.querySelectorAll('*')].map((el) => el.namespaceURI),
+      ).toEqual([HTML_NAMESPACE_URI, HTML_NAMESPACE_URI, HTML_NAMESPACE_URI]);
+    },
+  );
+
+  it.each([
+    HTML_NAMESPACE_URI,
+    SVG_NAMESPACE_URI,
+    MATHML_NAMESPACE_URI,
+    'urn:custom',
+  ])('preserves explicit namespace %s and nested tag inference', (ns) => {
+    const context = new BuildContext(new DummyOwner(), {});
+    const create = vi.spyOn(document, 'createElement');
+    const createNS = vi.spyOn(document, 'createElementNS');
+    const root = context.build(
+      {
+        t: 'root',
+        a: {},
+        c: [
+          { t: 'child', a: {}, c: [] },
+          { t: 'svg', a: {}, c: [{ t: 'path', a: {}, c: [] }] },
+          { t: 'math', a: {}, c: [{ t: 'mrow', a: {}, c: [] }] },
+        ],
+      },
+      ns,
+    );
+
+    expect(create).not.toHaveBeenCalled();
+    expect(createNS.mock.calls).toEqual([
+      [ns, 'root'],
+      [ns, 'child'],
+      [SVG_NAMESPACE_URI, 'svg'],
+      [SVG_NAMESPACE_URI, 'path'],
+      [MATHML_NAMESPACE_URI, 'math'],
+      [MATHML_NAMESPACE_URI, 'mrow'],
+    ]);
+    expect(root.namespaceURI).toBe(ns);
+    expect(root.firstElementChild?.namespaceURI).toBe(ns);
+  });
+
+  it.each([undefined, null])(
+    'preserves integration boundary creation APIs with namespace %s',
+    (ns) => {
+      const context = new BuildContext(new DummyOwner(), {});
+      const htmlChild: TNode = {
+        t: 'div',
+        a: {},
+        c: [{ t: 'span', a: {}, c: [] }],
+      };
+      const boundaries: TNode[] = [
+        ...['foreignObject', 'desc', 'title'].map((t) => ({
+          t: 'svg',
+          a: {},
+          c: [{ t, a: {}, c: [htmlChild] }],
+        })),
+        ...['text/html', 'APPLICATION/XHTML+XML'].map((encoding) => ({
+          t: 'math',
+          a: {},
+          c: [{ t: 'annotation-xml', a: { encoding }, c: [htmlChild] }],
+        })),
+        ...['mi', 'mo', 'mn', 'ms', 'mtext'].map((t) => ({
+          t: 'math',
+          a: {},
+          c: [
+            {
+              t,
+              a: {},
+              c: [
+                htmlChild,
+                { t: 'mglyph', a: {}, c: [] },
+                { t: 'malignmark', a: {}, c: [] },
+              ],
+            },
+          ],
+        })),
+      ];
+      const create = vi.spyOn(document, 'createElement');
+      const createNS = vi.spyOn(document, 'createElementNS');
+
+      for (const ast of boundaries) {
+        create.mockClear();
+        createNS.mockClear();
+        const root = context.build(ast, ns);
+        expect(create.mock.calls).toEqual([['div'], ['span']]);
+        expect(root.querySelector('div')?.namespaceURI).toBe(
+          HTML_NAMESPACE_URI,
+        );
+        expect(root.querySelector('span')?.namespaceURI).toBe(
+          HTML_NAMESPACE_URI,
+        );
+        const exceptions = [...root.querySelectorAll('mglyph, malignmark')];
+        const expectedExceptions = ['mi', 'mo', 'mn', 'ms', 'mtext'].includes(
+          root.firstElementChild!.localName,
+        )
+          ? ['mglyph', 'malignmark']
+          : [];
+        expect(exceptions.map((el) => el.localName)).toEqual(
+          expectedExceptions,
+        );
+        for (const exception of exceptions) {
+          expect(exception.namespaceURI).toBe(MATHML_NAMESPACE_URI);
+          expect(createNS).toHaveBeenCalledWith(
+            MATHML_NAMESPACE_URI,
+            exception.localName,
+          );
+        }
+      }
+    },
+  );
+
+  it.each([undefined, null])(
+    'preserves native template content and nested namespaces with namespace %s',
+    (ns) => {
+      const context = new BuildContext(new DummyOwner(), {});
+      const template = context.build(
+        {
+          t: 'template',
+          a: {},
+          c: [
+            'Before',
+            { t: 'span', a: {}, c: ['HTML'] },
+            {
+              t: 'svg',
+              a: {},
+              c: [
+                {
+                  t: 'foreignObject',
+                  a: {},
+                  c: [{ t: 'math', a: {}, c: [{ t: 'mrow', a: {}, c: [] }] }],
+                },
+              ],
+            },
+          ],
+        },
+        ns,
+      ) as HTMLTemplateElement;
+
+      expect(template.childNodes).toHaveLength(0);
+      expect(template.content.childNodes).toHaveLength(3);
+      expect(template.content.textContent).toBe('BeforeHTML');
+      expect(template.content.querySelector('span')?.namespaceURI).toBe(
+        HTML_NAMESPACE_URI,
+      );
+      expect(template.content.querySelector('svg')?.namespaceURI).toBe(
+        SVG_NAMESPACE_URI,
+      );
+      expect(template.content.querySelector('math')?.namespaceURI).toBe(
+        MATHML_NAMESPACE_URI,
+      );
+      expect(template.content.querySelector('mrow')?.namespaceURI).toBe(
+        MATHML_NAMESPACE_URI,
+      );
+    },
+  );
+
+  it.each([undefined, null])(
+    'forwards the third argument signal to events and custom children with namespace %s',
+    (ns) => {
+      const owner = new DummyOwner();
+      const context = new BuildContext(owner, { child: DummyOwner });
+      const controller = new AbortController();
+      const click = vi.spyOn(owner, 'handleClick');
+      const root = context.build(
+        {
+          t: 'button',
+          a: { onclick: 'handleClick' },
+          c: [
+            { t: 'button', a: { onclick: 'handleClick' }, c: [] },
+            { t: 'child', a: { id: 'child' }, c: [] },
+          ],
+        },
+        ns,
+        controller.signal,
+      ) as HTMLButtonElement;
+      const nested = root.firstElementChild as HTMLButtonElement;
+      const child = context.idMap.child as DummyOwner;
+
+      expect(child.parent).toBe(owner);
+      expect(child.signal.aborted).toBe(false);
+      root.click();
+      nested.click();
+      expect(click).toHaveBeenCalledTimes(3);
+      controller.abort();
+      root.click();
+      nested.click();
+      expect(click).toHaveBeenCalledTimes(3);
+      expect(child.signal.aborted).toBe(true);
+      expect(owner.signal.aborted).toBe(false);
+      owner.destroy();
+    },
+  );
+
+  it.each([
+    {
+      ns: undefined,
+      expectedCreate: [],
+      expectedCreateNS: [
+        ['urn:custom', 'child'],
+        ['urn:custom', 'grandchild'],
+      ],
+      expectedNamespace: 'urn:custom',
+    },
+    {
+      ns: null,
+      expectedCreate: [['child'], ['grandchild']],
+      expectedCreateNS: [],
+      expectedNamespace: HTML_NAMESPACE_URI,
+    },
+  ])(
+    'preserves appendChildren namespace propagation for $ns',
+    ({ ns, expectedCreate, expectedCreateNS, expectedNamespace }) => {
+      const context = new BuildContext(new DummyOwner(), {});
+      const parent = document.createElementNS('urn:custom', 'parent');
+      const create = vi.spyOn(document, 'createElement');
+      const createNS = vi.spyOn(document, 'createElementNS');
+      context.appendChildren(
+        parent,
+        [{ t: 'child', a: {}, c: [{ t: 'grandchild', a: {}, c: [] }] }],
+        ns,
+      );
+
+      expect(create.mock.calls).toEqual(expectedCreate);
+      expect(createNS.mock.calls).toEqual(expectedCreateNS);
+      expect(parent.firstElementChild?.namespaceURI).toBe(expectedNamespace);
+    },
+  );
+});
 
 describe('BuildContext - DOM Building & ID Resolution', () => {
   it('retains distinct IDs across repeated builds after DOM removal', () => {
