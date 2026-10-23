@@ -433,7 +433,7 @@ class DynamicList extends AbstractComponent {
     }
 
     this.context = new BuildContext(params.parent, parentUses);
-    this.element = this.context.build(rootAst);
+    this.element = this.context.build(rootAst, null, this.signal);
 
     // 2. Save the child element (Slot) as a reusable list-item template
     const childTNode = params.childNodes[0];
@@ -449,8 +449,8 @@ class DynamicList extends AbstractComponent {
    * Appends a new item by re-evaluating the saved AST template.
    */
   append(childContent: string | Node) {
-    // Generate new DOM elements from the saved AST template
-    const li = this.context.build(this.templateNode);
+    // Resolve methods in the parent's scope, but tie cleanup to this list.
+    const li = this.context.build(this.templateNode, null, this.signal);
 
     // Insert content and append to the list
     li.append(childContent);
