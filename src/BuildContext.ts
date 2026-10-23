@@ -62,11 +62,23 @@ export class BuildContext {
    * reference targets to resolve stored references.
    *
    * @param tNode - The current `TNode` to build, including correctly formatted names in descendants.
-   * @param ns - Namespace URI used when creating an element.
+   * @param ns - Explicit namespace URI, subject to `svg` and `math` tag inference.
+   * Omission, `undefined`, and `null` select the same default namespace rules.
+   * To explicitly request HTML, use `http://www.w3.org/1999/xhtml`.
+   * Nullish values select library defaults, not the absent namespace of native `createElementNS(null, ...)`.
    * @param signal - Optional lifecycle signal, independent of the template scope.
    * @returns The constructed DOM Element.
    */
   build(tNode: TNode, ns?: string | null, signal?: AbortSignal): Element {
+    return this.buildNativeElement(tNode, ns ?? undefined, signal);
+  }
+
+  private buildNativeElement(
+    tNode: TNode,
+    ns?: string | null,
+    signal?: AbortSignal,
+  ): Element {
+    // Preserve null for internal HTML boundaries and explicit appendChildren() namespaces.
     const { element, childNs } = createNativeElement(tNode.t, ns);
     this.processAttributes(element, tNode.a, signal);
     this.appendChildren(element, tNode.c, childNs, signal);
@@ -176,7 +188,7 @@ export class BuildContext {
       target.appendChild(
         Object.hasOwn(this.uses, componentName)
           ? this.buildCustomComponent(childNode, componentName, signal)
-          : this.build(
+          : this.buildNativeElement(
               childNode,
               getChildNamespace(element, childNode.t, childNs),
               signal,
