@@ -236,7 +236,7 @@ You can pass callback functions down to children using manual assignment or by c
 ```typescript
 class Parent extends TComponent {
   static uses = { Child };
-  static template = /* HTML */ `<child id="my-child"></child>`;
+  static template = /* HTML */ `<div><child id="my-child"></child></div>`;
 
   constructor(params: ComponentParams) {
     super(params);
