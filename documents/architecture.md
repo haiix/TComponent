@@ -16,9 +16,9 @@ Managing event listeners in vanilla JavaScript can often lead to memory leaks if
 
 Every TComponent instance comes with a built-in `destroy()` method. Calling this method is the standard and safest way to remove a component. It will automatically perform the following steps:
 
-1. **Remove from DOM:** The component's root element is detached from the document (`this.element.remove()`).
-2. **Unbind Events:** Unbind all event listeners defined via `on*` attributes in your template.
-3. **Cascade Signal Abort:** Abort linked child signals to unbind their template event listeners and run registered cleanup callbacks. Child `.destroy()` methods are not called; nested DOM is detached along with the root. A child mounted elsewhere needs an explicit `.destroy()` call to remove its element.
+1. **Abort Lifecycle:** Abort the component's signal to unbind template event listeners and run registered cleanup callbacks.
+2. **Cascade Signal Abort:** Abort linked child signals to unbind their template event listeners and run registered cleanup callbacks. Child `.destroy()` methods are not called.
+3. **Remove from DOM:** Detach the component's root element along with its nested DOM. A child mounted elsewhere needs an explicit `.destroy()` call to remove its element.
 
 ```typescript
 const app = new App();
@@ -42,7 +42,7 @@ _(For advanced use cases like SPA routers or external signals, see [Advanced Mem
 
 While TComponent automatically handles unbinding inline event listeners (`on*`) and removing the element from the DOM, you may need to perform explicit cleanup for other side effects—such as clearing `setTimeout`/`setInterval`, closing WebSockets, or destroying third-party library instances.
 
-You can easily register custom cleanup logic by listening to the `abort` event on the component's built-in `this.signal`.
+Do not override `destroy()`. Register custom cleanup logic by listening to the `abort` event on the component's built-in `this.signal`, immediately after acquiring each resource. This also handles teardown triggered by a parent or external signal.
 
 ```typescript
 import TComponent, { type ComponentParams } from '@haiix/tcomponent';

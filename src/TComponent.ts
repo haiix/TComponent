@@ -9,7 +9,6 @@ import { AbstractComponent } from './AbstractComponent';
 import { BuildContext } from './BuildContext';
 import { parseTemplate } from './utils/parse';
 import { throwError } from './internal/messages';
-import { abortLifecycle } from './internal/signal';
 import { freezeTemplate } from './internal/template';
 
 /**
@@ -58,13 +57,8 @@ export class TComponent<
     const parsed = Component.getParsed();
 
     this.context = new BuildContext(this, parsed.uses);
-    try {
-      this.element = this.context.build(parsed.template, parsed.ns) as T;
-      this.context.resolveIdReferences();
-    } catch (error) {
-      this[abortLifecycle]();
-      throw error;
-    }
+    this.element = this.context.build(parsed.template, parsed.ns) as T;
+    this.context.resolveIdReferences();
 
     componentRegistry.set(this.element, this);
   }
