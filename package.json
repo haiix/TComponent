@@ -57,7 +57,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-tsdoc": "^0.5.2",
     "globals": "^17.4.0",
-    "jsdom": "^30.0.1",
+    "jsdom": "^31.0.0",
     "prettier": "3.9.10",
     "typedoc": "^0.28.18",
     "typescript": "~6.0.2",
